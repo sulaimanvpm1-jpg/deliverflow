@@ -37,7 +37,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 
   <script>
-(() => {
+try { (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
   var __defProps = Object.defineProperties;
@@ -3678,13 +3678,24 @@
 })();
 
     // Mount the app
+    // Check if App loaded
+    if (!window.App) {
+      document.getElementById('loading').innerHTML =
+        '<div style="padding:24px;text-align:center">' +
+        '<div style="color:#EF4444;font-size:16px;margin-bottom:8px">App failed to load</div>' +
+        '<div style="color:rgba(255,255,255,0.4);font-size:12px">window.App is undefined</div>' +
+        '</div>';
+      return;
+    }
     try {
       var root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(React.createElement(window.App));
       document.getElementById('loading').style.display = 'none';
     } catch(e) {
       document.getElementById('loading').innerHTML =
-        '<div style="padding:24px;text-align:center;color:#EF4444">Error: ' + e.message + '</div>';
+        '<div style="padding:24px;text-align:center">' +
+        '<div style="color:#EF4444;font-size:14px;word-break:break-all">Error: ' + e.message + '</div>' +
+        '</div>';
     }
   </script>
 </body>
