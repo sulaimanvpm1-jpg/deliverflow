@@ -3075,7 +3075,7 @@ const DEFAULT_PROFILES = {
   iqbal:     { vehicleType:"Car",  vehicleNo:"", licenseNo:"", nationality:"Pakistani", phone:"+96555001004", status:"inactive", joinDate:"2021-09-20", daftarExpiry:"2027-03-10", avatar:"IQ" },
 };
 
-function App() {
+window.App = function App() {
   const [user, setUser]               = useState(null);
   const [orders, setOrders]           = useState(function() { return lsGet(LS_KEYS.orders, []); });
   const [transfers, setTransfers]     = useState(function() { return lsGet(LS_KEYS.transfers, []); });
@@ -3382,4 +3382,3 @@ function App() {
     </>
   );
 }
-window.App = App;
