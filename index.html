@@ -10,26 +10,49 @@
   <meta name="apple-mobile-web-app-title" content="DeliverFlow" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0A0F1E; }
+    html, body { height: 100%; background: #0A0F1E; }
     #root { min-height: 100vh; }
+    #loading {
+      position: fixed; inset: 0; background: #0A0F1E;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-family: sans-serif; color: #fff; z-index: 9999;
+    }
+    .logo { font-size: 32px; font-weight: 900; letter-spacing: -1px; margin-bottom: 8px; }
+    .logo span { color: #00D4FF; }
+    .sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 32px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #FF6B35; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
+  <div id="loading">
+    <div class="logo">Deliver<span>Flow</span></div>
+    <div class="sub">AMTEL TELECOM</div>
+    <div class="spinner"></div>
+  </div>
   <div id="root"></div>
 
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script type="text/babel" data-type="module" src="./deliverflow-v3.jsx"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js" crossorigin></script>
+
   <script>
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        if (typeof App !== 'undefined') {
-          const root = ReactDOM.createRoot(document.getElementById('root'));
-          root.render(React.createElement(App));
-        }
-      }, 500);
-    });
+    fetch('./deliverflow-v3.jsx')
+      .then(function(r) { return r.text(); })
+      .then(function(code) {
+        var transformed = Babel.transform(code, { presets: ['react'] }).code;
+        var script = document.createElement('script');
+        script.textContent = transformed;
+        document.head.appendChild(script);
+        var root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+        document.getElementById('loading').style.display = 'none';
+      })
+      .catch(function(err) {
+        document.getElementById('loading').innerHTML =
+          '<div style="padding:24px;text-align:center;color:#EF4444">Error: ' + err.message + '</div>';
+      });
   </script>
 </body>
 </html>
