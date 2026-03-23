@@ -79,7 +79,7 @@ try { (() => {
   ));
   var import_react = React;
   var import_react2 = React;
-  var import_jsx_runtime = React;
+  var import_jsx_runtime = __jsx_runtime_shim;
   const FONT = `@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');`;
   const DRIVERS = [
     { id: "asif", name: "Asif", avatar: "AS", phone: "+96555001001", status: "active", vehicleType: "Car", vehicleNo: "KWT 12345", licenseNo: "DL-2021-001", nationality: "Indian", joinDate: "2023-01-15", daftarExpiry: "2026-08-01" },
@@ -3678,23 +3678,23 @@ try { (() => {
 })();
 
     // Mount the app
-    // Check if App loaded
-    if (!window.App) {
+    // Mount the app
+    if (window.App) {
+      try {
+        var root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(window.App));
+        document.getElementById('loading').style.display = 'none';
+      } catch(e) {
+        document.getElementById('loading').innerHTML =
+          '<div style="padding:24px;text-align:center">' +
+          '<div style="color:#EF4444;font-size:14px;word-break:break-all">Error: ' + e.message + '</div>' +
+          '</div>';
+      }
+    } else {
       document.getElementById('loading').innerHTML =
         '<div style="padding:24px;text-align:center">' +
         '<div style="color:#EF4444;font-size:16px;margin-bottom:8px">App failed to load</div>' +
         '<div style="color:rgba(255,255,255,0.4);font-size:12px">window.App is undefined</div>' +
-        '</div>';
-      return;
-    }
-    try {
-      var root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(window.App));
-      document.getElementById('loading').style.display = 'none';
-    } catch(e) {
-      document.getElementById('loading').innerHTML =
-        '<div style="padding:24px;text-align:center">' +
-        '<div style="color:#EF4444;font-size:14px;word-break:break-all">Error: ' + e.message + '</div>' +
         '</div>';
     }
   </script>
