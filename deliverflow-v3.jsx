@@ -1,0 +1,3384 @@
+import React from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+
+/* 
+   DeliverFlow v3 - Real Warehouse Workflow
+   Admin: Upload PDF -> Parse Orders -> Assign Driver
+   Driver: Arrive at Warehouse -> Scan/Confirm Orders -> Deliver
+ */
+
+const FONT = `@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');`;
+
+/*  Drivers  */
+const DRIVERS = [
+  { id:"asif",      name:"Asif",      avatar:"AS", phone:"+96555001001", status:"active",   vehicleType:"Car",  vehicleNo:"KWT 12345", licenseNo:"DL-2021-001", nationality:"Indian",    joinDate:"2023-01-15", daftarExpiry:"2026-08-01" },
+  { id:"jasir",     name:"Jasir",     avatar:"JA", phone:"+96555001002", status:"active",   vehicleType:"Van",  vehicleNo:"KWT 67890", licenseNo:"DL-2020-042", nationality:"Pakistani", joinDate:"2022-06-10", daftarExpiry:"2026-11-15" },
+  { id:"prathyush", name:"Prathyush", avatar:"PR", phone:"+96555001003", status:"active",   vehicleType:"Bike", vehicleNo:"KWT 11223", licenseNo:"DL-2022-018", nationality:"Indian",    joinDate:"2024-03-01", daftarExpiry:"2025-12-31" },
+  { id:"iqbal",     name:"Iqbal",     avatar:"IQ", phone:"+96555001004", status:"inactive", vehicleType:"Car",  vehicleNo:"KWT 44556", licenseNo:"DL-2019-077", nationality:"Pakistani", joinDate:"2021-09-20", daftarExpiry:"2027-03-10" },
+];
+
+/*  Pre-parsed orders from the uploaded PDF (Asif's real data)  */
+const PDF_SAMPLE_ORDERS = [
+  // ReStore Online
+  { invoiceNo:"1163294", onlineOrderNo:"", customer:"ishbilia customer",    phone:"56534882",     address:"ishbilia, h-62",                                                store:"ReStore Online",  total:9.90,  paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163295", onlineOrderNo:"", customer:"West Abdullah customer",phone:"53331787",     address:"west abdullah al mubarak, b-5, st-509, h-1",                   store:"ReStore Online",  total:9.90,  paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163296", onlineOrderNo:"", customer:"Sheril Quiapo",         phone:"639163883129", address:"Sulaibikhat, 4 street 112, floor 1, flat 7, build 89",          store:"ReStore Online",  total:12.90, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  // Trikart Online
+  { invoiceNo:"1163258", onlineOrderNo:"75283",  customer:"Muna Salem",         phone:"+96566981955", address:"Block 2 street 204 building 241, Saad Al Abdullah City, Al Jahra", store:"Trikart Online",  total:44.90, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"20/3/2026" },
+  { invoiceNo:"1163270", onlineOrderNo:"75322",  customer:"Bezel Sanchez",      phone:"+96567761300", address:"block 7 st.50 House 44 Sabah Al Nasser, Farwaniya",            store:"Trikart Online",  total:9.90,  paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163280", onlineOrderNo:"75347",  customer:"Sandeep KG",         phone:"+96599824464", address:"Building 1082, Floor 2, Room 6, Street 200, Block 2, Jleeb Al Shyoukh", store:"Trikart Online", total:7.90, paymentType:"Cash",  status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163304", onlineOrderNo:"75360",  customer:"Dimuth Gayan",       phone:"50792337",     address:"Blok 3 Road 1 Staret 4, Firdous, Al Ahmadi",                  store:"Trikart Online",  total:9.80,  paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163306", onlineOrderNo:"75372",  customer:"Hamad Alhajri",      phone:"+96596693118", address:"43, Qairawan, Al Asimah",                                     store:"Trikart Online",  total:275.29,paymentType:"Deema",          status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163327", onlineOrderNo:"3662",   customer:"Salman Aldaihani",   phone:"+96541093265", address:"منطقة الفردوس قطعة5 جادة9 منزل3, Farwaniya",                 store:"Trikart Online",  total:34.90, paymentType:"KNET",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163334", onlineOrderNo:"75394",  customer:"Hamed Aleid",        phone:"+96550411114", address:"Block 6 st 621 house 499, South Abdullah Mubarak, Farwaniya", store:"Trikart Online",  total:15.00, paymentType:"VISA/Mastercard", status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  // Webstore Online
+  { invoiceNo:"1163036", onlineOrderNo:"462565", customer:"Webstore Customer 1",phone:"50462565",     address:"KHAITHAN, B4, S86, CGC MEN HOSTAL",                           store:"Webstore Online", total:15.00, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"17/3/2026" },
+  { invoiceNo:"1163142", onlineOrderNo:"26675",  customer:"Eman Nasser",        phone:"+96598000368", address:"ishbelya block4 street410 house28, Farwaniya",                store:"Webstore Online", total:7.00,  paymentType:"Tabby",          status:"pending", driverId:null, scanned:false, date:"18/3/2026" },
+  { invoiceNo:"1163182", onlineOrderNo:"26688",  customer:"Muneer",             phone:"+96597556848", address:"Sabah Al Nasser, B1, Jamiya Kabeer, Haya Restaurant",         store:"Webstore Online", total:10.00, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"19/3/2026" },
+  { invoiceNo:"1163192", onlineOrderNo:"26632",  customer:"Ayoun",              phone:"50710137",     address:"B1, S9, H282 - EXCHANGE ZERO AMOUNT",                         store:"Webstore Online", total:8.00,  paymentType:"Exchange",       status:"pending", driverId:null, scanned:false, date:"19/3/2026" },
+  { invoiceNo:"1163195", onlineOrderNo:"26700",  customer:"Sadish",             phone:"+96560349863", address:"Ferdous, B9, S10, Ferdous, Al Ahmadi",                        store:"Webstore Online", total:9.90,  paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"19/3/2026" },
+  { invoiceNo:"1163199", onlineOrderNo:"26696",  customer:"Jothish",            phone:"+96566941944", address:"Amghara Industrial, B2, Al Jahra",                            store:"Webstore Online", total:10.00, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"19/3/2026" },
+  { invoiceNo:"1163279", onlineOrderNo:"26721",  customer:"Fatima Almutwaa",    phone:"+96566515665", address:"Old Jahra block 1 street 1 house 22, Jahra",                  store:"Webstore Online", total:26.90, paymentType:"Tap/KNET",       status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163308", onlineOrderNo:"26738",  customer:"Amith Kumar",        phone:"+96599631623", address:"Abbasiya, B4, S11, Bldng 7, Jleeb Al-Shuyoukh",              store:"Webstore Online", total:10.00, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163309", onlineOrderNo:"26737",  customer:"Faras Raz",          phone:"+96567074725", address:"Amghara, Next Gate No 4 Main St, Al Jahra",                   store:"Webstore Online", total:24.90, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163311", onlineOrderNo:"26733",  customer:"Vijay Raghavan",     phone:"+96565068433", address:"Sulaibiya, B8, Sulaibiya",                                    store:"Webstore Online", total:10.00, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163312", onlineOrderNo:"26734",  customer:"Anvar",              phone:"+96566140898", address:"Abbasiya, B4, S13, Nour Al Aqsa Bldng, Jleeb Al-Shuyoukh",   store:"Webstore Online", total:12.90, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163314", onlineOrderNo:"26735",  customer:"Anurag Thapa",       phone:"+97797087708", address:"Jaber Al Ahmed, B5, S500, H22",                               store:"Webstore Online", total:9.90,  paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163316", onlineOrderNo:"26731",  customer:"Remya P",            phone:"+91996141214", address:"Sabah Al Nasser, B6, S201",                                   store:"Webstore Online", total:14.90, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163320", onlineOrderNo:"26741",  customer:"Ajmeer Khan",        phone:"+96565130378", address:"Naseem, B1, S31, H4",                                         store:"Webstore Online", total:10.00, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163321", onlineOrderNo:"26742",  customer:"Hussan Kutty",       phone:"+96566346357", address:"Abbasiya, B4, S18, Near High Land Hotel",                     store:"Webstore Online", total:10.00, paymentType:"Cash",           status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+  { invoiceNo:"1163325", onlineOrderNo:"26747",  customer:"A Obaid",            phone:"+96565952621", address:"Old Jahra block 5 street 1 line 1 avenue 9, House 108",       store:"Webstore Online", total:40.90, paymentType:"Tabby",          status:"pending", driverId:null, scanned:false, date:"21/3/2026" },
+];
+
+/*  Brand-accurate payment colors  */
+const PAYMENT_CFG = {
+  "Cash":           { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"💵 Cash"           },
+  "COD":            { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"💵 COD"            },
+  "KNET":           { color:"#fff",     bg:"#003DA5",  border:"#003DA5",  label:"K NET"             }, // KNET blue
+  "VISA/Mastercard":{ color:"#fff",     bg:"#1A1F71",  border:"#1A1F71",  label:"VISA / MC"         }, // Visa navy
+  "Tabby":          { color:"#1A1A1A",  bg:"#3DEBA0",  border:"#3DEBA0",  label:"Tabby"             }, // Tabby green
+  "Taly":           { color:"#fff",     bg:"#1C1C1E",  border:"#1C1C1E",  label:"r taly"            }, // Taly dark
+  "Deema":          { color:"#fff",     bg:"#C0596A",  border:"#C0596A",  label:"Deema"             }, // Deema pink-red
+  "GoCollect":      { color:"#fff",     bg:"#E8003D",  border:"#E8003D",  label:"GoCollect"         }, // GoCollect red
+  "Trikart Link":   { color:"#fff",     bg:"#6366F1",  border:"#6366F1",  label:"🔗 Trikart"        },
+  "WAMD":           { color:"#fff",     bg:"#1B2B4B",  border:"#F5C518",  label:"WAMD"              }, // WAMD dark + yellow accent
+  "Tap/KNET":       { color:"#fff",     bg:"#003DA5",  border:"#003DA5",  label:"Tap / KNET"        },
+  "Exchange":       { color:"#fff",     bg:"#6B7280",  border:"#6B7280",  label:"🔄 Exchange"       },
+  "Link Payment":   { color:"#fff",     bg:"#7C3AED",  border:"#7C3AED",  label:"🔗 Link"           },
+  "Tabby (Link)":   { color:"#1A1A1A",  bg:"#3DEBA0",  border:"#3DEBA0",  label:"Tabby"             },
+};
+// Fallback colour map (used where only a hex colour is needed)
+const PAYMENT_COLORS = Object.fromEntries(Object.entries(PAYMENT_CFG).map(e => [e[0],e[1].bg]));
+
+/*  Payment Badge component  */
+const PaymentBadge = ({ payType, small }) => {
+  const cfg = PAYMENT_CFG[payType] || { color:"#fff", bg:"rgba(255,255,255,.15)", border:"rgba(255,255,255,.2)", label: payType };
+  const fs  = small ? 10 : 11;
+  const px  = small ? "3px 8px" : "4px 11px";
+  return (
+    <span style={{
+      background: cfg.bg, color: cfg.color,
+      border: "1.5px solid " + (cfg.border),
+      borderRadius: 20, padding: px,
+      fontSize: fs, fontWeight: 700,
+      fontFamily: "DM Sans",
+      whiteSpace:"nowrap", letterSpacing: payType==="KNET"?1:0,
+      display:"inline-block",
+    }}>
+      {cfg.label}
+    </span>
+  );
+};
+
+/*  Sound effects (Web Audio API - no external files)  */
+function playSound(sndType) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    if (sndType === "success") {
+      // Two-tone ascending chime:  order found / collected
+      [[660, 0, 0.12], [880, 0.13, 0.18], [1100, 0.26, 0.22]].forEach(function(note) {
+        var freq = note[0], delay = note[1], dur = note[2];
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = "sine"; o.frequency.value = freq;
+        g.gain.setValueAtTime(0, now + delay);
+        g.gain.linearRampToValueAtTime(0.28, now + delay + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, now + delay + dur);
+        o.start(now + delay); o.stop(now + delay + dur + 0.05);
+      });
+    } else if (sndType === "collect") {
+      // Satisfying double-beep: 📦 confirmed collection
+      [[523, 0, 0.1], [784, 0.12, 0.18]].forEach(function(note) {
+        var freq = note[0], delay = note[1], dur = note[2];
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = "triangle"; o.frequency.value = freq;
+        g.gain.setValueAtTime(0, now + delay);
+        g.gain.linearRampToValueAtTime(0.35, now + delay + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, now + delay + dur);
+        o.start(now + delay); o.stop(now + delay + dur + 0.05);
+      });
+    } else if (sndType === "error") {
+      // Low descending buzz:  wrong driver / not found
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = "sawtooth"; o.frequency.setValueAtTime(300, now);
+      o.frequency.linearRampToValueAtTime(150, now + 0.25);
+      g.gain.setValueAtTime(0.3, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      o.start(now); o.stop(now + 0.3);
+    } else if (sndType === "bulk") {
+      // Rising sweep:  bulk collect all
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = "sine"; o.frequency.setValueAtTime(440, now);
+      o.frequency.exponentialRampToValueAtTime(1320, now + 0.4);
+      g.gain.setValueAtTime(0.25, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      o.start(now); o.stop(now + 0.5);
+    } else if (sndType === "notify") {
+      // Admin notification chime - gentle two-tone
+      [[880, 0, 0.12],[1100, 0.15, 0.15]].forEach(function(note) {
+        var freq = note[0], delay = note[1], dur = note[2];
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = "sine"; o.frequency.value = freq;
+        g.gain.setValueAtTime(0, now+delay);
+        g.gain.linearRampToValueAtTime(0.2, now+delay+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, now+delay+dur);
+        o.start(now+delay); o.stop(now+delay+dur+0.05);
+      });
+    }
+  } catch(e) { /* Audio not supported */ }
+}
+// Payment types that require NO cash collection from driver
+const NO_COLLECT_PAYMENTS = ["Exchange","Tabby","Taly","Deema","KNET","VISA/Mastercard","Tap/KNET"];
+const isExchange = p => p === "Exchange";
+const STORES = ["All Stores","ReStore Online","Trikart Online","Webstore Online"];
+const STATUS_CFG = {
+  pending:   { label:"Pending",   color:"#F59E0B", bg:"rgba(245,158,11,.15)",  icon:"" },
+  collected: { label:"Collected", color:"#00D4FF", bg:"rgba(0,212,255,.15)",   icon:"📦" },
+  delivered: { label:"Delivered", color:"#10B981", bg:"rgba(16,185,129,.15)",  icon:"" },
+  cancelled: { label:"Cancelled", color:"#EF4444", bg:"rgba(239,68,68,.15)",   icon:"" },
+  postponed: { label:"Postponed", color:"#8B5CF6", bg:"rgba(139,92,246,.15)",  icon:"" },
+};
+
+const fmt = n => "KD " + Number(n).toFixed(3);
+function uid() { return Math.random().toString(36).slice(2,9).toUpperCase(); }
+
+/*  Shared UI  */
+const Badge = ({ status }) => {
+  const c = STATUS_CFG[status] || STATUS_CFG.pending;
+  return <span style={{ background:c.bg, color:c.color, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600, fontFamily:"DM Sans", whiteSpace:"nowrap" }}>{c.icon} {c.label}</span>;
+};
+const Pill = ({ label, active, onClick, count }) => (
+  <button onClick={onClick} style={{ background:active?"#00D4FF":"rgba(255,255,255,.07)", color:active?"#0A0F1E":"rgba(255,255,255,.6)", border:"none", borderRadius:20, padding:"6px 14px", fontSize:12, fontFamily:"DM Sans", fontWeight:active?600:400, cursor:"pointer", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:5 }}>
+    {label}{count!==undefined&&<span style={{background:active?"rgba(0,0,0,.15)":"rgba(255,255,255,.15)",borderRadius:10,padding:"1px 6px",fontSize:10}}>{count}</span>}
+  </button>
+);
+const Toast = ({ msg, toastKind="info" }) => {
+  const c2 = { info:"rgba(0,212,255,.9)", success:"rgba(16,185,129,.9)", warn:"rgba(245,158,11,.9)", error:"rgba(239,68,68,.9)" }[toastKind] || "rgba(0,212,255,.9)";
+  return <div style={{ position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", background:c2, borderRadius:30, padding:"10px 20px", fontFamily:"DM Sans", color:"#fff", fontSize:13, zIndex:400, whiteSpace:"nowrap", boxShadow:"0 8px 32px rgba(0,0,0,.4)", animation:"fadeIn .3s" }}>{msg}</div>;
+};
+
+/*  PDF Upload & Parse (uses Anthropic API)  */
+/*  Local SAP PDF text parser (no external API calls)  */
+function parseSAPDeliveryText(rawText) {
+  // This parser handles SAP "Bill wise details" report where pdf.js
+  // extracts text with "---" separating fields on each line.
+  // 
+  // Format observed:
+  // "Bill wise details --- From D/M/YYYY To D/M/YYYY"
+  // "COMPANY NAME"
+  // "Grand Hyper Building - Floor 6 --- Block 7 - ..."
+  // "Delivery Boy : Jasir"
+  // "Date --- --- Invoice No --- --- Invoice Total --- Open Amount ..."
+  // "ReStore Online --- Customer : --- [invoiceNo] --- [date] --- [total] --- [total] --- [customer] --- [address...] --- [phone] --- [payment]"
+  // OR orders may appear on separate lines after store header
+
+  // Normalize: split on newlines, also split tokens by " --- "
+  const rawLines = rawText.split("\n").map(l => l.trim()).filter(Boolean);
+
+  let driverName = "";
+  let company = "";
+
+  // Extract driver name and company
+  for (let i = 0; i < rawLines.length; i++) {
+    const l = rawLines[i];
+    const dm = l.match(/Delivery\s+(?:Boy|Man|Driver)\s*[:\-]\s*(.+)/i);
+    if (dm) driverName = dm[1].replace(/---.*/, "").trim();
+    if (!company && (l.includes("TELECOM") || l.includes("TRADING") || l.includes("LLC") || l.includes("W.L.L") || l.includes("CO."))) {
+      company = l.replace(/---.*/, "").trim();
+    }
+  }
+
+  // Flatten all tokens by splitting every line on " --- " or " -- "
+  // This gives us a flat token stream to parse
+  const tokens = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    const parts = rawLines[i].split(/\s+---+\s+|\s+--\s+/);
+    for (let j = 0; j < parts.length; j++) {
+      const t = parts[j].trim();
+      if (t) tokens.push(t);
+    }
+  }
+
+  const dateRe    = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/;
+  const invoiceRe = /^\d{6,9}$/;
+  const amountRe  = /^\d+\.\d{2,3}$/;
+  const onlineRe  = /^\d{4,6}$/;
+
+  function detectPayment(s) {
+    const l = (s || "").toLowerCase();
+    if (l.includes("knet") || l.includes("k-net") || l.includes("k net")) return "KNET";
+    if (l.includes("tabby"))   return "Tabby";
+    if (l.includes("deema"))   return "Deema";
+    if (l.includes("tamara"))  return "Tamara";
+    if (l.includes("taly"))    return "Taly";
+    if (l.includes("visa") || l.includes("mastercard")) return "VISA/Mastercard";
+    if (l.includes("exchange") || l === "ex") return "Exchange";
+    if (l.includes("tap"))     return "Tap/KNET";
+    if (l.includes("wamd"))    return "WAMD";
+    if (l.includes("gocollect") || l.includes("go collect")) return "GoCollect";
+    if (l.includes("cash") || l.includes("basic") || l.includes("cod")) return "Cash";
+    return null;
+  }
+
+  const orders = [];
+  let currentStore = "";
+  let i = 0;
+
+  // Skip header tokens until we find "Customer :" which marks store sections
+  while (i < tokens.length) {
+    const t = tokens[i];
+
+    // Store header: "ReStore Online" followed by "Customer :" or just detect known store names
+    if (/^(?:ReStore|Trikart|Webstore|Re\s*Store)/i.test(t)) {
+      currentStore = t;
+      i++;
+      continue;
+    }
+    // "Customer :" token - store name was the token before
+    if (/^Customer\s*:?\s*$/i.test(t)) {
+      i++;
+      continue;
+    }
+    // Detect store from "Customer : StoreName" pattern in raw lines
+    const storeMatch = t.match(/(?:Customer|BP\s*Name)\s*[:\-]\s*(.+)/i);
+    if (storeMatch && storeMatch[1].trim()) {
+      currentStore = storeMatch[1].trim();
+      i++;
+      continue;
+    }
+
+    // Order start: invoice number (6-9 digits)
+    if (invoiceRe.test(t)) {
+      const invoiceNo = t;
+      i++;
+
+      // Next token might be date or online order number
+      let date = "";
+      let onlineOrderNo = "";
+      let total = 0;
+      let paymentType = "Cash";
+      const addrTokens = [];
+
+      // Collect the next ~20 tokens to parse this order
+      let orderGuard = 0;
+      while (i < tokens.length && orderGuard < 25) {
+        orderGuard++;
+        const tok = tokens[i];
+
+        if (dateRe.test(tok)) {
+          if (!date) date = tok;
+          i++; continue;
+        }
+        if (amountRe.test(tok)) {
+          if (!total) total = parseFloat(tok);
+          i++; continue;
+        }
+        // Online order number: 4-6 digits, different from invoice
+        if (onlineRe.test(tok) && tok !== invoiceNo && !total) {
+          onlineOrderNo = tok;
+          i++; continue;
+        }
+        // Payment keyword - marks end of this order
+        const pay = detectPayment(tok);
+        if (pay) {
+          paymentType = pay;
+          i++;
+          // Skip "Basic", "Payment" continuation words
+          while (i < tokens.length && /^(Basic|Payment|Terms|Cash)$/i.test(tokens[i])) i++;
+          break;
+        }
+        // Next invoice number = new order, stop
+        if (invoiceRe.test(tok) && tok !== invoiceNo) break;
+        // Skip header-like tokens
+        if (/^(Invoice|Total|Amount|Due|Overdue|Date|Online|Order|No|Open|Name|Location|Delivery|Boy|Man)$/i.test(tok)) {
+          i++; continue;
+        }
+        // Skip pure numbers (overdue days etc)
+        if (/^\d{1,4}$/.test(tok)) { i++; continue; }
+
+        addrTokens.push(tok);
+        i++;
+      }
+
+      // Parse address tokens: first is customer name, then address parts, phone last
+      let customer = addrTokens[0] || "Unknown";
+      let phone = "";
+      const addrParts = [];
+      for (let ai = 1; ai < addrTokens.length; ai++) {
+        const at = addrTokens[ai];
+        if (/^[+\d][\d\s\-()]{6,}$/.test(at.replace(/\s/g, ""))) {
+          phone = at;
+        } else {
+          addrParts.push(at);
+        }
+      }
+      // address built from addrParts below after customer extraction
+
+      // Clean prefixes from customer and address
+      const cleanCustomer = customer
+        .replace(/^(?:Address|Name|Customer)\s*:/i, "").trim();
+      const cleanAddress = addrParts
+        .map(a => a.replace(/^(?:Address|Location|Block|Street|Building|Floor|Area|City)\s*:/i, "").trim())
+        .filter(Boolean).join(", ");
+
+      if (invoiceNo && (total > 0 || paymentType === "Exchange")) {
+        orders.push({
+          id: uid(), invoiceNo, onlineOrderNo, date,
+          store: currentStore || "Unknown Store",
+          customer: cleanCustomer || "Unknown",
+          address: cleanAddress, phone, total, paymentType,
+          status: "pending", driverId: null, scanned: false
+        });
+      }
+      continue;
+    }
+
+    i++;
+  }
+
+  return { driverName, company, orders };
+}
+
+
+function PDFUploadPanel({ onOrdersParsed }) {
+  const [file, setFile]       = useState(null);
+  const [parsing, setParsing] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [error, setError]     = useState("");
+  const fileRef = useRef();
+
+  async function handleFile(f) {
+    if (!f || f.type !== "application/pdf") { setError("Please upload a PDF file."); return; }
+    setFile(f); setError(""); setParsing(true); setProgress("Reading PDF...");
+    try {
+      // Use pdf.js from CDN to extract text locally - no API call needed
+      const arrayBuffer = await f.arrayBuffer();
+      setProgress("Extracting text...");
+
+      // Dynamically load pdf.js
+      if (!window.pdfjsLib) {
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
+
+      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const tc   = await page.getTextContent();
+        fullText += tc.items.map(it => it.str).join("\n") + "\n";
+      }
+
+      const lineCount = fullText.split("\n").filter(Boolean).length;
+      setProgress("Parsing " + lineCount + " lines... please wait");
+
+      // Run parser in next tick so UI can update progress text first
+      await new Promise(function(res) { setTimeout(res, 50); });
+
+      let result;
+      try {
+        result = parseSAPDeliveryText(fullText);
+      } catch(parseErr) {
+        throw new Error("Parser error: " + parseErr.message);
+      }
+
+      if (result.orders.length === 0) {
+        const previewLines = fullText.split("\n").filter(Boolean).slice(0, 50).join("\n---\n");
+        setError("Parsed " + lineCount + " lines but found 0 orders.\n\nFirst 50 lines of extracted text:\n\n" + previewLines);
+        setParsing(false);
+        return;
+      }
+
+      setProgress("Found " + result.orders.length + " orders for " + (result.driverName || "driver") + "!");
+      setTimeout(() => {
+        onOrdersParsed(result.orders, result.driverName || "", result.company || "");
+      }, 600);
+    } catch (e) {
+      console.error(e);
+      const previewLines = fullText.split("\n").filter(Boolean).slice(0, 60).join("\n");
+      setError("Could not parse PDF. Raw text preview (first 60 lines):\n\n" + previewLines);
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  return (
+    <div style={{ background:"rgba(255,255,255,.04)", border:"1.5px dashed rgba(0,212,255,.35)", borderRadius:18, padding:24 }}>
+      <div style={{ fontFamily:"Syne", color:"#fff", fontSize:16, fontWeight:700, marginBottom:4 }}> Upload Delivery PDF</div>
+      <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:13, marginBottom:18 }}>SAP Business One   Bill-wise Details report</div>
+
+      <input ref={fileRef} type="file" accept="application/pdf" style={{ display:"none" }} onChange={e => handleFile(e.target.files[0])} />
+
+      <div onClick={() => !parsing && fileRef.current.click()}
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}
+        style={{ background:"rgba(0,212,255,.05)", borderRadius:14, padding:"28px 20px", textAlign:"center", cursor:parsing?"not-allowed":"pointer", border:"1px solid rgba(0,212,255,.15)" }}>
+        {parsing ? (
+          <div>
+            <div style={{ fontSize:32, marginBottom:10, animation:"spin 1s linear infinite", display:"inline-block" }}></div>
+            <div style={{ fontFamily:"DM Sans", color:"#00D4FF", fontSize:14 }}>{progress}</div>
+          </div>
+        ) : file ? (
+          <div>
+            <div style={{ fontSize:32, marginBottom:8 }}></div>
+            <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:14, fontWeight:700 }}>{file.name}</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:4 }}>{progress || "Click to upload a different file"}</div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize:40, marginBottom:10 }}></div>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:600 }}>Drop PDF here or click to browse</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:6 }}>Supports SAP Business One delivery reports</div>
+          </div>
+        )}
+      </div>
+
+      {error && <div style={{ background:"rgba(245,158,11,.1)", border:"1px solid rgba(245,158,11,.3)", borderRadius:10, padding:"10px 12px", marginTop:10, fontFamily:"DM Sans", color:"#F59E0B", fontSize:13 }}> {error}</div>}
+
+      {!file && !parsing && (
+        <button onClick={() => onOrdersParsed(PDF_SAMPLE_ORDERS.map(o=>({...o,id:uid()})), "Asif", "AMTEL TELECOM")}
+          style={{ width:"100%", marginTop:12, background:"rgba(255,107,53,.1)", border:"1px solid rgba(255,107,53,.3)", borderRadius:12, padding:"10px", color:"#FF6B35", fontFamily:"DM Sans", fontSize:13, cursor:"pointer", fontWeight:500 }}>
+           Load Demo (Asif&apos;s PDF - 26 orders)
+        </button>
+      )}
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
+/*  Admin: Upload & Assign  */
+function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpdate }) {
+  const [parsed, setParsed] = useState(null);
+  const [assignTo, setAssignTo] = useState("");
+  const [toast, setToast] = useState(null);
+  const [selectAll, setSelectAll] = useState(true);
+  const [selected, setSelected] = useState(new Set());
+
+  function showToast(msg) {
+    setToast({ msg, ttype:"success" });
+    setTimeout(function() { setToast(null); }, 3000);
+  }
+
+  function handleParsed(orders, driverName, company) {
+    const matched = DRIVERS.find(function(d) { return d.name.toLowerCase() === (driverName || "").toLowerCase(); });
+    setAssignTo(matched ? matched.id : "");
+    setParsed({ orders, driverName, company });
+    const idxSet = new Set();
+    for (let i = 0; i < orders.length; i++) idxSet.add(i);
+    setSelected(idxSet);
+    setSelectAll(true);
+  }
+
+  function handleAssign() {
+    if (!assignTo || !parsed) return;
+    const toAssign = parsed.orders.filter(function(_, i) { return selected.has(i); });
+    onOrdersParsed(toAssign, assignTo);
+    const driverName = DRIVERS.find(function(d) { return d.id === assignTo; });
+    showToast("Assigned " + toAssign.length + " orders to " + (driverName ? driverName.name : "Driver") + "!");
+    setParsed(null);
+    setSelected(new Set());
+  }
+
+  function toggleSelect(i) {
+    setSelected(function(prev) {
+      const n = new Set(prev);
+      if (n.has(i)) { n.delete(i); } else { n.add(i); }
+      return n;
+    });
+  }
+
+  const pendingOrders = allOrders.filter(function(o) { return o.status === "pending" && !o.scanned; });
+  const collectedOrders = allOrders.filter(function(o) { return o.scanned || o.status === "collected"; });
+
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
+      {toast && <Toast msg={toast.msg} toastKind={toast.ttype} />}
+
+      {!parsed ? (
+        <>
+          <PDFUploadPanel onOrdersParsed={handleParsed} />
+
+          {allOrders.length > 0 && (
+            <div style={{ marginTop:20 }}>
+              <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700, marginBottom:12 }}>Today&apos;s Assigned Orders</div>
+              {DRIVERS.map(function(d) {
+                const dOrders = allOrders.filter(function(o) { return o.driverId === d.id; });
+                const done      = dOrders.filter(function(o) { return o.status === "delivered"; }).length;
+                const collected = dOrders.filter(function(o) { return o.scanned; }).length;
+                if (!dOrders.length) return null;
+                return (
+                  <div key={d.id} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:14, padding:14, marginBottom:10 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+                      <div style={{ width:38, height:38, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Syne", fontWeight:800, color:"#fff", fontSize:13 }}>{d.avatar}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700 }}>{d.name}</div>
+                        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>{dOrders.length} orders</div>
+                      </div>
+                      <div style={{ textAlign:"right" }}>
+                        <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:14, fontWeight:700 }}>{done}/{dOrders.length}</div>
+                        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>delivered</div>
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <div style={{ flex:1, background:"rgba(0,212,255,.15)", borderRadius:10, padding:"6px 8px", textAlign:"center" }}>
+                        <div style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:14, fontWeight:800 }}>{collected}</div>
+                        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10 }}>Collected</div>
+                      </div>
+                      <div style={{ flex:1, background:"rgba(16,185,129,.15)", borderRadius:10, padding:"6px 8px", textAlign:"center" }}>
+                        <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:14, fontWeight:800 }}>{done}</div>
+                        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10 }}>Delivered</div>
+                      </div>
+                      <div style={{ flex:1, background:"rgba(245,158,11,.15)", borderRadius:10, padding:"6px 8px", textAlign:"center" }}>
+                        <div style={{ fontFamily:"Syne", color:"#F59E0B", fontSize:14, fontWeight:800 }}>{dOrders.length - done - collected}</div>
+                        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10 }}>Pending</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      ) : (
+        <div>
+          <div style={{ background:"rgba(0,212,255,.08)", border:"1px solid rgba(0,212,255,.3)", borderRadius:16, padding:16, marginBottom:16 }}>
+            <div style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:15, fontWeight:700 }}>Orders Extracted: {parsed.orders.length}</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:13, marginTop:2 }}>
+              {parsed.company} &nbsp; Suggested: <strong style={{ color:"#fff" }}>{parsed.driverName}</strong>
+            </div>
+          </div>
+
+          {["ReStore Online","Trikart Online","Webstore Online"].map(function(s) {
+            const so = parsed.orders.filter(function(o) { return o.store === s; });
+            if (!so.length) return null;
+            return (
+              <div key={s} style={{ background:"rgba(255,255,255,.03)", borderRadius:10, padding:"8px 12px", marginBottom:6, display:"flex", justifyContent:"space-between" }}>
+                <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.7)", fontSize:13 }}>{s}</span>
+                <span style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{so.length} orders</span>
+              </div>
+            );
+          })}
+
+          <div style={{ marginTop:16, marginBottom:12 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:8 }}>ASSIGN TO DRIVER</div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              {DRIVERS.map(function(d) {
+                return (
+                  <button key={d.id} onClick={function() { setAssignTo(d.id); }} style={{ display:"flex", alignItems:"center", gap:8, background:assignTo===d.id?"rgba(0,212,255,.15)":"rgba(255,255,255,.05)", border:assignTo===d.id?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"10px 14px", cursor:"pointer" }}>
+                    <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Syne", fontSize:11, fontWeight:800, color:"#fff" }}>{d.avatar}</div>
+                    <span style={{ fontFamily:"Syne", color:assignTo===d.id?"#00D4FF":"#fff", fontSize:13, fontWeight:600 }}>{d.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12 }}>{selected.size} of {parsed.orders.length} selected</div>
+            <button onClick={function() {
+              if (selectAll) {
+                setSelected(new Set());
+              } else {
+                const s = new Set();
+                for (let i = 0; i < parsed.orders.length; i++) s.add(i);
+                setSelected(s);
+              }
+              setSelectAll(function(v) { return !v; });
+            }} style={{ background:"none", border:"none", color:"#00D4FF", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>
+              {selectAll ? "Deselect All" : "Select All"}
+            </button>
+          </div>
+
+          <div style={{ maxHeight:280, overflowY:"auto", marginBottom:14 }}>
+            {parsed.orders.map(function(o, i) {
+              return (
+                <div key={i} onClick={function() { toggleSelect(i); }}
+                  style={{ display:"flex", alignItems:"center", gap:10, background:selected.has(i)?"rgba(0,212,255,.07)":"rgba(255,255,255,.03)", border:selected.has(i)?"1px solid rgba(0,212,255,.2)":"1px solid rgba(255,255,255,.06)", borderRadius:12, padding:"10px 12px", marginBottom:6, cursor:"pointer" }}>
+                  <div style={{ width:20, height:20, borderRadius:6, background:selected.has(i)?"#00D4FF":"rgba(255,255,255,.1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, flexShrink:0 }}>
+                    {selected.has(i) ? "v" : ""}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:"DM Sans", color:"#fff", fontSize:13, fontWeight:500 }}>{o.customer}</div>
+                    <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>#{o.invoiceNo} &nbsp; {o.store}</div>
+                  </div>
+                  <div style={{ textAlign:"right", flexShrink:0 }}>
+                    <div style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(o.total)}</div>
+                    <div style={{ fontFamily:"DM Sans", fontSize:10 }}><PaymentBadge payType={o.paymentType} small /></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display:"flex", gap:10 }}>
+            <button onClick={function() { setParsed(null); setSelected(new Set()); }} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"DM Sans", cursor:"pointer" }}>Back</button>
+            <button onClick={handleAssign} disabled={!assignTo || selected.size===0}
+              style={{ flex:2, background:assignTo&&selected.size>0?"linear-gradient(135deg,#00D4FF,#7C3AED)":"rgba(255,255,255,.1)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:assignTo?"pointer":"default" }}>
+              Assign {selected.size} Orders
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/*  Admin: All Orders View  */
+function AdminOrdersTab({ orders, onStatusUpdate }) {
+  const [driverFilter, setDriverFilter] = useState("all");
+  const [storeFilter, setStoreFilter]   = useState("All Stores");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+
+  const filtered = orders.filter(o =>
+    (driverFilter === "all" || o.driverId === driverFilter) &&
+    (storeFilter === "All Stores" || o.store === storeFilter) &&
+    (statusFilter === "all" || o.status === statusFilter) &&
+    (o.customer?.toLowerCase().includes(search.toLowerCase()) || o.invoiceNo?.includes(search) || o.onlineOrderNo?.includes(search))
+  );
+
+  const totalKD = filtered.reduce((a, o) => a + Number(o.total), 0);
+
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search customer, invoice, order no..."
+        style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 16px", color:"#fff", fontFamily:"DM Sans", fontSize:14, marginBottom:12, boxSizing:"border-box", outline:"none" }} />
+
+      <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:2 }}>
+        <Pill label="All Drivers" active={driverFilter==="all"} onClick={() => setDriverFilter("all")} />
+        {DRIVERS.map(d => <Pill key={d.id} label={d.name} active={driverFilter===d.id} onClick={() => setDriverFilter(d.id)} count={orders.filter(o=>o.driverId===d.id).length} />)}
+      </div>
+      <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:2 }}>
+        {STORES.map(s => <Pill key={s} label={s} active={storeFilter===s} onClick={() => setStoreFilter(s)} />)}
+      </div>
+      <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:14, paddingBottom:2 }}>
+        {[["all","All"],["pending","Pending"],["collected","Collected"],["delivered","Delivered"],["postponed","Postponed"],["cancelled","Cancelled"]].map(function(item) { const v=item[0],l=item[1]; return (
+          <Pill key={v} label={l} active={statusFilter===v} onClick={() => setStatusFilter(v)} count={v==="all"?undefined:orders.filter(o=>o.status===v).length} />
+        )})}
+      </div>
+
+      <div style={{ background:"rgba(255,107,53,.08)", border:"1px solid rgba(255,107,53,.2)", borderRadius:12, padding:"10px 14px", marginBottom:14, display:"flex", justifyContent:"space-between" }}>
+        <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:13 }}>Showing {filtered.length} orders</span>
+        <span style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:14, fontWeight:700 }}>{fmt(totalKD)}</span>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"DM Sans", padding:40 }}>No orders found</div>
+      ) : filtered.map((o, i) => (
+        <AdminOrderCard key={o.id||i} order={o} onStatusUpdate={onStatusUpdate} />
+      ))}
+    </div>
+  );
+}
+
+function AdminOrderCard({ order, onStatusUpdate }) {
+  const [exp, setExp] = useState(false);
+  const driver = DRIVERS.find(d => d.id === order.driverId);
+  return (
+    <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.07)", borderRadius:14, marginBottom:8, overflow:"hidden" }}>
+      <div onClick={() => setExp(e => !e)} style={{ padding:"12px 14px", cursor:"pointer" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700 }}>{order.customer}</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:1 }}>#{order.invoiceNo} {order.onlineOrderNo ? "  OO:" + (order.onlineOrderNo) : ""}   {order.store}</div>
+          </div>
+          <Badge status={order.status} />
+        </div>
+        <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+          <span style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
+          <span style={{ fontFamily:"DM Sans", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
+          {driver && <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}> {driver.name}</span>}
+          {order.scanned && <span style={{ fontFamily:"DM Sans", color:"#00D4FF", fontSize:11 }}> Collected</span>}
+        </div>
+      </div>
+      {exp && (
+        <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", padding:"12px 14px", background:"rgba(0,0,0,.15)" }}>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.55)", fontSize:12, marginBottom:4 }}> {order.address}</div>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.55)", fontSize:12, marginBottom:4 }}> {order.phone}</div>
+          {order.note && <div style={{ fontFamily:"DM Sans", color:"#C4B5FD", fontSize:12 }}> {order.note}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/*  Transfer Request Modal  */
+function TransferModal({ order, fromDriverId, onRequestTransfer, onClose }) {
+  const [toDriver, setToDriver] = useState("");
+  const [reason, setReason]     = useState("");
+  const [sent, setSent]         = useState(false);
+
+  const ownerDriver = DRIVERS.find(d => d.id === order.driverId);
+  const otherDrivers = DRIVERS.filter(d => d.id !== fromDriverId);
+
+  function submit() {
+    if (!toDriver) return;
+    onRequestTransfer(order, fromDriverId, toDriver, reason);
+    setSent(true);
+  }
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:300, display:"flex", alignItems:"flex-end" }}>
+      <div style={{ width:"100%", background:"#0F1629", borderRadius:"24px 24px 0 0", padding:24 }}>
+        {sent ? (
+          <div style={{ textAlign:"center", padding:"20px 0" }}>
+            <div style={{ fontSize:48, marginBottom:12 }}></div>
+            <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:18, fontWeight:700 }}>Transfer Requested!</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:13, marginTop:8 }}>
+              Admin has been notified. Awaiting approval.
+            </div>
+            <button onClick={onClose} style={{ marginTop:20, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:"12px 32px", color:"#fff", fontFamily:"DM Sans", cursor:"pointer" }}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+              <div style={{ fontFamily:"Syne", color:"#fff", fontSize:17, fontWeight:700 }}> Transfer Order</div>
+              <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>x</button>
+            </div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>
+              This order belongs to <span style={{ color:"#FF6B35", fontWeight:600 }}>{ownerDriver?.name}</span>. Request admin to transfer it.
+            </div>
+
+            {/* Order preview */}
+            <div style={{ background:"rgba(255,107,53,.07)", border:"1px solid rgba(255,107,53,.2)", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
+              <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700 }}>{order.customer}</div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>#{order.invoiceNo}   {order.store}   {fmt(order.total)}</div>
+            </div>
+
+            {/* Transfer type */}
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:12, marginBottom:8 }}>TRANSFER TO</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:14 }}>
+              {/* Option: take myself */}
+              <button onClick={() => setToDriver(fromDriverId)} style={{ display:"flex", alignItems:"center", gap:10, background:toDriver===fromDriverId?"rgba(0,212,255,.12)":"rgba(255,255,255,.05)", border:toDriver===fromDriverId?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 14px", cursor:"pointer" }}>
+                <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#00D4FF,#7C3AED)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#fff", fontFamily:"Syne" }}>ME</div>
+                <div style={{ textAlign:"left" }}>
+                  <div style={{ fontFamily:"Syne", color:toDriver===fromDriverId?"#00D4FF":"#fff", fontSize:13, fontWeight:600 }}>Take to me ({DRIVERS.find(d=>d.id===fromDriverId)?.name})</div>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11 }}>Request to take this order from {ownerDriver?.name}</div>
+                </div>
+              </button>
+              {/* Other drivers */}
+              {otherDrivers.filter(d => d.id !== order.driverId).map(d => (
+                <button key={d.id} onClick={() => setToDriver(d.id)} style={{ display:"flex", alignItems:"center", gap:10, background:toDriver===d.id?"rgba(139,92,246,.12)":"rgba(255,255,255,.05)", border:toDriver===d.id?"1.5px solid #8B5CF6":"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 14px", cursor:"pointer" }}>
+                  <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#fff", fontFamily:"Syne" }}>{d.avatar}</div>
+                  <div style={{ textAlign:"left" }}>
+                    <div style={{ fontFamily:"Syne", color:toDriver===d.id?"#8B5CF6":"#fff", fontSize:13, fontWeight:600 }}>Transfer to {d.name}</div>
+                    <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11 }}>Send to {d.name}&apos;s order list</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Reason for transfer (optional)..."
+              style={{ width:"100%", background:"rgba(255,255,255,.05)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:12, color:"#fff", fontFamily:"DM Sans", fontSize:13, resize:"none", height:60, boxSizing:"border-box", outline:"none", marginBottom:14 }} />
+
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={onClose} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"DM Sans", cursor:"pointer" }}>Cancel</button>
+              <button onClick={submit} disabled={!toDriver} style={{ flex:2, background:toDriver?"linear-gradient(135deg,#FF6B35,#FF3D71)":"rgba(255,255,255,.1)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, cursor:toDriver?"pointer":"default" }}>
+                Send Transfer Request ->
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/*  Driver: Warehouse Collection Screen  */
+function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpenTransfer }) {
+  const [scanInput, setScanInput]       = useState("");
+  const [scanResult, setScanResult]     = useState(null);
+  const [wrongDriver, setWrongDriver]   = useState(null);
+  const [scanError, setScanError]       = useState("");
+  const [scanning, setScanning]         = useState(false);
+  const [tab, setTab]                   = useState("scan");
+  const [bulkSelected, setBulkSelected] = useState(new Set());
+  const myOrders  = orders.filter(o => o.driverId === driverId);
+  const allOrders = orders; // to look up other drivers' orders
+  const unscanned = myOrders.filter(o => !o.scanned && o.status === "pending");
+  const scanned   = myOrders.filter(o => o.scanned);
+
+  function doScan(val) {
+    const q = val.trim();
+    if (!q) return;
+    setScanResult(null); setWrongDriver(null); setScanError("");
+
+    // 1. Check MY orders first
+    const mine = myOrders.find(o =>
+      o.invoiceNo === q || o.onlineOrderNo === q ||
+      o.invoiceNo?.includes(q) || o.onlineOrderNo?.includes(q)
+    );
+    if (mine) {
+      if (mine.scanned) { setScanError("Already collected: #" + mine.invoiceNo); playSound("error"); return; }
+      playSound("success");
+      setScanResult(mine); return;
+    }
+
+    // 2. Check if it belongs to another driver
+    const otherOrder = allOrders.find(o =>
+      o.driverId !== driverId && (
+        o.invoiceNo === q || o.onlineOrderNo === q ||
+        o.invoiceNo?.includes(q) || o.onlineOrderNo?.includes(q)
+      )
+    );
+    if (otherOrder) {
+      playSound("error");
+      setWrongDriver(otherOrder); return;
+    }
+
+    // 3. Not found at all
+    playSound("error");
+    setScanError("Order \"" + q + "\" not found in the system.");
+  }
+
+  function simulateScan() {
+    setScanning(true);
+    setTimeout(() => {
+      if (unscanned.length > 0) {
+        const o = unscanned[0];
+        setScanInput(o.invoiceNo);
+        doScan(o.invoiceNo);
+      } else {
+        // Simulate scanning another driver's order for demo
+        const others = orders.filter(o => o.driverId !== driverId && !o.scanned);
+        if (others.length > 0) {
+          setScanInput(others[0].invoiceNo);
+          doScan(others[0].invoiceNo);
+        } else {
+          setScanError("All orders collected!");
+        }
+      }
+      setScanning(false);
+    }, 1200);
+  }
+
+  function confirmScan() {
+    if (!scanResult) return;
+    playSound("collect");
+    onScan(scanResult.id || scanResult.invoiceNo);
+    setScanResult(null); setScanInput(""); setScanError("");
+  }
+
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
+
+      {/* Progress bar */}
+      <div style={{ background:"rgba(255,255,255,.05)", borderRadius:16, padding:16, marginBottom:14 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+          <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:13 }}>Collection Progress</span>
+          <span style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:14, fontWeight:700 }}>{scanned.length}/{myOrders.length}</span>
+        </div>
+        <div style={{ background:"rgba(255,255,255,.08)", borderRadius:30, height:8, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:(myOrders.length>0?scanned.length/myOrders.length*100:0) + "%", background:"linear-gradient(90deg,#00D4FF,#7C3AED)", borderRadius:30, transition:"width .6s ease" }} />
+        </div>
+        <div style={{ display:"flex", gap:12, marginTop:10 }}>
+          <span style={{ fontFamily:"DM Sans", color:"#00D4FF", fontSize:12 }}> {scanned.length} collected</span>
+          <span style={{ fontFamily:"DM Sans", color:"#F59E0B", fontSize:12 }}> {unscanned.length} remaining</span>
+        </div>
+      </div>
+
+      {/* Tab toggle */}
+      <div style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", paddingBottom:2 }}>
+        <Pill label="📷 Scan Order"    active={tab==="scan"} onClick={() => setTab("scan")} />
+        <Pill label={"📋 My Orders (" + (myOrders.length) + ")"} active={tab==="list"} onClick={() => setTab("list")} />
+        <Pill label={" Pending Pickup (" + (unscanned.length) + ")"} active={tab==="pending"} onClick={() => setTab("pending")} count={undefined} />
+      </div>
+
+      {tab === "scan" && (
+        <>
+          {/* Camera viewport */}
+          <div onClick={simulateScan} style={{ background:"#000", borderRadius:16, height:160, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", marginBottom:14, cursor:"pointer", border:"2px dashed rgba(0,212,255,.4)", position:"relative", overflow:"hidden" }}>
+            {scanning ? (
+              <div style={{ textAlign:"center" }}>
+                <div style={{ width:60, height:3, background:"#00D4FF", margin:"0 auto", animation:"scanLine 1s ease infinite", borderRadius:2 }} />
+                <div style={{ color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:13, marginTop:12 }}>Scanning barcode...</div>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize:28, marginBottom:6 }}></div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:13 }}>Tap to scan order barcode</div>
+              </>
+            )}
+            {["tl","tr","bl","br"].map(p => (
+              <div key={p} style={{ position:"absolute", width:18, height:18, top:p.includes("t")?10:"auto", bottom:p.includes("b")?10:"auto", left:p.includes("l")?10:"auto", right:p.includes("r")?10:"auto", borderTop:p.includes("t")?"2px solid #00D4FF":"none", borderBottom:p.includes("b")?"2px solid #00D4FF":"none", borderLeft:p.includes("l")?"2px solid #00D4FF":"none", borderRight:p.includes("r")?"2px solid #00D4FF":"none" }} />
+            ))}
+          </div>
+
+          <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+            <input value={scanInput} onChange={e => setScanInput(e.target.value)} placeholder="Invoice# or Online Order#" onKeyDown={e => e.key==="Enter" && doScan(scanInput)}
+              style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"DM Sans", fontSize:14, outline:"none" }} />
+            <button onClick={() => doScan(scanInput)} style={{ background:"#00D4FF", border:"none", borderRadius:12, padding:"0 16px", color:"#0A0F1E", fontFamily:"Syne", fontWeight:700, cursor:"pointer" }}>Find</button>
+          </div>
+
+          {/* Generic error */}
+          {scanError && (
+            <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:12, padding:"12px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:20 }}></span>
+              <span style={{ fontFamily:"DM Sans", color:"#EF4444", fontSize:13 }}>{scanError}</span>
+            </div>
+          )}
+
+          {/*  WRONG DRIVER ALERT  */}
+          {wrongDriver && (
+            <div style={{ background:"rgba(239,68,68,.08)", border:"1.5px solid rgba(239,68,68,.4)", borderRadius:16, padding:16, marginBottom:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:"rgba(239,68,68,.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}></div>
+                <div>
+                  <div style={{ fontFamily:"Syne", color:"#EF4444", fontSize:14, fontWeight:700 }}>Not in your order list!</div>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>
+                    This order belongs to <span style={{ color:"#FF6B35", fontWeight:600 }}>{DRIVERS.find(d=>d.id===wrongDriver.driverId)?.name || "another driver"}</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ background:"rgba(0,0,0,.2)", borderRadius:10, padding:"10px 12px", marginBottom:12 }}>
+                <div style={{ fontFamily:"DM Sans", color:"#fff", fontSize:13, fontWeight:500 }}>{wrongDriver.customer}</div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>#{wrongDriver.invoiceNo}   {wrongDriver.store}   {fmt(wrongDriver.total)}</div>
+              </div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:12, marginBottom:8 }}>Do you want to request a transfer?</div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={() => { setWrongDriver(null); setScanInput(""); }}
+                  style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"DM Sans", fontSize:13, cursor:"pointer" }}>
+                  Dismiss
+                </button>
+                <button onClick={() => { onOpenTransfer(wrongDriver); setWrongDriver(null); setScanInput(""); setScanError(""); }}
+                  style={{ flex:2, background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                   Request Transfer
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/*  MY ORDER FOUND  */}
+          {scanResult && (
+            <div style={{ background:"rgba(0,212,255,.08)", border:"1px solid rgba(0,212,255,.35)", borderRadius:16, padding:16, marginBottom:10 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                <span style={{ fontSize:18 }}></span>
+                <div style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:14, fontWeight:700 }}>Your Order - Ready to Collect</div>
+              </div>
+              <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700 }}>{scanResult.customer}</div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:13, marginTop:2 }}>Invoice #{scanResult.invoiceNo}{scanResult.onlineOrderNo ? "   OO: " + (scanResult.onlineOrderNo) : ""}</div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:13 }}> {scanResult.store}</div>
+              <div style={{ display:"flex", gap:10, marginTop:8, alignItems:"center" }}>
+                <span style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:16, fontWeight:800 }}>{fmt(scanResult.total)}</span>
+                <span style={{ fontFamily:"DM Sans", fontSize:12 }}><PaymentBadge payType={scanResult.paymentType} /></span>
+              </div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12, marginTop:6 }}> {scanResult.address}</div>
+              <button onClick={confirmScan} style={{ width:"100%", marginTop:12, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+                 Confirm Collection
+              </button>
+            </div>
+          )}
+
+          {/* Collected list */}
+          {scanned.length > 0 && (
+            <>
+              <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:13, fontWeight:700, marginBottom:8, marginTop:8 }}> Collected ({scanned.length})</div>
+              {scanned.map((o, i) => (
+                <div key={i} style={{ background:"rgba(16,185,129,.06)", border:"1px solid rgba(16,185,129,.2)", borderRadius:12, padding:"10px 14px", marginBottom:6, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div>
+                    <div style={{ fontFamily:"DM Sans", color:"#fff", fontSize:13, fontWeight:500 }}>{o.customer}</div>
+                    <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11 }}>#{o.invoiceNo}   {o.store}</div>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:12, fontWeight:700 }}>v Collected</div>
+                    <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>{fmt(o.total)}</div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </>
+      )}
+
+      {tab === "list" && (
+        <>
+          {myOrders.length === 0 ? (
+            <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"DM Sans", padding:40, fontSize:14 }}>
+              No orders assigned yet.<br/>Please wait for admin to upload.
+            </div>
+          ) : (
+            <>
+              {/*  Select All / Bulk Collect bar  */}
+              {unscanned.length > 0 && (
+                <div style={{ background:"rgba(0,212,255,.07)", border:"1px solid rgba(0,212,255,.2)", borderRadius:14, padding:"12px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:10 }}>
+                  <button
+                    onClick={() => {
+                      if (unscanned.every(o => bulkSelected.has(o.id||o.invoiceNo))) {
+                        setBulkSelected(new Set());
+                      } else {
+                        setBulkSelected(new Set(unscanned.map(o => o.id||o.invoiceNo)));
+                      }
+                    }}
+                    style={{ width:22, height:22, borderRadius:6, background: unscanned.every(o=>bulkSelected.has(o.id||o.invoiceNo))?"#00D4FF":"rgba(255,255,255,.1)", border:"1.5px solid rgba(0,212,255,.5)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:13, color:"#0A0F1E" }}>
+                    {unscanned.every(o=>bulkSelected.has(o.id||o.invoiceNo)) ? "v" : ""}
+                  </button>
+                  <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.6)", fontSize:13, flex:1 }}>
+                    {bulkSelected.size > 0 ? (bulkSelected.size) + " selected" : "Select all to bulk collect"}
+                  </span>
+                  {bulkSelected.size > 0 && (
+                    <button onClick={() => {
+                      playSound("bulk"); bulkSelected.forEach(id => onScan(id));
+                      setBulkSelected(new Set());
+                    }}
+                      style={{ background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:10, padding:"7px 14px", color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:12, cursor:"pointer", whiteSpace:"nowrap" }}>
+                       Collect {bulkSelected.size}
+                    </button>
+                  )}
+                </div>
+              )}
+              {scanned.length > 0 && unscanned.length === 0 && (
+                <div style={{ background:"rgba(16,185,129,.08)", border:"1px solid rgba(16,185,129,.25)", borderRadius:12, padding:"10px 14px", marginBottom:12, textAlign:"center" }}>
+                  <span style={{ fontFamily:"DM Sans", color:"#10B981", fontSize:13 }}> All orders collected! Head out for delivery.</span>
+                </div>
+              )}
+              {myOrders.map((o) => (
+                <DriverOrderRow
+                  key={o.id||o.invoiceNo}
+                  order={o}
+                  onTransfer={() => onOpenTransfer(o)}
+                  selected={bulkSelected.has(o.id||o.invoiceNo)}
+                  onToggleSelect={function() {
+                    if (o.scanned) return;
+                    setBulkSelected(function(prev) {
+                      const n = new Set(prev);
+                      if (n.has(o.id||o.invoiceNo)) { n.delete(o.id||o.invoiceNo); } else { n.add(o.id||o.invoiceNo); }
+                      return n;
+                    });
+                  }}
+                />
+              ))}
+            </>
+          )}
+        </>
+      )}
+      {tab === "pending" && (
+        <div>
+          {unscanned.length === 0 ? (
+            <div style={{ textAlign:"center", padding:40 }}>
+              <div style={{ fontSize:40, marginBottom:10 }}></div>
+              <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:16, fontWeight:700 }}>All Collected!</div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:6 }}>You have collected all assigned orders.</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ background:"rgba(245,158,11,.08)", border:"1px solid rgba(245,158,11,.2)", borderRadius:14, padding:"12px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ fontSize:18 }}></span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:"Syne", color:"#F59E0B", fontSize:13, fontWeight:700 }}>{unscanned.length} orders not yet collected</div>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>These orders are waiting at the warehouse</div>
+                </div>
+              </div>
+              {/* Bulk collect all pending */}
+              <button onClick={() => { playSound("bulk"); unscanned.forEach(o => onScan(o.id||o.invoiceNo)); }}
+                style={{ width:"100%", background:"linear-gradient(135deg,#F59E0B,#FF6B35)", border:"none", borderRadius:12, padding:"13px", color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer", marginBottom:14 }}>
+                 Collect All {unscanned.length} Pending Orders
+              </button>
+              {unscanned.map((o) => (
+                <div key={o.id||o.invoiceNo} style={{ background:"rgba(245,158,11,.06)", border:"1px solid rgba(245,158,11,.2)", borderRadius:12, padding:"12px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:"DM Sans", color:"#fff", fontSize:13, fontWeight:600 }}>{o.customer}</div>
+                    <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11 }}>#{o.invoiceNo}   {o.store}</div>
+                    <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11 }}> {o.address?.slice(0,40)}{o.address?.length>40?"...":""}</div>
+                  </div>
+                  <div style={{ textAlign:"right", flexShrink:0, marginLeft:8 }}>
+                    <div style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(o.total)}</div>
+                    <div style={{ fontFamily:"DM Sans", fontSize:10, marginTop:2 }}><PaymentBadge payType={o.paymentType} small /></div>
+                    <button onClick={() => { playSound('collect'); onScan(o.id||o.invoiceNo); }}
+                      style={{ marginTop:6, background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.3)", borderRadius:8, padding:"4px 10px", color:"#00D4FF", fontFamily:"Syne", fontWeight:700, fontSize:11, cursor:"pointer" }}>
+                      Collect
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+      <style>{"@keyframes scanLine{0%,100%{transform:translateY(-20px)}50%{transform:translateY(20px)}}"}</style>
+    </div>
+  );
+}
+
+function DriverOrderRow({ order, onTransfer, selected, onToggleSelect }) {
+  const [exp, setExp] = useState(false);
+  const rawPhone = (order.phone || "").replace(/\D/g, "");
+  const waPhone  = rawPhone.startsWith("0") ? "965" + rawPhone.slice(1) : rawPhone.startsWith("965") ? rawPhone : "965" + rawPhone;
+  const callHref = "tel:" + order.phone;
+  const isCOD    = order.paymentType === "Cash" || order.paymentType === "COD";
+  const codPart  = isCOD ? " Please have *" + fmt(order.total) + "* ready for cash payment." : "";
+  const waMsg    = encodeURIComponent("Dear Customer,\n\nYour order from *" + order.store + "* is out for delivery soon." + codPart + "\n\nThank you!");
+  const waHref   = "https://wa.me/" + waPhone + "?text=" + waMsg;
+
+  return (
+    <div style={{ background:order.scanned?"rgba(16,185,129,.06)":selected?"rgba(0,212,255,.07)":"rgba(255,255,255,.04)", border:"1px solid " + (order.scanned?"rgba(16,185,129,.2)":selected?"rgba(0,212,255,.3)":"rgba(255,255,255,.07)"), borderRadius:12, marginBottom:7, overflow:"hidden" }}>
+      <div style={{ padding:"11px 14px", display:"flex", alignItems:"center", gap:10 }}>
+        {!order.scanned ? (
+          <button onClick={function(e) { e.stopPropagation(); if (onToggleSelect) onToggleSelect(); }}
+            style={{ width:22, height:22, borderRadius:6, background:selected?"#00D4FF":"rgba(255,255,255,.08)", border:"1.5px solid " + (selected?"#00D4FF":"rgba(255,255,255,.2)"), display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:12, color:"#0A0F1E" }}>
+            {selected ? "v" : ""}
+          </button>
+        ) : (
+          <span style={{ width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center", color:"#10B981", fontSize:16, flexShrink:0 }}>v</span>
+        )}
+        <div onClick={function() { setExp(function(e) { return !e; }); }} style={{ flex:1, minWidth:0, cursor:"pointer" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:"DM Sans", color:"#fff", fontSize:13, fontWeight:600 }}>{order.customer}</div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11 }}>{"#" + order.invoiceNo + "   " + order.store}</div>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+              <span style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
+              <span style={{ color:"rgba(255,255,255,.3)", fontSize:11 }}>{exp ? "^" : "v"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {exp && (
+        <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", padding:"12px 14px", background:"rgba(0,0,0,.18)" }}>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:4 }}>{"📍 " + order.address}</div>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:8 }}>{"📞 " + order.phone}</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+            <a href={callHref} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, background:"rgba(16,185,129,.12)", border:"1px solid rgba(16,185,129,.3)", borderRadius:10, padding:"10px 8px", textDecoration:"none" }}>
+              <span style={{ fontSize:16 }}></span>
+              <span style={{ fontFamily:"Syne", color:"#10B981", fontSize:12, fontWeight:700 }}>Call</span>
+            </a>
+            <a href={waHref} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, background:"rgba(37,211,102,.12)", border:"1px solid rgba(37,211,102,.35)", borderRadius:10, padding:"10px 8px", textDecoration:"none" }}>
+              <span style={{ fontSize:16 }}></span>
+              <span style={{ fontFamily:"Syne", color:"#25D366", fontSize:12, fontWeight:700 }}>WhatsApp</span>
+            </a>
+          </div>
+          <div style={{ background:"rgba(37,211,102,.07)", border:"1px solid rgba(37,211,102,.2)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, textTransform:"uppercase", letterSpacing:.5 }}>Out-for-Delivery Notification</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.75)", fontSize:11, lineHeight:1.6, marginBottom:8 }}>
+              Dear Customer, your order from <span style={{ color:"#25D366", fontWeight:600 }}>{order.store}</span> is out for delivery.
+              {isCOD && <span style={{ color:"#F59E0B", fontWeight:600 }}> Please have <span style={{ color:"#fff" }}>{fmt(order.total)}</span> ready for cash payment.</span>}
+            </div>
+            <a href={waHref} target="_blank" rel="noreferrer"
+              style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, width:"100%", background:"linear-gradient(135deg,#25D366,#128C7E)", borderRadius:10, padding:"11px", textDecoration:"none" }}>
+              <span style={{ fontFamily:"Syne", color:"#fff", fontSize:13, fontWeight:700 }}>Notify - Out for Delivery</span>
+            </a>
+          </div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            <span style={{ fontFamily:"DM Sans", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
+            {order.onlineOrderNo && <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>{"OO# " + order.onlineOrderNo}</span>}
+          </div>
+          {!order.scanned && onTransfer && (
+            <button onClick={function(e) { e.stopPropagation(); onTransfer(order); }}
+              style={{ width:"100%", marginTop:10, background:"rgba(255,107,53,.1)", border:"1px solid rgba(255,107,53,.3)", borderRadius:10, padding:"9px", color:"#FF6B35", fontFamily:"Syne", fontWeight:700, fontSize:12, cursor:"pointer" }}>
+              Request Transfer to Another Driver
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer }) {
+  const [statusModal, setStatusModal] = useState(null);
+  const [filter,      setFilter]      = useState("collected");
+  const [storeFilter, setStoreFilter] = useState("all");
+  const [payFilter,   setPayFilter]   = useState("all");
+  const [toast,       setToast]       = useState(null);
+
+  function showToast(msg) { setToast({ msg, ttype:"success" }); setTimeout(function() { setToast(null); }, 3000); }
+
+  const myOrders  = orders.filter(function(o) { return o.driverId === driverId; });
+  const myStores   = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.store; }).filter(Boolean))));
+  const myPayments = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.paymentType; }).filter(function(p) { return p && p !== "Exchange"; }))));
+
+  const filtered = myOrders.filter(function(o) {
+    const statusOk = filter === "all" || o.status === filter || (filter === "collected" && o.scanned && o.status === "pending");
+    const storeOk  = storeFilter === "all" || o.store === storeFilter;
+    const payOk    = payFilter   === "all" || o.paymentType === payFilter;
+    return statusOk && storeOk && payOk;
+  });
+
+  const counts = {
+    collected: myOrders.filter(function(o) { return o.scanned && o.status === "pending"; }).length,
+    delivered: myOrders.filter(function(o) { return o.status === "delivered"; }).length,
+    postponed: myOrders.filter(function(o) { return o.status === "postponed"; }).length,
+    cancelled: myOrders.filter(function(o) { return o.status === "cancelled"; }).length,
+  };
+
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
+      {toast && <Toast msg={toast.msg} toastKind={toast.ttype} />}
+      {statusModal && (
+        <StatusUpdateModal order={statusModal} onUpdate={function(id, status, note, newPaymentType) {
+          onStatusUpdate(id, status, note, newPaymentType);
+          const payMsg = newPaymentType ? "   Payment -> " + newPaymentType : "";
+          showToast((STATUS_CFG[status] ? STATUS_CFG[status].icon + " " : "") + status + payMsg);
+          setStatusModal(null);
+        }} onClose={function() { setStatusModal(null); }} />
+      )}
+
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:14 }}>
+        {[["",counts.collected,"Collected","#00D4FF"],["",counts.delivered,"Delivered","#10B981"],["",counts.postponed,"Postponed","#8B5CF6"],["x",counts.cancelled,"Cancelled","#EF4444"]].map(function(item) {
+          const icon=item[0],v=item[1],l=item[2],c=item[3];
+          return (
+            <div key={l} style={{ background:c+"10", border:"1px solid "+c+"25", borderRadius:12, padding:"10px 6px", textAlign:"center" }}>
+              <div style={{ fontFamily:"Syne", color:c, fontSize:18, fontWeight:800 }}>{v}</div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10 }}>{l}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:2 }}>
+        {[["collected","To Deliver"],["delivered","Delivered"],["postponed","Postponed"],["cancelled","Cancelled"],["all","All"]].map(function(item) {
+          const v=item[0],l=item[1];
+          return (
+            <Pill key={v} label={l} active={filter===v} onClick={function() { setFilter(v); }} count={v==="all"?myOrders.length:counts[v]} />
+          );
+        })}
+      </div>
+
+      {myStores.length > 2 && (
+        <div style={{ display:"flex", gap:6, overflowX:"auto", marginBottom:10, paddingBottom:2 }}>
+          {myStores.map(function(s) {
+            return <Pill key={s} label={s === "all" ? "All Stores" : s.replace("Online","").trim()} active={storeFilter===s} onClick={function() { setStoreFilter(s); }} />;
+          })}
+        </div>
+      )}
+
+      {myPayments.length > 2 && (
+        <div style={{ display:"flex", gap:6, overflowX:"auto", marginBottom:14, paddingBottom:2 }}>
+          {myPayments.map(function(p) {
+            return <Pill key={p} label={p === "all" ? "All Payments" : p} active={payFilter===p} onClick={function() { setPayFilter(p); }} />;
+          })}
+        </div>
+      )}
+
+      {(storeFilter !== "all" || payFilter !== "all") && (
+        <div style={{ background:"rgba(255,255,255,.05)", borderRadius:10, padding:"8px 12px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12 }}>Showing {filtered.length} of {myOrders.length} orders</span>
+          <button onClick={function() { setStoreFilter("all"); setPayFilter("all"); }} style={{ background:"none", border:"none", color:"#00D4FF", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>Clear x</button>
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"DM Sans", padding:40 }}>
+          {filter === "collected" ? "No collected orders yet - scan at warehouse first!" : "No orders match the filters"}
+        </div>
+      ) : filtered.map(function(o, i) {
+        return <DeliveryOrderCard key={o.id||i} order={o} onUpdate={function() { setStatusModal(o); }} onOpenTransfer={onOpenTransfer} />;
+      })}
+    </div>
+  );
+}
+
+function DeliveryOrderCard({ order, onUpdate, onOpenTransfer }) {
+  const [exp, setExp] = useState(false);
+  const isActive    = order.scanned && order.status === "pending";
+  const isCancelled = order.status === "cancelled";
+  const isPostponed = order.status === "postponed";
+  const isDelivered = order.status === "delivered";
+  const isExchangeOrder = isExchange(order.paymentType) || isExchange(order.originalPaymentType);
+  const isCOD = (order.paymentType === "Cash" || order.paymentType === "COD") && !isExchangeOrder;
+  const rawPhone = (order.phone || "").replace(/\D/g, "");
+  const waPhone  = rawPhone.startsWith("0") ? "965" + rawPhone.slice(1) : rawPhone.startsWith("965") ? rawPhone : "965" + rawPhone;
+  const codPart  = isCOD ? " Please have *" + fmt(order.total) + "* ready for cash payment." : "";
+  const waMsg    = encodeURIComponent("Dear Customer,\n\nYour order from *" + order.store + "* is out for delivery soon." + codPart + "\n\nThank you!");
+  const waHref   = "https://wa.me/" + waPhone + "?text=" + waMsg;
+  const callHref = "tel:" + order.phone;
+  var borderColor = "rgba(255,255,255,.07)";
+  if (isActive) borderColor = "rgba(0,212,255,.2)";
+  else if (isCancelled) borderColor = "rgba(239,68,68,.2)";
+  else if (isPostponed) borderColor = "rgba(139,92,246,.2)";
+  else if (isDelivered) borderColor = "rgba(16,185,129,.2)";
+  var bgColor = "rgba(255,255,255,.04)";
+  if (isCancelled) bgColor = "rgba(239,68,68,.03)";
+  else if (isPostponed) bgColor = "rgba(139,92,246,.03)";
+  else if (isDelivered) bgColor = "rgba(16,185,129,.03)";
+
+  return (
+    <div style={{ background:bgColor, border:"1px solid " + borderColor, borderRadius:14, marginBottom:10, overflow:"hidden" }}>
+      <div onClick={function() { setExp(function(v) { return !v; }); }} style={{ padding:"13px 15px", cursor:"pointer" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:5 }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700 }}>{order.customer}</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:1 }}>{"#" + order.invoiceNo + "   " + order.store}</div>
+          </div>
+          <Badge status={isActive ? "collected" : order.status} />
+        </div>
+        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+          <span style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
+          <span style={{ fontFamily:"DM Sans", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
+          {isExchangeOrder && (
+            <span style={{ background:"rgba(107,114,128,.2)", color:"#9CA3AF", borderRadius:20, padding:"2px 10px", fontSize:11, fontFamily:"Syne", fontWeight:700, border:"1px solid rgba(107,114,128,.3)" }}>Exchange</span>
+          )}
+        </div>
+      </div>
+
+      {exp && (
+        <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", padding:"14px 15px", background:"rgba(0,0,0,.15)" }}>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:4 }}>{"📍 " + order.address}</div>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:10 }}>{"📞 " + order.phone}</div>
+
+          {isExchangeOrder && (
+            <div style={{ background:"rgba(107,114,128,.1)", border:"1px solid rgba(107,114,128,.3)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
+              <div style={{ fontFamily:"Syne", color:"#9CA3AF", fontSize:13, fontWeight:700 }}>Exchange Order - No cash collection required.</div>
+            </div>
+          )}
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+            <a href={callHref} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, background:"rgba(16,185,129,.12)", border:"1px solid rgba(16,185,129,.3)", borderRadius:10, padding:"10px 8px", textDecoration:"none" }}>
+              <span style={{ fontSize:16 }}></span>
+              <span style={{ fontFamily:"Syne", color:"#10B981", fontSize:12, fontWeight:700 }}>Call</span>
+            </a>
+            <a href={waHref} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, background:"rgba(37,211,102,.12)", border:"1px solid rgba(37,211,102,.35)", borderRadius:10, padding:"10px 8px", textDecoration:"none" }}>
+              <span style={{ fontSize:16 }}></span>
+              <span style={{ fontFamily:"Syne", color:"#25D366", fontSize:12, fontWeight:700 }}>WhatsApp</span>
+            </a>
+          </div>
+
+          {/* Out-for-Delivery WhatsApp notification */}
+          <div style={{ background:"rgba(37,211,102,.07)", border:"1px solid rgba(37,211,102,.2)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, textTransform:"uppercase", letterSpacing:.5 }}>Out-for-Delivery Notification</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.75)", fontSize:11, lineHeight:1.6, marginBottom:8 }}>
+              Dear Customer, your order from <span style={{ color:"#25D366", fontWeight:600 }}>{order.store}</span> is out for delivery.
+              {isCOD && <span style={{ color:"#F59E0B", fontWeight:600 }}> Please have <span style={{ color:"#fff" }}>{fmt(order.total)}</span> ready for cash payment.</span>}
+            </div>
+            <a href={waHref} target="_blank" rel="noreferrer"
+              style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, width:"100%", background:"linear-gradient(135deg,#25D366,#128C7E)", borderRadius:10, padding:"11px", textDecoration:"none" }}>
+              <span style={{ fontFamily:"Syne", color:"#fff", fontSize:13, fontWeight:700 }}>Notify - Out for Delivery</span>
+            </a>
+          </div>
+
+          {(isActive || isPostponed) && (
+            <button onClick={onUpdate} style={{ width:"100%", background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer", marginBottom:8 }}>
+              {isPostponed ? "Retry Delivery ->" : "Update Status ->"}
+            </button>
+          )}
+
+          {order.note && (
+            <div style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"8px 12px", marginBottom:8 }}>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>Note: {order.note}</div>
+            </div>
+          )}
+
+          {onOpenTransfer && !isDelivered && (
+            <button onClick={function() { onOpenTransfer(order); }}
+              style={{ width:"100%", background:"rgba(255,107,53,.1)", border:"1px solid rgba(255,107,53,.3)", borderRadius:12, padding:11, color:"#FF6B35", fontFamily:"Syne", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+              Request Transfer to Another Driver
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/*  Status Update Modal  */
+const LINK_OPTIONS = [
+  { id:"GoCollect", label:"GoCollect",   color:"#A855F7" },
+  { id:"Trikart Link", label:"Trikart Link", color:"#6366F1" },
+  { id:"WAMD",      label:"WAMD",        color:"#0EA5E9" },
+];
+
+function StatusUpdateModal({ order, onUpdate, onClose }) {
+  const [status,       setStatus]      = useState("");
+  const [note,         setNote]        = useState("");
+  // COD payment mode: "" | "full_link" | "split"
+  const [payMode,      setPayMode]     = useState("");
+  // Full link payment
+  const [linkPlatform, setLinkPlatform] = useState("");
+  // Split payment
+  const [cashAmt,      setCashAmt]     = useState("");
+  const [splitLink,    setSplitLink]   = useState("");
+
+  const isCOD   = (order.paymentType === "Cash" || order.paymentType === "COD") && !isExchange(order.paymentType);
+  const isExchangeOrder = isExchange(order.paymentType);
+  const total   = Number(order.total);
+
+  // Derived split values
+  const cashNum  = parseFloat(cashAmt) || 0;
+  const linkNum  = total - cashNum;
+  const splitValid = cashNum > 0 && cashNum < total && splitLink;
+
+  // Build payment label for saving
+  function buildPaymentLabel() {
+    if (!payMode || payMode === "") return null;
+    if (payMode === "full_link") return linkPlatform ? linkPlatform + " (Link)" : null;
+    if (payMode === "split")     return splitValid ? "Split: Cash " + fmt(cashNum) + " + " + splitLink + " " + fmt(linkNum) : null;
+    return null;
+  }
+  const finalPayment = buildPaymentLabel();
+
+  const canConfirm = status && (status === "delivered" || note.trim()) && (status !== "delivered" || !isCOD || !payMode || payMode === "" || (payMode === "full_link" && linkPlatform) || (payMode === "split" && splitValid));
+
+  function handleConfirm() {
+    if (!canConfirm) return;
+    onUpdate(order.id||order.invoiceNo, status, note, finalPayment || null);
+  }
+
+  const descriptions = {
+    delivered: "Order successfully handed to customer",
+    postponed: "Customer unavailable - retry later",
+    cancelled: "Order could not be delivered",
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:200, display:"flex", alignItems:"flex-end" }}>
+      <div style={{ width:"100%", background:"#0F1629", borderRadius:"24px 24px 0 0", padding:24, maxHeight:"92vh", overflowY:"auto" }}>
+
+        {/* Header */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+          <div style={{ fontFamily:"Syne", color:"#fff", fontSize:17, fontWeight:700 }}>Update Delivery Status</div>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,.6)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>x Close</button>
+        </div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:13, marginBottom:18 }}>
+          #{order.invoiceNo}   {order.customer}  {" "}
+          <span style={{ fontWeight:600 }}><PaymentBadge payType={order.paymentType} small /></span>
+          {isCOD && <span style={{ color:"#F59E0B" }}>   {fmt(order.total)}</span>}
+        </div>
+
+        {/* Status buttons */}
+        {["delivered","postponed","cancelled"].map(function(s) {
+          const c = STATUS_CFG[s];
+          return (
+            <button key={s} onClick={function() { setStatus(s); if (s !== "delivered") { setPayMode(""); setLinkPlatform(""); setSplitLink(""); setCashAmt(""); } }}
+              style={{ display:"flex", alignItems:"center", gap:12, width:"100%", background:status===s?c.bg:"rgba(255,255,255,.05)", border:status===s?"1.5px solid " + (c.color):"1px solid rgba(255,255,255,.08)", borderRadius:14, padding:"13px 16px", marginBottom:10, cursor:"pointer" }}>
+              <span style={{ fontSize:20 }}>{c.icon}</span>
+              <div style={{ textAlign:"left" }}>
+                <div style={{ fontFamily:"Syne", color:status===s?c.color:"#fff", fontSize:14, fontWeight:600 }}>{c.label}</div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11 }}>{descriptions[s]}</div>
+              </div>
+            </button>
+          );
+        })}
+
+        {/*  Exchange order notice  */}
+        {status === "delivered" && isExchangeOrder && (
+          <div style={{ background:"rgba(107,114,128,.1)", border:"1px solid rgba(107,114,128,.35)", borderRadius:14, padding:"14px 16px", marginBottom:14 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:22 }}></span>
+              <div>
+                <div style={{ fontFamily:"Syne", color:"#9CA3AF", fontSize:14, fontWeight:700 }}>Exchange Order - No Collection</div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>This is an exchange. No cash or payment needed from customer.</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/*  COD Payment Section  */}
+        {status === "delivered" && isCOD && (
+          <div style={{ background:"rgba(245,158,11,.07)", border:"1px solid rgba(245,158,11,.25)", borderRadius:16, padding:16, marginBottom:14 }}>
+            <div style={{ fontFamily:"Syne", color:"#F59E0B", fontSize:13, fontWeight:700, marginBottom:2 }}>
+               COD - {fmt(order.total)}
+            </div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:14 }}>
+              How did the customer pay?
+            </div>
+
+            {/* Payment mode selector - 3 options */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
+              {[
+                { id:"",          label:"💵",      sub:"Cash",        color:"#10B981" },
+                { id:"full_link", label:"🔗",      sub:"Link Only",   color:"#A855F7" },
+                { id:"split",     label:"💵🔗",    sub:"Split",       color:"#F59E0B" },
+              ].map(opt => (
+                <button key={opt.id} onClick={() => { setPayMode(opt.id); setLinkPlatform(""); setSplitLink(""); setCashAmt(""); }}
+                  style={{ background:payMode===opt.id?(opt.color) + "20":"rgba(255,255,255,.05)", border:payMode===opt.id?"2px solid " + (opt.color):"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"12px 6px", cursor:"pointer", textAlign:"center" }}>
+                  <div style={{ fontSize:20, marginBottom:3 }}>{opt.label}</div>
+                  <div style={{ fontFamily:"Syne", color:payMode===opt.id?opt.color:"rgba(255,255,255,.6)", fontSize:11, fontWeight:700 }}>{opt.sub}</div>
+                </button>
+              ))}
+            </div>
+
+            {/*  Full Link Payment  */}
+            {payMode === "full_link" && (
+              <div style={{ background:"rgba(168,85,247,.08)", border:"1px solid rgba(168,85,247,.2)", borderRadius:12, padding:"12px 14px" }}>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:11, marginBottom:10 }}> SELECT LINK PLATFORM</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  {LINK_OPTIONS.map(lk => (
+                    <button key={lk.id} onClick={() => setLinkPlatform(lk.id)}
+                      style={{ flex:1, background:linkPlatform===lk.id?(lk.color) + "25":"rgba(255,255,255,.06)", border:linkPlatform===lk.id?"2px solid " + (lk.color):"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"10px 6px", cursor:"pointer", textAlign:"center" }}>
+                      <div style={{ fontSize:16, marginBottom:3 }}></div>
+                      <div style={{ fontFamily:"Syne", color:linkPlatform===lk.id?lk.color:"rgba(255,255,255,.6)", fontSize:11, fontWeight:700 }}>{lk.label}</div>
+                    </button>
+                  ))}
+                </div>
+                {linkPlatform && (
+                  <div style={{ fontFamily:"DM Sans", color:"#A855F7", fontSize:12, marginTop:10 }}>
+                    v Full amount {fmt(total)} via <strong>{linkPlatform}</strong>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/*  Split Payment  */}
+            {payMode === "split" && (
+              <div style={{ background:"rgba(245,158,11,.06)", border:"1px solid rgba(245,158,11,.2)", borderRadius:12, padding:"12px 14px" }}>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:11, marginBottom:10 }}> SPLIT PAYMENT DETAILS</div>
+
+                {/* Cash amount input */}
+                <div style={{ marginBottom:10 }}>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:5 }}>Cash Amount (KD)</div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <input type="number" value={cashAmt} onChange={e => setCashAmt(e.target.value)}
+                      placeholder="0.000" min="0" max={total} step="0.001"
+                      style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#F59E0B", fontFamily:"Syne", fontSize:15, fontWeight:700, outline:"none", width:"100%" }} />
+                    {cashNum > 0 && cashNum < total && (
+                      <div style={{ textAlign:"right", flexShrink:0 }}>
+                        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10 }}>Link pays</div>
+                        <div style={{ fontFamily:"Syne", color:"#A855F7", fontSize:14, fontWeight:800 }}>{fmt(linkNum)}</div>
+                      </div>
+                    )}
+                  </div>
+                  {cashNum >= total && cashAmt && (
+                    <div style={{ fontFamily:"DM Sans", color:"#EF4444", fontSize:11, marginTop:4 }}>Cash amount must be less than total</div>
+                  )}
+                </div>
+
+                {/* Link platform for split */}
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>Link Platform</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  {LINK_OPTIONS.map(lk => (
+                    <button key={lk.id} onClick={() => setSplitLink(lk.id)}
+                      style={{ flex:1, background:splitLink===lk.id?(lk.color) + "25":"rgba(255,255,255,.06)", border:splitLink===lk.id?"2px solid " + (lk.color):"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"10px 6px", cursor:"pointer", textAlign:"center" }}>
+                      <div style={{ fontSize:15, marginBottom:2 }}></div>
+                      <div style={{ fontFamily:"Syne", color:splitLink===lk.id?lk.color:"rgba(255,255,255,.6)", fontSize:11, fontWeight:700 }}>{lk.label}</div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Summary */}
+                {splitValid && (
+                  <div style={{ background:"rgba(255,255,255,.05)", borderRadius:10, padding:"10px 12px", marginTop:10 }}>
+                    <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:6 }}>PAYMENT SUMMARY</div>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                      <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.6)", fontSize:12 }}> Cash</span>
+                      <span style={{ fontFamily:"Syne", color:"#10B981", fontSize:13, fontWeight:700 }}>{fmt(cashNum)}</span>
+                    </div>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                      <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.6)", fontSize:12 }}> {splitLink}</span>
+                      <span style={{ fontFamily:"Syne", color:"#A855F7", fontSize:13, fontWeight:700 }}>{fmt(linkNum)}</span>
+                    </div>
+                    <div style={{ borderTop:"1px solid rgba(255,255,255,.08)", paddingTop:6, display:"flex", justifyContent:"space-between" }}>
+                      <span style={{ fontFamily:"Syne", color:"#fff", fontSize:12, fontWeight:700 }}>Total</span>
+                      <span style={{ fontFamily:"Syne", color:"#F59E0B", fontSize:13, fontWeight:800 }}>{fmt(total)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Cash only confirmation */}
+            {payMode === "" && (
+              <div style={{ background:"rgba(16,185,129,.06)", borderRadius:10, padding:"8px 12px" }}>
+                <div style={{ fontFamily:"DM Sans", color:"#10B981", fontSize:12 }}>
+                  v Full cash {fmt(total)} collected
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Non-COD / Exchange info */}
+        {status === "delivered" && !isCOD && !isExchangeOrder && (
+          <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:12, padding:"10px 14px", marginBottom:12 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>
+               Payment: <span style={{ fontWeight:600 }}><PaymentBadge payType={order.paymentType} small /></span> - no cash collection needed
+            </div>
+          </div>
+        )}
+
+        {/* Note */}
+        <div style={{ marginBottom:4 }}>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>
+            {status === "cancelled" ? " Reason for cancellation (required)" : status === "postponed" ? " Reason for postponing (required)" : "Note (optional)"}
+          </div>
+          <textarea value={note} onChange={e => setNote(e.target.value)}
+            placeholder={status === "cancelled" ? "e.g. Customer denied order, wrong address..." : status === "postponed" ? "e.g. Customer not home, will retry tomorrow..." : "Add a note..."}
+            style={{ width:"100%", background:"rgba(255,255,255,.05)", border:"1px solid " + ((status==="cancelled"||status==="postponed")&&!note?"rgba(239,68,68,.4)":"rgba(255,255,255,.1)"), borderRadius:12, padding:12, color:"#fff", fontFamily:"DM Sans", fontSize:13, resize:"none", height:64, boxSizing:"border-box", outline:"none" }} />
+        </div>
+
+        <div style={{ display:"flex", gap:10, marginTop:14 }}>
+          <button onClick={onClose} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"DM Sans", cursor:"pointer" }}>Close</button>
+          <button onClick={handleConfirm} disabled={!canConfirm}
+            style={{ flex:2, background:canConfirm?"linear-gradient(135deg,#00D4FF,#7C3AED)":"rgba(255,255,255,.1)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, cursor:canConfirm?"pointer":"default" }}>
+            Confirm ->
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/*  Commission logic  */
+const COMMISSION_THRESHOLD = 20;   // must deliver more than this to earn commission
+const COMMISSION_PER_ORDER = 0.250; // KD per order above threshold (21st, 22nd, etc.)
+
+function calcCommission(deliveredCount) {
+  const eligible = Math.max(0, deliveredCount - COMMISSION_THRESHOLD); // orders above 20
+  if (eligible === 0) return { earned: false, amount: 0, deliveredCount, eligible };
+  return { earned: true, amount: eligible * COMMISSION_PER_ORDER, deliveredCount, eligible };
+}
+
+/*  Driver: Commission Card  */
+function CommissionCard({ deliveredCount }) {
+  const { earned, amount, eligible } = calcCommission(deliveredCount);
+  const needed = Math.max(0, COMMISSION_THRESHOLD + 1 - deliveredCount); // need 21st order
+  const pct    = Math.min(100, Math.round(deliveredCount / (COMMISSION_THRESHOLD + 1) * 100));
+
+  return (
+    <div style={{ background: earned ? "linear-gradient(135deg,rgba(16,185,129,.15),rgba(0,212,255,.1))" : "rgba(255,255,255,.04)", border:"1px solid " + (earned?"rgba(16,185,129,.3)":"rgba(255,255,255,.1)"), borderRadius:16, padding:16, marginBottom:14 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+        <div>
+          <div style={{ fontFamily:"Syne", color: earned?"#10B981":"#fff", fontSize:14, fontWeight:700 }}>
+            {earned ? "🎉 Commission Earned!" : " Commission Progress"}
+          </div>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:12, marginTop:2 }}>
+            {earned
+              ? (eligible) + " order" + (eligible>1?"s":"") + " x KD " + (COMMISSION_PER_ORDER.toFixed(3)) + " (orders 21-" + (deliveredCount) + ")"
+              : "Deliver " + (needed) + " more order" + (needed>1?"s":"") + " to start earning"}
+          </div>
+        </div>
+        {earned && (
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:22, fontWeight:800 }}>{fmt(amount)}</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>today&apos;s commission</div>
+          </div>
+        )}
+      </div>
+      {/* Progress bar */}
+      <div style={{ background:"rgba(255,255,255,.08)", borderRadius:30, height:8, overflow:"hidden", marginBottom:6 }}>
+        <div style={{ height:"100%", width:(pct) + "%", background: earned ? "linear-gradient(90deg,#10B981,#00D4FF)" : "linear-gradient(90deg,#F59E0B,#FF6B35)", borderRadius:30, transition:"width .8s ease" }} />
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between" }}>
+        <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>{deliveredCount} delivered</span>
+        <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>
+          {earned ? "+" + (eligible) + " commission orders" : (COMMISSION_THRESHOLD) + " to unlock   KD " + (COMMISSION_PER_ORDER.toFixed(3)) + "/order from 21st"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/*  Driver: Profile Tab  */
+function Row({ icon, label, value, highlight }) {
+  return (
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid rgba(255,255,255,.06)" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <span style={{ fontSize:16, width:22, textAlign:"center" }}>{icon}</span>
+        <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:13 }}>{label}</span>
+      </div>
+      <span style={{ fontFamily:"Syne", color: highlight || "#fff", fontSize:13, fontWeight:600, textAlign:"right", maxWidth:180 }}>{value || "-"}</span>
+    </div>
+  );
+}
+
+function DriverProfileTab({ user, orders, expenses }) {
+  const driver      = DRIVERS.find(d => d.id === user.id) || {};
+  const delivered   = orders.filter(o => o.status === "delivered").length;
+  const totalExpAmt = expenses.reduce((a,e) => a + Number(e.amount), 0);
+  const comm        = calcCommission(orders.filter(o => o.status === "delivered" && !isExchange(o.paymentType) && !isExchange(o.originalPaymentType)).length);
+
+  // Daftar expiry warning
+  const daftarDate    = driver.daftarExpiry ? new Date(driver.daftarExpiry) : null;
+  const daysToExpiry  = daftarDate ? Math.ceil((daftarDate - new Date()) / 86400000) : null;
+  const daftarWarning = daysToExpiry !== null && daysToExpiry <= 60;
+  const daftarExpired = daysToExpiry !== null && daysToExpiry <= 0;
+
+  const vehicleIcon = driver.vehicleType === "Van" ? "🚐" : driver.vehicleType === "Bike" ? "🏍" : "🚗";
+
+
+
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
+
+      {/* Avatar + name hero */}
+      <div style={{ background:"linear-gradient(135deg,rgba(0,212,255,.08),rgba(124,58,237,.1))", border:"1px solid rgba(0,212,255,.15)", borderRadius:20, padding:24, marginBottom:16, textAlign:"center" }}>
+        <div style={{ width:72, height:72, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", fontFamily:"Syne", fontSize:26, fontWeight:800, color:"#fff" }}>
+          {driver.avatar || user.name?.slice(0,2).toUpperCase()}
+        </div>
+        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:20, fontWeight:800 }}>{driver.name}</div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:4 }}>ID: {user.id.toUpperCase()}   Delivery Driver</div>
+        <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:10 }}>
+          <span style={{ background: driver.status==="active"?"rgba(16,185,129,.15)":"rgba(107,114,128,.15)", color: driver.status==="active"?"#10B981":"#9CA3AF", border:"1px solid " + (driver.status==="active"?"rgba(16,185,129,.3)":"rgba(107,114,128,.3)"), borderRadius:20, padding:"3px 12px", fontFamily:"DM Sans", fontSize:12, fontWeight:600 }}>
+            {driver.status==="active" ? "Active" : "Inactive"}
+          </span>
+          <span style={{ background:"rgba(255,107,53,.1)", color:"#FF6B35", border:"1px solid rgba(255,107,53,.25)", borderRadius:20, padding:"3px 12px", fontFamily:"DM Sans", fontSize:12 }}>
+            {vehicleIcon} {driver.vehicleType || "-"}
+          </span>
+        </div>
+      </div>
+
+      {/* Personal Details */}
+      <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, padding:"0 16px", marginBottom:14 }}>
+        <div style={{ fontFamily:"Syne", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", padding:"12px 0 4px" }}>Personal Details</div>
+        <Row icon="👤" label="Full Name"       value={driver.name} />
+        <Row icon="📞" label="Mobile Number"   value={driver.phone} />
+        <Row icon="🌍" label="Nationality"     value={driver.nationality} />
+        <Row icon="📅" label="Joined"          value={driver.joinDate ? new Date(driver.joinDate).toLocaleDateString("en-KW",{day:"numeric",month:"long",year:"numeric"}) : "-"} />
+      </div>
+
+      {/* Vehicle Details */}
+      <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, padding:"0 16px", marginBottom:14 }}>
+        <div style={{ fontFamily:"Syne", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", padding:"12px 0 4px" }}>Vehicle Details</div>
+        <Row icon={vehicleIcon} label="Vehicle Type"   value={driver.vehicleType} />
+        <Row icon="🔢"          label="Vehicle Number" value={driver.vehicleNo} />
+        <Row icon="📋"          label="License No."    value={driver.licenseNo} />
+        <Row icon="📄"          label="Daftar Renewal"
+          value={daftarDate ? daftarDate.toLocaleDateString("en-KW",{day:"numeric",month:"short",year:"numeric"}) + (daysToExpiry !== null ? " (" + (daftarExpired ? "EXPIRED" : daysToExpiry+" days") + ")" : "") : "-"}
+          highlight={daftarExpired ? "#EF4444" : daftarWarning ? "#F59E0B" : "#fff"}
+        />
+      </div>
+
+      {/* Daftar expiry alert */}
+      {(daftarWarning || daftarExpired) && (
+        <div style={{ background: daftarExpired?"rgba(239,68,68,.1)":"rgba(245,158,11,.1)", border:"1px solid " + (daftarExpired?"rgba(239,68,68,.3)":"rgba(245,158,11,.3)"), borderRadius:12, padding:"12px 14px", marginBottom:14, display:"flex", gap:10, alignItems:"center" }}>
+          <span style={{ fontSize:20 }}>{daftarExpired ? "🚨" : ""}</span>
+          <div>
+            <div style={{ fontFamily:"Syne", color: daftarExpired?"#EF4444":"#F59E0B", fontSize:13, fontWeight:700 }}>
+              {daftarExpired ? "Daftar EXPIRED!" : "Daftar expires in " + (daysToExpiry) + " days"}
+            </div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>Please renew vehicle registration immediately</div>
+          </div>
+        </div>
+      )}
+
+      {/* Today's Performance */}
+      <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, padding:"0 16px", marginBottom:14 }}>
+        <div style={{ fontFamily:"Syne", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", padding:"12px 0 4px" }}>Today&apos;s Performance</div>
+        <Row icon="📦" label="Total Orders"   value={(orders.length) + " assigned"} />
+        <Row icon="" label="Delivered"       value={(delivered) + " orders"} highlight="#10B981" />
+        <Row icon="" label="Commission"      value={comm.earned ? fmt(comm.amount) : "Not yet (" + (Math.max(0,21-orders.filter(o=>o.status==="delivered"&&!isExchange(o.paymentType)).length)) + " more needed)"} highlight={comm.earned ? "#10B981" : undefined} />
+        <Row icon="" label="Vehicle Expenses" value={totalExpAmt > 0 ? "- " + (fmt(totalExpAmt)) : "None logged"} highlight={totalExpAmt > 0 ? "#EF4444" : undefined} />
+      </div>
+    </div>
+  );
+}
+
+/*  Driver: Expenses Tab  */
+function DriverExpensesTab({ driverId, driverName, expenses, orders, onAddExpense }) {
+  const [expType, setExpType] = useState("");
+  const [amount, setAmount] = useState("");
+  const [note,   setNote]   = useState("");
+  const [saved,  setSaved]  = useState(false);
+  const [err,    setErr]    = useState("");
+
+  const totalExp    = expenses.reduce((a,e)=>a+Number(e.amount),0);
+  const delivCount  = orders.filter(o=>o.status==="delivered" && !isExchange(o.paymentType) && !isExchange(o.originalPaymentType)).length;
+  const commission  = calcCommission(delivCount);
+
+  function submit() {
+    if (!expType) { setErr("Select expense type"); return; }
+    if (!amount || isNaN(amount) || Number(amount) <= 0) { setErr("Enter a valid amount"); return; }
+    setErr("");
+    onAddExpense({ driverId, driverName, type:expType, amount: Number(amount), note });
+    setSaved(true); setType(""); setAmount(""); setNote("");
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
+      {/* Commission card */}
+      <CommissionCard deliveredCount={delivCount} />
+
+      {/* Add expense form */}
+      <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, padding:16, marginBottom:16 }}>
+        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700, marginBottom:14 }}> Log Vehicle Expense</div>
+
+        {/* Type selector */}
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>EXPENSE TYPE</div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:14 }}>
+          {EXPENSE_TYPES.map(t => (
+            <button key={t} onClick={() => setExpType(t)}
+              style={{ background:expType===t?"rgba(255,107,53,.2)":"rgba(255,255,255,.06)", border:expType===t?"1.5px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"7px 14px", cursor:"pointer" }}>
+              <span style={{ fontFamily:"DM Sans", color:expType===t?"#FF6B35":"rgba(255,255,255,.6)", fontSize:13, fontWeight:expType===t?600:400 }}>
+                {t==="Fuel"?" Fuel":t==="Parking"?"🅿 Parking":t==="Toll"?"🛣 Toll":t==="Car Wash"?"🚿 Car Wash":t==="Maintenance"?"🔧 Maintenance":"📋 "+t}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Amount */}
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>AMOUNT (KD)</div>
+        <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.000" step="0.001" min="0"
+          style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"12px 14px", color:"#FF6B35", fontFamily:"Syne", fontSize:16, fontWeight:700, outline:"none", boxSizing:"border-box", marginBottom:12 }} />
+
+        {/* Note */}
+        <input value={note} onChange={e=>setNote(e.target.value)} placeholder="Note (optional, e.g. filled at KNPC station)"
+          style={{ width:"100%", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"DM Sans", fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:12 }} />
+
+        {err && <div style={{ fontFamily:"DM Sans", color:"#EF4444", fontSize:12, marginBottom:8 }}> {err}</div>}
+
+        <button onClick={submit}
+          style={{ width:"100%", background: saved?"#10B981":"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer", transition:"background .3s" }}>
+          {saved ? " Expense Saved!" : "Save Expense ->"}
+        </button>
+      </div>
+
+      {/* Expense history */}
+      {expenses.length > 0 && (
+        <>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700 }}>Today&apos;s Expenses</div>
+            <div style={{ fontFamily:"Syne", color:"#EF4444", fontSize:15, fontWeight:800 }}>- {fmt(totalExp)}</div>
+          </div>
+          {expenses.map((e,i) => (
+            <div key={e.id||i} style={{ background:"rgba(239,68,68,.05)", border:"1px solid rgba(239,68,68,.15)", borderRadius:12, padding:"12px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div>
+                <div style={{ fontFamily:"DM Sans", color:"#fff", fontSize:13, fontWeight:600 }}>{e.type==="Fuel"?"":e.type==="Parking"?"🅿":e.type==="Toll"?"🛣":e.type==="Car Wash"?"🚿":e.type==="Maintenance"?"🔧":"📋"} {e.type}</div>
+                {e.note && <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>{e.note}</div>}
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.25)", fontSize:10, marginTop:2 }}>{new Date(e.createdAt).toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</div>
+              </div>
+              <div style={{ fontFamily:"Syne", color:"#EF4444", fontSize:14, fontWeight:800 }}>- {fmt(e.amount)}</div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+/*  Report Preview - native React (no iframe, no popup)  */
+function SCard({ label, value, color, bg }) {
+  return (
+    <div style={{ background:bg, borderRadius:9, padding:"10px 12px", flex:1, minWidth:100 }}>
+      <div style={{ fontFamily:"Syne", color:color, fontSize:20, fontWeight:800 }}>{value}</div>
+      <div style={{ fontFamily:"DM Sans", color:"#475569", fontSize:11, marginTop:2 }}>{label}</div>
+    </div>
+  );
+}
+
+function OrderRow({ o, i, statusBg, statusColor }) {
+  const isEx = isExchange(o.paymentType)||isExchange(o.originalPaymentType);
+  const st   = isEx?"exchange":o.status;
+  return (
+    <div style={{ display:"flex", gap:8, padding:"8px 0", borderBottom:"1px solid #F1F5F9", fontSize:11, color:"#334155", flexWrap:"wrap" }}>
+      <span style={{ color:"#94A3B8", minWidth:56 }}>{o.date||""}</span>
+      <span style={{ fontWeight:700, minWidth:70, color:"#0F172A" }}>{"#"+o.invoiceNo}</span>
+      <span style={{ flex:2, minWidth:100 }}>{o.customer}</span>
+      <span style={{ minWidth:60 }}>{o.onlineOrderNo||"-"}</span>
+      <span style={{ fontWeight:700, minWidth:72, color:"#0F172A" }}>{"KD "+Number(o.total).toFixed(3)}</span>
+      <span style={{ minWidth:80, color:"#475569" }}>{o.paymentType}</span>
+      <span style={{ background:statusBg[st], color:statusColor[st], borderRadius:20, padding:"1px 8px", fontWeight:600, whiteSpace:"nowrap" }}>
+        {isEx?"Exchange":o.status.charAt(0).toUpperCase()+o.status.slice(1)}
+      </span>
+      {o.note && <span style={{ color:"#94A3B8", fontStyle:"italic", flex:1 }}>{o.note}</span>}
+    </div>
+  );
+}
+
+function ReportPreview({ data, onClose }) {
+  const { drvName, myOrders, deliveredOrds, cancelledOrds, postponedOrds, pendingOrds,
+          exchangeOrds, nonExDel, orderedStores, collectionRows, comm,
+          myExpenses, totalExpAmt, successRate } = data;
+  const date = new Date().toLocaleDateString("en-KW", { day:"numeric", month:"long", year:"numeric" });
+  const grandTotal = collectionRows.reduce((a,r)=>a+r.amt,0);
+
+  const statusColor = { delivered:"#059669", cancelled:"#DC2626", postponed:"#7C3AED", pending:"#D97706", exchange:"#6B7280" };
+  const statusBg    = { delivered:"#ECFDF5", cancelled:"#FEF2F2", postponed:"#F5F3FF", pending:"#FFFBEB", exchange:"#F3F4F6" };
+
+
+
+
+
+  return (
+    <div style={{ position:"absolute", inset:0, zIndex:999, background:"#f8fafc", display:"flex", flexDirection:"column", overflowY:"auto" }}>
+      {/* Sticky action bar */}
+      <div style={{ position:"sticky", top:0, zIndex:10, background:"#0A0F1E", padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
+        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:13, fontWeight:700 }}>Daily Report - {drvName}</div>
+        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+          <button onClick={function() {
+            var pri = document.getElementById("report-print-area");
+            if (!pri) { return; }
+            var css = "@page{size:A4 portrait;margin:10mm 12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{font-family:Arial,sans-serif;font-size:9.5px;color:#111;margin:0;padding:0;background:#fff}div{max-width:100%}table{border-collapse:collapse;width:100%;font-size:9px}th,td{padding:3px 5px;border:1px solid #d1d5db}h1,h2{margin:4px 0}.no-break{page-break-inside:avoid}section{page-break-inside:avoid;margin-bottom:8px}";
+            var html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Report-" + drvName + "</title><style>" + css + "</style></head><body>" + pri.innerHTML + "</body></html>";
+            var blob = new Blob([html],{type:"text/html;charset=utf-8"});
+            var url = URL.createObjectURL(blob);
+            var ifr = document.createElement("iframe");
+            ifr.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:21cm;height:29.7cm;border:none";
+            document.body.appendChild(ifr);
+            ifr.onload = function(){
+              try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch(e){}
+              setTimeout(function(){ document.body.removeChild(ifr); URL.revokeObjectURL(url); },2000);
+            };
+            ifr.src = url;
+          }} style={{ background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.4)", borderRadius:8, padding:"6px 12px", color:"#00D4FF", fontFamily:"Syne", fontWeight:700, fontSize:12, cursor:"pointer" }}>
+            Print A4
+          </button>
+          <button onClick={function() {
+            var pri = document.getElementById("report-print-area");
+            if (!pri) { return; }
+            var css = "@page{size:A4 portrait;margin:10mm 12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{font-family:Arial,sans-serif;font-size:9.5px;color:#111;margin:0;padding:0;background:#fff}div{max-width:100%}table{border-collapse:collapse;width:100%;font-size:9px}th,td{padding:3px 5px;border:1px solid #d1d5db}h1,h2{margin:4px 0}.no-break{page-break-inside:avoid}section{page-break-inside:avoid;margin-bottom:8px}";
+            var html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Report-" + drvName + "</title><style>" + css + "</style></head><body>" + pri.innerHTML + "</body></html>";
+            var blob = new Blob([html],{type:"text/html;charset=utf-8"});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url; a.download = "Report-" + drvName.replace(/\s+/g,"-") + ".html";
+            document.body.appendChild(a); a.click();
+            setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },500);
+          }} style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.4)", borderRadius:8, padding:"6px 12px", color:"#10B981", fontFamily:"Syne", fontWeight:700, fontSize:12, cursor:"pointer" }}>
+            Download
+          </button>
+          <button onClick={onClose} style={{ background:"rgba(239,68,68,.2)", border:"1px solid rgba(239,68,68,.4)", borderRadius:8, padding:"6px 14px", color:"#EF4444", fontFamily:"Syne", fontWeight:700, fontSize:13, cursor:"pointer" }}>x Close</button>
+        </div>
+      </div>
+
+      <div id="report-print-area" style={{ padding:"12px 14px 40px", fontFamily:"DM Sans", color:"#111", maxWidth:"100%", margin:"0 auto", width:"100%" }}>
+
+        {/* Header */}
+        <div style={{ background:"linear-gradient(135deg,#0A0F1E,#1a2340)", color:"#fff", borderRadius:12, padding:"16px 18px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
+          <div>
+            <div style={{ fontFamily:"Syne", fontSize:18, fontWeight:800, letterSpacing:-1 }}>Deliver<span style={{ color:"#00D4FF" }}>Flow</span></div>
+            <div style={{ fontSize:11, opacity:.5, marginTop:2 }}>Daily Delivery Report   AMTEL TELECOM FOR GENERAL TRADING CO.</div>
+          </div>
+          <div style={{ textAlign:"right", fontSize:12, opacity:.75, lineHeight:1.8 }}>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700 }}>Delivery Boy: {drvName}</div>
+            <div>Date: {date}</div>
+            <div>Generated: {new Date().toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</div>
+            <div>Total Orders: {myOrders.length}</div>
+          </div>
+        </div>
+
+        {/* Order Summary */}
+        <div style={{ fontFamily:"Syne", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Order Summary</div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:8 }}>
+          <SCard label="Total"      value={myOrders.length}       color="#1D4ED8" bg="#EFF6FF" />
+          <SCard label="Delivered"  value={deliveredOrds.length}  color="#059669" bg="#ECFDF5" />
+          <SCard label="Cancelled"  value={cancelledOrds.length}  color="#DC2626" bg="#FEF2F2" />
+          <SCard label="Postponed"  value={postponedOrds.length}  color="#7C3AED" bg="#F5F3FF" />
+          <SCard label="Pending"    value={pendingOrds.length}    color="#D97706" bg="#FFFBEB" />
+          <SCard label="Exchange"   value={exchangeOrds.length}   color="#6B7280" bg="#F3F4F6" />
+          <SCard label="Success"    value={(successRate) + "%"}     color="#1D4ED8" bg="#EFF6FF" />
+        </div>
+
+        {/* Collection Summary */}
+        <div style={{ fontFamily:"Syne", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10, marginTop:16 }}>Collection Summary</div>
+        <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0", marginBottom:6 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", background:"#0A0F1E", padding:"7px 12px" }}>
+            <span style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase" }}>Payment Method</span>
+            <span style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:100, textAlign:"right" }}>Amount (KD)</span>
+            <span style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:70, textAlign:"right" }}>Orders</span>
+          </div>
+          {collectionRows.map((r,i) => (
+            <div key={r.label} style={{ display:"grid", gridTemplateColumns:"1fr auto auto", padding:"8px 12px", background:i%2===0?"#fff":"#F8FAFC", borderTop:"1px solid #F1F5F9" }}>
+              <span style={{ fontFamily:"DM Sans", color:"#111", fontWeight:600, fontSize:13 }}>{r.label}</span>
+              <span style={{ fontFamily:"Syne", color:"#111", fontWeight:700, fontSize:13, minWidth:100, textAlign:"right" }}>KD {r.amt.toFixed(3)}</span>
+              <span style={{ color:"#64748B", fontSize:12, minWidth:70, textAlign:"right" }}>{nonExDel.filter(o=>{const p=o.originalPaymentType||o.paymentType; return r.label==="Cash in Hand (COD)"?(p==="Cash"||p==="COD")&&!o.originalPaymentType:r.label==="Split (Cash+Link)"?p?.startsWith("Split"):r.label==="GoCollect (Link)"?p?.includes("GoCollect"):r.label==="Trikart Link"?p?.includes("Trikart Link"):r.label==="WAMD (Link)"?p?.includes("WAMD"):p===r.label}).length}</span>
+            </div>
+          ))}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", padding:"9px 12px", background:"#0A0F1E", borderTop:"2px solid #334155" }}>
+            <span style={{ fontFamily:"Syne", color:"#fff", fontWeight:700, fontSize:13 }}>TOTAL COLLECTED</span>
+            <span style={{ fontFamily:"Syne", color:"#00D4FF", fontWeight:800, fontSize:15, minWidth:100, textAlign:"right" }}>KD {grandTotal.toFixed(3)}</span>
+            <span style={{ color:"rgba(255,255,255,.5)", fontSize:12, minWidth:70, textAlign:"right" }}>{nonExDel.length} orders</span>
+          </div>
+        </div>
+        {exchangeOrds.length > 0 && <div style={{ background:"#F3F4F6", borderRadius:8, padding:"7px 12px", fontSize:11, color:"#6B7280", marginBottom:4 }}> <strong>{exchangeOrds.length} Exchange order(s)</strong> - No cash collection required</div>}
+
+        {/* Bill-wise Details */}
+        <div style={{ pageBreakBefore:"auto", marginTop:16 }}>
+        <div style={{ fontFamily:"Syne", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Bill-wise Details</div>
+        <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0", marginBottom:10 }}>
+          <div style={{ display:"flex", gap:8, background:"#0A0F1E", padding:"7px 10px" }}>
+            {["Date","Invoice No","Customer","Online Order","Total","Payment","Status","Note"].map(h=>(
+              <span key={h} style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:10, fontWeight:600, textTransform:"uppercase", flex:h==="Customer"||h==="Note"?2:1, minWidth:0 }}>{h}</span>
+            ))}
+          </div>
+          {orderedStores.map(function(store) {
+            const storeOrds = myOrders.filter(o=>o.store===store&&!isExchange(o.paymentType)&&!isExchange(o.originalPaymentType));
+            if (!storeOrds.length) return null;
+            const sDel = storeOrds.filter(o=>o.status==="delivered").length;
+            const sTotal = storeOrds.reduce((a,o)=>a+Number(o.total),0);
+            return (
+              <div key={store} style={{ pageBreakInside:"avoid", marginBottom:4 }}>
+                <div style={{ background:"#1e293b", padding:"7px 10px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontFamily:"Syne", color:"#00D4FF", fontWeight:700, fontSize:12 }}> {store}</span>
+                  <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:11 }}>{storeOrds.length} orders   {sDel} delivered   Total: KD {sTotal.toFixed(3)}</span>
+                </div>
+                {storeOrds.map((o,i) => <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />)}
+                <div style={{ padding:"5px 10px", background:"#F8FAFC", textAlign:"right", fontSize:11, color:"#475569", fontWeight:600 }}>
+                  Store subtotal: KD {sTotal.toFixed(3)}   {storeOrds.length} orders
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Exchange orders */}
+        {exchangeOrds.length > 0 && (
+          <div style={{ background:"#F3F4F6", border:"1px solid #D1D5DB", borderRadius:10, padding:"12px 14px", marginBottom:14 }}>
+            <div style={{ fontFamily:"Syne", fontWeight:700, color:"#6B7280", fontSize:12, marginBottom:8 }}> EXCHANGE ORDERS - No Cash Collection</div>
+            {exchangeOrds.map((o,i) => <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />)}
+          </div>
+        )}
+
+        </div>{/* end bill-wise section */}
+
+        {/* Commission & Expenses */}
+        <div style={{ fontFamily:"Syne", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10, marginTop:16 }}>Commission &amp; Expenses</div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+          <SCard label={comm.earned?"Commission (" + (comm.eligible) + " orders x KD 0.250)":"Commission (not yet earned)"} value={comm.earned?"KD " + (comm.amount.toFixed(3)):"-"} color={comm.earned?"#059669":"#D97706"} bg={comm.earned?"#ECFDF5":"#FFFBEB"} />
+          <SCard label="Vehicle Expenses" value={totalExpAmt>0?"- KD " + (totalExpAmt.toFixed(3)):"None"} color="#DC2626" bg="#FEF2F2" />
+          <SCard label="Net (Collected + Comm - Exp)" value={"KD " + ((grandTotal+(comm.earned?comm.amount:0)-totalExpAmt).toFixed(3))} color="#1D4ED8" bg="#EFF6FF" />
+        </div>
+        {myExpenses.length > 0 && (
+          <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", background:"#0A0F1E", padding:"7px 12px" }}>
+              {["Type","Amount","Note","Time"].map(h=><span key={h} style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:10, fontWeight:600 }}>{h}</span>)}
+            </div>
+            {myExpenses.map((e,i)=>(
+              <div key={e.id||i} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", padding:"7px 12px", background:i%2===0?"#fff":"#F8FAFC", borderTop:"1px solid #F1F5F9", fontSize:12 }}>
+                <span style={{ fontWeight:600, color:"#DC2626" }}>{e.type}</span>
+                <span style={{ fontWeight:700, color:"#DC2626" }}>- KD {Number(e.amount).toFixed(3)}</span>
+                <span style={{ color:"#64748B" }}>{e.note||"-"}</span>
+                <span style={{ color:"#94A3B8", fontSize:11 }}>{new Date(e.createdAt).toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{ marginTop:24, paddingTop:10, borderTop:"1px solid #E2E8F0", textAlign:"center", fontSize:11, color:"#94A3B8" }}>
+          DeliverFlow   AMTEL TELECOM FOR GENERAL TRADING CO.   {myOrders.length} orders   {date}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/*  Driver Report Tab  */
+function Stat({ l, v, c, icon }) {
+  return (
+    <div style={{ background:c+"10", border:"1px solid "+c+"25", borderRadius:14, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+      <div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12 }}>{icon} {l}</div>
+        <div style={{ fontFamily:"Syne", color:c, fontSize:22, fontWeight:800, marginTop:2 }}>{v}</div>
+      </div>
+    </div>
+  );
+}
+
+function DriverReportTab({ orders, driverId, expenses, onOpenReport }) {
+  const myOrders    = orders.filter(o => o.driverId === driverId);
+  const delivered   = myOrders.filter(o => o.status === "delivered");
+  const cancelled   = myOrders.filter(o => o.status === "cancelled");
+  const postponed   = myOrders.filter(o => o.status === "postponed");
+  const pending     = myOrders.filter(o => o.status === "pending" && !o.scanned);
+  const exchangeOrders = myOrders.filter(o => isExchange(o.paymentType) || isExchange(o.originalPaymentType));
+  const nonExchange = delivered.filter(o => !isExchange(o.paymentType) && !isExchange(o.originalPaymentType));
+  const cod         = nonExchange.filter(o => (o.paymentType === "Cash" || o.paymentType === "COD") && !o.originalPaymentType).reduce((a,o) => a+Number(o.total), 0);
+  const codConverted = nonExchange.filter(o => o.originalPaymentType && (o.originalPaymentType==="Cash"||o.originalPaymentType==="COD")).reduce((a,o) => a+Number(o.total), 0);
+  const nonCash     = nonExchange.filter(o => o.paymentType !== "Cash" && o.paymentType !== "COD" && !o.originalPaymentType).reduce((a,o) => a+Number(o.total), 0);
+  const rate        = myOrders.length > 0 ? Math.round(delivered.length/myOrders.length*100) : 0;
+  const totalExpenses = (expenses||[]).reduce((a,e)=>a+Number(e.amount),0);
+  const commission    = calcCommission(nonExchange.length); // exchange orders excluded
+  const [showExchangeList, setShowExchangeList] = useState(false);
+
+
+  function buildReportData() {
+    const drvName      = DRIVERS.find(d => d.id === driverId)?.name || driverId;
+    const myExpenses   = expenses || [];
+    const deliveredOrds = myOrders.filter(o => o.status === "delivered");
+    const cancelledOrds = myOrders.filter(o => o.status === "cancelled");
+    const postponedOrds = myOrders.filter(o => o.status === "postponed");
+    const pendingOrds   = myOrders.filter(o => o.status === "pending");
+    const exchangeOrds  = myOrders.filter(o => isExchange(o.paymentType) || isExchange(o.originalPaymentType));
+    const nonExDel      = deliveredOrds.filter(o => !isExchange(o.paymentType) && !isExchange(o.originalPaymentType));
+    const comm          = calcCommission(nonExDel.length);
+    const totalExpAmt   = myExpenses.reduce((a,e)=>a+Number(e.amount),0);
+    const STORE_ORDER   = ["Trikart Online","ReStore Online","Webstore Online"];
+    const allStores     = [...new Set(myOrders.map(o=>o.store).filter(Boolean))];
+    const orderedStores = [...STORE_ORDER.filter(s=>allStores.includes(s)), ...allStores.filter(s=>!STORE_ORDER.includes(s))];
+    const collectionRows = [
+      { label:"Cash in Hand (COD)",  amt: nonExDel.filter(o=>(o.paymentType==="Cash"||o.paymentType==="COD")&&!o.originalPaymentType).reduce((a,o)=>a+Number(o.total),0) },
+      { label:"KNET",                amt: nonExDel.filter(o=>o.paymentType==="KNET").reduce((a,o)=>a+Number(o.total),0) },
+      { label:"VISA / Mastercard",   amt: nonExDel.filter(o=>o.paymentType==="VISA/Mastercard").reduce((a,o)=>a+Number(o.total),0) },
+      { label:"Deema",               amt: nonExDel.filter(o=>o.paymentType==="Deema").reduce((a,o)=>a+Number(o.total),0) },
+      { label:"Tabby",               amt: nonExDel.filter(o=>o.paymentType==="Tabby").reduce((a,o)=>a+Number(o.total),0) },
+      { label:"Taly",                amt: nonExDel.filter(o=>o.paymentType==="Taly").reduce((a,o)=>a+Number(o.total),0) },
+      { label:"GoCollect (Link)",    amt: nonExDel.filter(o=>o.paymentType?.includes("GoCollect")).reduce((a,o)=>a+Number(o.total),0) },
+      { label:"Trikart Link",        amt: nonExDel.filter(o=>o.paymentType?.includes("Trikart Link")).reduce((a,o)=>a+Number(o.total),0) },
+      { label:"WAMD (Link)",         amt: nonExDel.filter(o=>o.paymentType?.includes("WAMD")).reduce((a,o)=>a+Number(o.total),0) },
+      { label:"Split (Cash+Link)",   amt: nonExDel.filter(o=>o.paymentType?.startsWith("Split")).reduce((a,o)=>a+Number(o.total),0) },
+    ].filter(r => r.amt > 0);
+    return { drvName, myOrders, deliveredOrds, cancelledOrds, postponedOrds, pendingOrds, exchangeOrds, nonExDel, orderedStores, collectionRows, comm, myExpenses, totalExpAmt, successRate: myOrders.length>0?Math.round(deliveredOrds.length/myOrders.length*100):0 };
+  }
+
+
+
+
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
+      {/* Summary hero */}
+      <div style={{ background:"linear-gradient(135deg,rgba(0,212,255,.1),rgba(124,58,237,.1))", border:"1px solid rgba(0,212,255,.2)", borderRadius:20, padding:20, marginBottom:14, textAlign:"center" }}>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:13 }}>Today&apos;s Summary   {new Date().toLocaleDateString("en-KW")}</div>
+        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:46, fontWeight:800, lineHeight:1 }}>{myOrders.length}</div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:4 }}>Total Orders Assigned</div>
+        <div style={{ marginTop:10, background:"rgba(255,255,255,.08)", borderRadius:30, height:6, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:(rate) + "%", background:"linear-gradient(90deg,#10B981,#00D4FF)", borderRadius:30, transition:"width 1s ease" }} />
+        </div>
+        <div style={{ fontFamily:"DM Sans", color:"#10B981", fontSize:12, marginTop:4 }}>{rate}% success rate</div>
+      </div>
+
+      {/* Delivery stats */}
+      <Stat l="Delivered" v={delivered.length} c="#10B981" icon="" />
+      <Stat l="Cancelled"  v={cancelled.length}  c="#EF4444" icon="" />
+      <Stat l="Postponed"  v={postponed.length}  c="#8B5CF6" icon="" />
+      <Stat l="Still Pending" v={pending.length} c="#F59E0B" icon="" />
+
+      {/* Payment collection stats */}
+      <Stat l="Cash Collected (COD)"       v={fmt(cod)}         c="#F59E0B" icon="💵" />
+      {codConverted > 0 && <Stat l="COD -> Link Payment" v={fmt(codConverted)} c="#A855F7" icon="🔗" />}
+      <Stat l="Non-Cash (KNET/Online/etc)" v={fmt(nonCash)}     c="#00D4FF" icon="💳" />
+
+      {/* Commission */}
+      <CommissionCard deliveredCount={nonExchange.length} />
+
+      {/* Vehicle Expenses */}
+      {(expenses||[]).length > 0 && (
+        <div style={{ background:"rgba(239,68,68,.06)", border:"1px solid rgba(239,68,68,.2)", borderRadius:14, padding:"14px 16px", marginBottom:10 }}>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12 }}> Vehicle Expenses</div>
+          <div style={{ fontFamily:"Syne", color:"#EF4444", fontSize:22, fontWeight:800, marginTop:2 }}>- {fmt(totalExpenses)}</div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
+            {EXPENSE_TYPES.map(function(expT) {
+              const amt = (expenses||[]).filter(e=>e.type===expT).reduce((a,e)=>a+Number(e.amount),0);
+              if (!amt) return null;
+              return <span key={expT} style={{ background:"rgba(239,68,68,.1)", borderRadius:20, padding:"2px 9px", fontFamily:"DM Sans", color:"#FCA5A5", fontSize:11 }}>{expT}: {fmt(amt)}</span>;
+            })}
+          </div>
+        </div>
+      )}
+
+      {/*  Exchange Orders Section  */}
+      <div style={{ background:"rgba(107,114,128,.08)", border:"1px solid rgba(107,114,128,.25)", borderRadius:16, marginBottom:14, overflow:"hidden" }}>
+        <button onClick={() => setShowExchangeList(e => !e)}
+          style={{ width:"100%", background:"none", border:"none", padding:"14px 16px", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:20 }}></span>
+            <div style={{ textAlign:"left" }}>
+              <div style={{ fontFamily:"Syne", color:"#9CA3AF", fontSize:14, fontWeight:700 }}>Exchange Orders</div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>No cash collection - deliver &amp; exchange only</div>
+            </div>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontFamily:"Syne", color:"#9CA3AF", fontSize:22, fontWeight:800 }}>{exchangeOrders.length}</span>
+            <span style={{ color:"rgba(255,255,255,.3)", fontSize:12 }}>{showExchangeList ? "^" : "v"}</span>
+          </div>
+        </button>
+        {showExchangeList && (
+          <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", padding:"12px 14px" }}>
+            {exchangeOrders.length === 0 ? (
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.3)", fontSize:13, textAlign:"center", padding:"12px 0" }}>No exchange orders today</div>
+            ) : exchangeOrders.map((o, i) => (
+              <div key={o.id||i} style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"10px 12px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"DM Sans", color:"#fff", fontSize:13, fontWeight:600 }}>{o.customer}</div>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11 }}>#{o.invoiceNo}   {o.store}</div>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:2 }}> {o.address?.slice(0,50)}{o.address?.length>50?"...":""}</div>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11 }}> {o.phone}</div>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0, marginLeft:10 }}>
+                  <div style={{ fontFamily:"Syne", color:"#9CA3AF", fontSize:13, fontWeight:700 }}>{fmt(o.total)}</div>
+                  <span style={{ background:"rgba(107,114,128,.2)", color:"#9CA3AF", borderRadius:20, padding:"2px 8px", fontSize:10, fontFamily:"DM Sans", fontWeight:600 }}> Exchange</span>
+                  <div style={{ marginTop:4 }}>
+                    <Badge status={o.status} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Generate button */}
+      <button onClick={() => onOpenReport && onOpenReport(buildReportData())}
+        style={{ width:"100%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:14, padding:16, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:15, cursor:"pointer", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+        <span style={{ fontSize:18 }}></span> Preview &amp; Share Report
+      </button>
+      <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:12, textAlign:"center", marginBottom:16 }}>
+        Full report opens inside the app - screenshot or share to save
+      </div>
+    </div>
+  );
+}
+function performLogin(u_raw, p_raw, setErr, onLogin) {
+  if (!u_raw || !p_raw) { setErr("Enter credentials"); return; }
+  var u = u_raw.toLowerCase().trim();
+  if (u === "admin") { onLogin({ name:"Admin", id:"ADMIN-01", avatar:"AD", role:"admin" }); return; }
+  var found = null;
+  for (var di = 0; di < DRIVERS.length; di++) {
+    if (DRIVERS[di].name.toLowerCase() === u || DRIVERS[di].id === u) { found = DRIVERS[di]; break; }
+  }
+  if (found) { onLogin({ name:found.name, id:found.id, avatar:found.avatar, status:found.status, vehicleType:found.vehicleType, role:"driver" }); return; }
+  onLogin({ name:"Asif", id:"asif", avatar:"AS", role:"driver" });
+}
+
+function LoginScreen({ onLogin }) {
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
+  const [err,  setErr]  = useState("");
+  return (
+    <div style={{ minHeight:"100vh", background:"#0A0F1E", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24 }}>
+      <div style={{ marginBottom:32, textAlign:"center" }}>
+        <div style={{ width:72, height:72, borderRadius:20, background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", fontSize:32 }}></div>
+        <div style={{ fontFamily:"Syne", fontSize:26, fontWeight:800, color:"#fff", letterSpacing:-1 }}>DeliverFlow</div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:4 }}>AMTEL TELECOM &nbsp; Warehouse System</div>
+      </div>
+      <div style={{ width:"100%", maxWidth:360, background:"rgba(255,255,255,.05)", borderRadius:20, padding:28, border:"1px solid rgba(255,255,255,.08)" }}>
+        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:18, fontWeight:700, marginBottom:6 }}>Sign In</div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.3)", fontSize:12, marginBottom:18 }}>Admin: admin &nbsp;&nbsp; Drivers: asif / jasir / prathyush / iqbal</div>
+        <input type="text" placeholder="Username" value={user}
+          onChange={function(e) { setUser(e.target.value); }}
+          onKeyDown={function(e) { if (e.key === "Enter") performLogin(user, pass, setErr, onLogin); }}
+          style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"12px 16px", color:"#fff", fontFamily:"DM Sans", fontSize:15, marginBottom:12, boxSizing:"border-box", outline:"none" }} />
+        <input type="password" placeholder="Password" value={pass}
+          onChange={function(e) { setPass(e.target.value); }}
+          onKeyDown={function(e) { if (e.key === "Enter") performLogin(user, pass, setErr, onLogin); }}
+          style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"12px 16px", color:"#fff", fontFamily:"DM Sans", fontSize:15, marginBottom:12, boxSizing:"border-box", outline:"none" }} />
+        {err && <div style={{ color:"#EF4444", fontFamily:"DM Sans", fontSize:13, marginBottom:10 }}>{err}</div>}
+        <button onClick={function() { performLogin(user, pass, setErr, onLogin); }}
+          style={{ width:"100%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"Syne", fontSize:16, fontWeight:700, cursor:"pointer" }}>
+          Sign In -&gt;
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/*  Admin App  */
+/*  Admin: Vehicles & Expenses Tab  */
+const EXPENSE_TYPES = ["Fuel","Parking","Toll","Car Wash","Maintenance","Other"];
+
+function AdminHistoryTab({ history }) {
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [expandedDriver, setExpandedDriver] = useState(null);
+
+  if (!history || history.length === 0) {
+    return (
+      <div style={{ padding:"40px 24px", textAlign:"center" }}>
+        <div style={{ fontSize:40, marginBottom:12 }}>📋</div>
+        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:16, fontWeight:700, marginBottom:8 }}>No History Yet</div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:13, lineHeight:1.6 }}>
+          Driver history is saved automatically at the end of each day.
+          Check back tomorrow after the first auto-clear.
+        </div>
+      </div>
+    );
+  }
+
+  var day = selectedDay || history[0];
+
+  return (
+    <div style={{ padding:"0 16px 80px" }}>
+      <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}>Driver History</div>
+      <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>Daily performance records — last {history.length} day{history.length!==1?"s":""}</div>
+
+      {/* Day selector */}
+      <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:16, paddingBottom:4 }}>
+        {history.map(function(h) {
+          var isSelected = h.timestamp === day.timestamp;
+          return (
+            <button key={h.timestamp} onClick={function() { setSelectedDay(h); setExpandedDriver(null); }}
+              style={{ background:isSelected?"linear-gradient(135deg,#FF6B35,#FF3D71)":"rgba(255,255,255,.06)", border:isSelected?"none":"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"8px 14px", cursor:"pointer", flexShrink:0 }}>
+              <div style={{ fontFamily:"Syne", color:"#fff", fontSize:12, fontWeight:700 }}>{h.date}</div>
+              <div style={{ fontFamily:"DM Sans", color:isSelected?"rgba(255,255,255,.7)":"rgba(255,255,255,.35)", fontSize:10, marginTop:2 }}>{h.drivers.length} drivers</div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Day summary row */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:14 }}>
+        {(function() {
+          var totalDel = day.drivers.reduce(function(a,d) { return a+d.delivered; }, 0);
+          var totalCan = day.drivers.reduce(function(a,d) { return a+d.cancelled; }, 0);
+          var totalCash = day.drivers.reduce(function(a,d) { return a+d.cashCollected; }, 0);
+          var totalComm = day.drivers.reduce(function(a,d) { return a+(d.commissionEarned?d.commissionAmount:0); }, 0);
+          return [
+            [totalDel, "Delivered", "#10B981"],
+            [totalCan, "Cancelled", "#EF4444"],
+            [fmt(totalCash), "Cash", "#F59E0B"],
+            [fmt(totalComm), "Commission", "#00D4FF"],
+          ].map(function(item) {
+            return (
+              <div key={item[1]} style={{ background:item[2]+"12", border:"1px solid "+item[2]+"25", borderRadius:12, padding:"10px 8px", textAlign:"center" }}>
+                <div style={{ fontFamily:"Syne", color:item[2], fontSize:16, fontWeight:800 }}>{item[0]}</div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10, marginTop:2 }}>{item[1]}</div>
+              </div>
+            );
+          });
+        })()}
+      </div>
+
+      {/* Per-driver cards */}
+      {day.drivers.map(function(d) {
+        var isExp = expandedDriver === d.id;
+        return (
+          <div key={d.id} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, marginBottom:10, overflow:"hidden" }}>
+            {/* Header row */}
+            <div onClick={function() { setExpandedDriver(isExp ? null : d.id); }}
+              style={{ padding:"12px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}>
+              <div style={{ width:40, height:40, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Syne", fontSize:14, fontWeight:800, color:"#fff", flexShrink:0 }}>{d.avatar}</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700 }}>{d.name}</div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>
+                  {d.totalAssigned} assigned   {d.delivered} delivered   {d.successRate}% success
+                </div>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:13, fontWeight:700 }}>{fmt(d.cashCollected)}</div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.3)", fontSize:10 }}>Cash collected</div>
+              </div>
+              <span style={{ color:"rgba(255,255,255,.3)", fontSize:12, marginLeft:4 }}>{isExp ? "^" : "v"}</span>
+            </div>
+
+            {/* Expanded detail */}
+            {isExp && (
+              <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", padding:"12px 14px", background:"rgba(0,0,0,.15)" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+                  {[
+                    ["Total Assigned",   d.totalAssigned,  "#fff"],
+                    ["Delivered",        d.delivered,       "#10B981"],
+                    ["Cancelled",        d.cancelled,       "#EF4444"],
+                    ["Postponed",        d.postponed,       "#8B5CF6"],
+                    ["Pending (undelivered)", d.pending,    "#F59E0B"],
+                    ["Exchange Orders",  d.exchange,        "#6B7280"],
+                  ].map(function(row) {
+                    return (
+                      <div key={row[0]} style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"8px 10px" }}>
+                        <div style={{ fontFamily:"Syne", color:row[2], fontSize:16, fontWeight:800 }}>{row[1]}</div>
+                        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:10, marginTop:2 }}>{row[0]}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Financial summary */}
+                <div style={{ background:"rgba(255,255,255,.04)", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
+                  <div style={{ fontFamily:"Syne", color:"rgba(255,255,255,.5)", fontSize:10, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Financial Summary</div>
+                  {[
+                    ["Cash Collected (COD)", fmt(d.cashCollected), "#F59E0B"],
+                    ["Commission", d.commissionEarned ? fmt(d.commissionAmount) : "Not earned", d.commissionEarned ? "#10B981" : "#6B7280"],
+                    ["Vehicle Expenses", d.vehicleExpenses > 0 ? "- " + fmt(d.vehicleExpenses) : "None", d.vehicleExpenses > 0 ? "#EF4444" : "#6B7280"],
+                    ["Net Amount", fmt(d.netAmount), "#00D4FF"],
+                  ].map(function(row) {
+                    return (
+                      <div key={row[0]} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                        <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12 }}>{row[0]}</span>
+                        <span style={{ fontFamily:"Syne", color:row[2], fontSize:13, fontWeight:700 }}>{row[1]}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Expense breakdown */}
+                {d.vehicleExpenses > 0 && (
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                    {Object.keys(d.expenseBreakdown).map(function(type) {
+                      return (
+                        <span key={type} style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.2)", borderRadius:20, padding:"3px 10px", fontFamily:"DM Sans", color:"#FCA5A5", fontSize:11 }}>
+                          {type}: {fmt(d.expenseBreakdown[type])}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, onAddDriver }) {
+  const totalExpenses = expenses.reduce((a,e) => a + Number(e.amount), 0);
+
+  const [editDriver, setEditDriver] = React.useState(null);
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [newDrv, setNewDrv] = React.useState({ id:"", name:"", avatar:"", phone:"", status:"active", vehicleType:"Car", vehicleNo:"", licenseNo:"", nationality:"", joinDate:"", daftarExpiry:"" });
+  const allDrivers = Object.keys(driverProfiles||{}).length > 0
+    ? DRIVERS.map(d => ({ ...d, ...(driverProfiles||{})[d.id] }))
+    : DRIVERS;
+
+  return (
+    <div style={{ padding:"0 16px 80px" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700 }}>Drivers &amp; Expenses</div>
+        <button onClick={function(){ setShowAdd(true); }} style={{ background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:10, padding:"7px 14px", color:"#fff", fontFamily:"Syne", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Add Driver</button>
+      </div>
+      <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>Manage drivers, view commission &amp; expenses</div>
+
+      {/* Add Driver Modal */}
+      {showAdd && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:300, display:"flex", alignItems:"flex-end" }}>
+          <div style={{ width:"100%", background:"#0F1629", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:16, fontWeight:700, marginBottom:16 }}>Add New Driver</div>
+            {[["id","Driver ID (login username)"],["name","Full Name"],["avatar","Avatar (2 letters, e.g. AS)"],["phone","Phone Number"],["nationality","Nationality"],["vehicleType","Vehicle Type (Car/Van/Bike)"],["vehicleNo","Vehicle Number"],["licenseNo","License No"],["joinDate","Join Date (YYYY-MM-DD)"],["daftarExpiry","Daftar Expiry (YYYY-MM-DD)"]].map(function(f){
+              return (
+                <div key={f[0]} style={{ marginBottom:10 }}>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:4 }}>{f[1]}</div>
+                  <input value={newDrv[f[0]]||""} onChange={function(e){ var v=e.target.value; setNewDrv(function(p){ var n={...p}; n[f[0]]=v; return n; }); }}
+                    style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:13, boxSizing:"border-box" }} />
+                </div>
+              );
+            })}
+            <div style={{ display:"flex", gap:10, marginTop:16 }}>
+              <button onClick={function(){ setShowAdd(false); setNewDrv({ id:"", name:"", avatar:"", phone:"", status:"active", vehicleType:"Car", vehicleNo:"", licenseNo:"", nationality:"", joinDate:"", daftarExpiry:"" }); }}
+                style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancel</button>
+              <button onClick={function(){
+                if (!newDrv.id||!newDrv.name) { alert("Driver ID and Name are required"); return; }
+                if (onAddDriver) onAddDriver(newDrv);
+                setShowAdd(false);
+                setNewDrv({ id:"", name:"", avatar:"", phone:"", status:"active", vehicleType:"Car", vehicleNo:"", licenseNo:"", nationality:"", joinDate:"", daftarExpiry:"" });
+              }} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer" }}>Save Driver</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Driver Modal */}
+      {editDriver && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:300, display:"flex", alignItems:"flex-end" }}>
+          <div style={{ width:"100%", background:"#0F1629", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:16, fontWeight:700, marginBottom:16 }}>Edit: {editDriver.name}</div>
+            {[["phone","Phone"],["nationality","Nationality"],["vehicleType","Vehicle Type"],["vehicleNo","Vehicle Number"],["licenseNo","License No"],["joinDate","Join Date (YYYY-MM-DD)"],["daftarExpiry","Daftar Expiry (YYYY-MM-DD)"],["status","Status (active/inactive)"]].map(function(f){
+              return (
+                <div key={f[0]} style={{ marginBottom:10 }}>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:4 }}>{f[1]}</div>
+                  <input value={editDriver[f[0]]||""} onChange={function(e){ var v=e.target.value; setEditDriver(function(p){ var n={...p}; n[f[0]]=v; return n; }); }}
+                    style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:13, boxSizing:"border-box" }} />
+                </div>
+              );
+            })}
+            <div style={{ display:"flex", gap:10, marginTop:16 }}>
+              <button onClick={function(){ setEditDriver(null); }} style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancel</button>
+              <button onClick={function(){
+                if (onUpdateDriver) onUpdateDriver(editDriver.id, editDriver);
+                setEditDriver(null);
+              }} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer" }}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Total expense hero */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+        <div style={{ background:"rgba(16,185,129,.1)", border:"1px solid rgba(16,185,129,.25)", borderRadius:14, padding:14, textAlign:"center" }}>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:11 }}> Total Commission</div>
+          <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:20, fontWeight:800, marginTop:4 }}>
+            {fmt(DRIVERS.reduce(function(a,d) {
+              const del = orders.filter(o=>o.driverId===d.id&&o.status==="delivered"&&!isExchange(o.paymentType)&&!isExchange(o.originalPaymentType)).length;
+              return a + calcCommission(del).amount;
+            }, 0))}
+          </div>
+        </div>
+        <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:14, padding:14, textAlign:"center" }}>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:11 }}> Total Expenses</div>
+          <div style={{ fontFamily:"Syne", color:"#EF4444", fontSize:20, fontWeight:800, marginTop:4 }}>{fmt(totalExpenses)}</div>
+        </div>
+      </div>
+
+      {/* Per-driver cards */}
+      {allDrivers.map(function(d) {
+        const dOrders      = orders.filter(o => o.driverId === d.id);
+        const done         = dOrders.filter(o => o.status === "delivered").length;
+        const doneNoEx     = dOrders.filter(o => o.status === "delivered" && !isExchange(o.paymentType) && !isExchange(o.originalPaymentType)).length;
+        const scanned      = dOrders.filter(o => o.scanned).length;
+        const cash         = dOrders.filter(o=>o.status==="delivered"&&(o.paymentType==="Cash"||o.paymentType==="COD")&&!o.originalPaymentType).reduce((a,o)=>a+Number(o.total),0);
+        const dExp         = expenses.filter(e => e.driverId === d.id);
+        const dExpAmt      = dExp.reduce((a,e)=>a+Number(e.amount),0);
+        const comm         = calcCommission(doneNoEx);
+        const vehicleIcon  = d.vehicleType === "Van" ? "🚐" : d.vehicleType === "Bike" ? "🏍" : "🚗";
+        const daftarDate   = d.daftarExpiry ? new Date(d.daftarExpiry) : null;
+        const daysToExpiry = daftarDate ? Math.ceil((daftarDate - new Date()) / 86400000) : null;
+        const daftarWarn   = daysToExpiry !== null && daysToExpiry <= 60;
+        const daftarExp    = daysToExpiry !== null && daysToExpiry <= 0;
+
+        return (
+          <div key={d.id} style={{ background:"rgba(255,255,255,.04)", border:"1px solid " + (daftarExp?"rgba(239,68,68,.4)":daftarWarn?"rgba(245,158,11,.3)":"rgba(255,255,255,.08)"), borderRadius:16, padding:16, marginBottom:14 }}>
+
+            {/* Daftar alert */}
+            {(daftarExp || daftarWarn) && (
+              <div style={{ background:daftarExp?"rgba(239,68,68,.12)":"rgba(245,158,11,.1)", borderRadius:10, padding:"8px 12px", marginBottom:12, display:"flex", gap:8, alignItems:"center" }}>
+                <span style={{ fontSize:16 }}>{daftarExp?"🚨":""}</span>
+                <div>
+                  <div style={{ fontFamily:"Syne", color:daftarExp?"#EF4444":"#F59E0B", fontSize:12, fontWeight:700 }}>{daftarExp?"Daftar EXPIRED":"Daftar expires in " + (daysToExpiry) + " days"}</div>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>Due: {daftarDate?.toLocaleDateString("en-KW",{day:"numeric",month:"short",year:"numeric"})}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Driver header */}
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+              <div style={{ width:46, height:46, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Syne", fontSize:16, fontWeight:800, color:"#fff", flexShrink:0 }}>{d.avatar}</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700 }}>{d.name}</div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>{d.phone}   {d.nationality}</div>
+              </div>
+              <span style={{ background:d.status==="active"?"rgba(16,185,129,.15)":"rgba(107,114,128,.15)", color:d.status==="active"?"#10B981":"#9CA3AF", borderRadius:20, padding:"3px 10px", fontFamily:"DM Sans", fontSize:11, fontWeight:600 }}>
+                {d.status==="active"?"Active":"Inactive"}
+              </span>
+              <button onClick={function(){ setEditDriver({...d}); }}
+                style={{ background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.35)", borderRadius:8, padding:"4px 12px", color:"#00D4FF", fontFamily:"Syne", fontSize:11, fontWeight:700, cursor:"pointer", flexShrink:0 }}>Edit</button>
+            </div>
+
+            {/* Vehicle + Daftar row */}
+            <div style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"10px 12px", marginBottom:10, display:"flex", flexWrap:"wrap", gap:14 }}>
+              <div><div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:10 }}>VEHICLE</div><div style={{ fontFamily:"Syne", color:"#fff", fontSize:12, fontWeight:600 }}>{vehicleIcon} {d.vehicleType}   {d.vehicleNo}</div></div>
+              <div><div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:10 }}>LICENSE NO.</div><div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.7)", fontSize:12 }}>{d.licenseNo}</div></div>
+              <div><div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:10 }}>DAFTAR RENEWAL</div>
+                <div style={{ fontFamily:"Syne", color:daftarExp?"#EF4444":daftarWarn?"#F59E0B":"#10B981", fontSize:12, fontWeight:600 }}>
+                  {daftarDate ? daftarDate.toLocaleDateString("en-KW",{day:"numeric",month:"short",year:"numeric"}) : "-"}
+                  {daysToExpiry !== null && <span style={{ fontFamily:"DM Sans", fontSize:11, fontWeight:400 }}> ({daftarExp?"Expired":(daysToExpiry) + "d left"})</span>}
+                </div>
+              </div>
+              <div><div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:10 }}>JOINED</div><div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.6)", fontSize:12 }}>{d.joinDate ? new Date(d.joinDate).toLocaleDateString("en-KW",{month:"short",year:"numeric"}) : "-"}</div></div>
+            </div>
+
+            {/* Stats grid */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:10 }}>
+              {[[dOrders.length,"Assigned","#fff"],[scanned,"Collected","#00D4FF"],[done,"Delivered","#10B981"],[fmt(cash),"Cash COD","#F59E0B"]].map(function(item) { const v=item[0],l=item[1],c=item[2]; return (
+                <div key={l} style={{ textAlign:"center", background:"rgba(255,255,255,.04)", borderRadius:10, padding:"8px 4px" }}>
+                  <div style={{ fontFamily:"Syne", color:c, fontSize:l==="Cash COD"?10:15, fontWeight:800 }}>{v}</div>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:10 }}>{l}</div>
+                </div>
+              )})}
+            </div>
+
+            {/* Commission bar */}
+            <div style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"10px 12px", marginBottom:dExp.length?10:0 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+                <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:12 }}> Commission {comm.earned?"Earned":"Progress"} <span style={{ color:"rgba(255,255,255,.25)", fontSize:10 }}>(excl. exchange)</span></span>
+                <span style={{ fontFamily:"Syne", color:comm.earned?"#10B981":"#F59E0B", fontSize:13, fontWeight:700 }}>{comm.earned ? fmt(comm.amount) : (doneNoEx) + "/" + (COMMISSION_THRESHOLD)}</span>
+              </div>
+              <div style={{ background:"rgba(255,255,255,.08)", borderRadius:30, height:5, overflow:"hidden" }}>
+                <div style={{ height:"100%", width:(Math.min(100,Math.round(doneNoEx/(COMMISSION_THRESHOLD+1)*100))) + "%", background:comm.earned?"linear-gradient(90deg,#10B981,#00D4FF)":"linear-gradient(90deg,#F59E0B,#FF6B35)", borderRadius:30 }} />
+              </div>
+              {!comm.earned && <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.3)", fontSize:10, marginTop:3 }}>Need {Math.max(0,COMMISSION_THRESHOLD+1-doneNoEx)} more   KD {COMMISSION_PER_ORDER.toFixed(3)}/order from 21st onwards</div>}
+            </div>
+
+            {/* Expenses */}
+            {dExp.length > 0 && (
+              <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", paddingTop:10 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                  <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}> Vehicle Expenses So Far</span>
+                  <span style={{ fontFamily:"Syne", color:"#EF4444", fontSize:13, fontWeight:700 }}>- {fmt(dExpAmt)}</span>
+                </div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                  {EXPENSE_TYPES.map(function(expT) { const amt = dExp.filter(e=>e.type===expT).reduce((a,e)=>a+Number(e.amount),0); if(!amt)return null; return <span key={expT} style={{ background:"rgba(239,68,68,.1)", borderRadius:20, padding:"2px 9px", fontFamily:"DM Sans", color:"#FCA5A5", fontSize:11 }}>{expT}: {fmt(amt)}</span>; })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* All expenses log */}
+      {expenses.length > 0 && (
+        <div style={{ marginTop:8 }}>
+          <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700, marginBottom:10 }}>All Expense Records</div>
+          {expenses.slice().reverse().map((e,i) => (
+            <div key={e.id||i} style={{ background:"rgba(239,68,68,.04)", border:"1px solid rgba(239,68,68,.12)", borderRadius:12, padding:"10px 14px", marginBottom:7, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div>
+                <div style={{ fontFamily:"DM Sans", color:"#fff", fontSize:13, fontWeight:600 }}>{e.type} - {DRIVERS.find(d=>d.id===e.driverId)?.name}</div>
+                {e.note && <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>{e.note}</div>}
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.25)", fontSize:10 }}>{new Date(e.createdAt).toLocaleString("en-KW",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
+              </div>
+              <div style={{ fontFamily:"Syne", color:"#EF4444", fontSize:14, fontWeight:800 }}>- {fmt(e.amount)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {expenses.length === 0 && (
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"DM Sans", padding:30 }}>No expenses logged yet</div>
+      )}
+    </div>
+  );
+}
+
+function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onClearNotifs, expenses, onAddExpense, onOrdersAdd, onStatusUpdate, onApproveTransfer, onRejectTransfer, driverProfiles, onUpdateDriver, onAddDriver, onClearData, saveStatus, dbConnected, syncing, clearConfirm, onConfirmClear, onCancelClear, history, onLogout }) {
+  const [tab, setTab] = useState("upload");
+  const [toast, setToast] = useState(null);
+
+  function showToast(msg) { setToast({ msg, ttype:"success" }); setTimeout(function() { setToast(null); }, 3000); }
+
+  function handleOrdersAssign(parsedOrders, driverId) {
+    onOrdersAdd(parsedOrders.map(o => ({ ...o, driverId, id: o.id || uid() })));
+  }
+
+  const pendingTransfers = transfers.filter(t => t.status === "pending");
+  const unreadNotifs     = adminNotifs.filter(n => !n.read).length;
+
+  const TABS = [
+    { id:"upload",    icon:"📤", label:"Upload" },
+    { id:"orders",    icon:"📦", label:"Orders" },
+    { id:"notifs",    icon:"🔔", label:"Alerts",    badge: unreadNotifs },
+    { id:"vehicles",  icon:"🚗", label:"Vehicles" },
+    { id:"history",   icon:"H",   label:"History" },
+    { id:"transfers", icon:"🔄", label:"Transfers", badge: pendingTransfers.length },
+  ];
+
+  return (
+    <div style={{ maxWidth:430, margin:"0 auto", background:"#070C1A", minHeight:"100vh", display:"flex", flexDirection:"column" }}>
+
+      {/* Clear Day Confirm Modal */}
+      {clearConfirm && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+          <div style={{ background:"#0F1629", borderRadius:20, padding:28, maxWidth:320, width:"100%", border:"1px solid rgba(239,68,68,.3)" }}>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:18, fontWeight:800, marginBottom:8 }}>Clear Day?</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:14, marginBottom:24, lineHeight:1.6 }}>
+              This will delete ALL orders, expenses and transfers. Driver profiles will be kept.
+            </div>
+            <div style={{ display:"flex", gap:12 }}>
+              <button onClick={onCancelClear} style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancel</button>
+              <button onClick={onConfirmClear} style={{ flex:1, background:"linear-gradient(135deg,#EF4444,#DC2626)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer" }}>Yes, Clear</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {toast && <Toast msg={toast.msg} toastKind={toast.ttype} />}
+      <div style={{ padding:"16px 20px 12px", background:"#070C1A", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:19, fontWeight:800 }}>Admin <span style={{ color:"#FF6B35" }}>Panel</span></div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>AMTEL TELECOM   {new Date().toLocaleDateString("en-KW")}</div>
+          {syncing && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"#F59E0B", marginLeft:8 }}>Syncing...</span>}
+          {!syncing && dbConnected && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"#10B981", marginLeft:8 }}>DB Connected</span>}
+          {!syncing && !dbConnected && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"rgba(255,255,255,.2)", marginLeft:8 }}>Local only</span>}
+          </div>
+          <button onClick={onLogout} style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:10, padding:"6px 12px", color:"#EF4444", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>Sign Out</button>
+        </div>
+      </div>
+
+      <div style={{ display:"flex", background:"#0A1020", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, background:"none", border:"none", padding:"12px 0 8px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, position:"relative" }}>
+            <span style={{ fontSize:16 }}>{t.icon}</span>
+            <span style={{ fontFamily:"DM Sans", fontSize:10, fontWeight:tab===t.id?600:400, color:tab===t.id?"#FF6B35":"rgba(255,255,255,.35)" }}>{t.label}</span>
+            {tab===t.id && <div style={{ width:4, height:4, borderRadius:"50%", background:"#FF6B35" }} />}
+            {t.badge > 0 && <div style={{ position:"absolute", top:4, right:"50%", transform:"translateX(100%)", background:"#EF4444", borderRadius:10, padding:"1px 5px", fontSize:9, color:"#fff", fontFamily:"DM Sans", fontWeight:700 }}>{t.badge}</div>}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ flex:1, overflowY:"auto", paddingTop:16, display:"flex", flexDirection:"column" }}>
+        {tab==="upload" && <AdminUploadTab allOrders={orders} onOrdersParsed={handleOrdersAssign} onAssignDriver={() => {}} onStatusUpdate={onStatusUpdate} />}
+        {tab==="orders" && <AdminOrdersTab orders={orders} onStatusUpdate={onStatusUpdate} />}
+
+        {/*  Notifications Tab  */}
+        {tab==="notifs" && (
+          <div style={{ padding:"0 16px 80px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+              <div>
+                <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700 }}> Order Status Alerts</div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>Real-time updates from drivers</div>
+              </div>
+              {adminNotifs.length > 0 && (
+                <button onClick={onClearNotifs} style={{ background:"none", border:"none", color:"#FF6B35", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>
+                  Mark all read
+                </button>
+              )}
+            </div>
+            {adminNotifs.length === 0 ? (
+              <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"DM Sans", padding:40 }}>No notifications yet</div>
+            ) : adminNotifs.map(function(n) {
+              const sc = STATUS_CFG[n.notifType] || STATUS_CFG.pending;
+              return (
+                <div key={n.id} onClick={() => onMarkNotifRead(n.id)}
+                  style={{ background:n.read?"rgba(255,255,255,.03)":"rgba(255,255,255,.07)", border:"1px solid " + (n.read?"rgba(255,255,255,.06)":sc.color+"44"), borderRadius:14, padding:14, marginBottom:10, cursor:"pointer" }}>
+                  <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+                    <div style={{ width:36, height:36, borderRadius:10, background:sc.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{sc.icon}</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
+                        <div style={{ fontFamily:"Syne", color:n.read?"rgba(255,255,255,.5)":sc.color, fontSize:13, fontWeight:700 }}>
+                          {n.notifType.charAt(0).toUpperCase()+n.notifType.slice(1)} - #{n.orderId}
+                        </div>
+                        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.3)", fontSize:11 }}>
+                          {new Date(n.time).toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.7)", fontSize:13 }}>{n.customer}</div>
+                      <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>
+                         {n.store}   <span style={{ color:PAYMENT_COLORS[n.payment]||"#fff" }}>{n.payment}</span>   <span style={{ color:"#FF6B35", fontWeight:600 }}>{fmt(n.amount)}</span>
+                      </div>
+                      <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}> Driver: {n.driver}</div>
+                      {n.note && <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:3, fontStyle:"italic" }}> {n.note}</div>}
+                    </div>
+                    {!n.read && <div style={{ width:8, height:8, borderRadius:"50%", background:sc.color, flexShrink:0, marginTop:4, boxShadow:"0 0 6px " + (sc.color) }} />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/*  Vehicles / Expenses Tab  */}
+        {tab==="vehicles" && <AdminVehiclesTab orders={orders} expenses={expenses} driverProfiles={driverProfiles} onUpdateDriver={onUpdateDriver} onAddDriver={onAddDriver} />}
+        {tab==="history"  && <AdminHistoryTab history={history} />}
+
+        {tab==="transfers" && (
+          <div style={{ padding:"0 16px 80px" }}>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}> Transfer Requests</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>Review and approve driver transfer requests</div>
+
+            {transfers.length === 0 ? (
+              <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"DM Sans", padding:40 }}>No transfer requests yet</div>
+            ) : transfers.slice().reverse().map(function(tr) {
+              const fromDriver = DRIVERS.find(d => d.id === tr.fromDriverId);
+              const toDriver   = DRIVERS.find(d => d.id === tr.toDriverId);
+              const isPending  = tr.status === "pending";
+              return (
+                <div key={tr.id} style={{ background:isPending?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)", border:"1px solid " + (isPending?"rgba(255,107,53,.3)":tr.status==="approved"?"rgba(16,185,129,.2)":"rgba(239,68,68,.2)"), borderRadius:16, padding:16, marginBottom:12 }}>
+                  {/* Status banner */}
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                    <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11 }}>{new Date(tr.createdAt).toLocaleTimeString("en-KW", { hour:"2-digit", minute:"2-digit" })}</div>
+                    <span style={{ background:isPending?"rgba(245,158,11,.15)":tr.status==="approved"?"rgba(16,185,129,.15)":"rgba(239,68,68,.15)", color:isPending?"#F59E0B":tr.status==="approved"?"#10B981":"#EF4444", borderRadius:20, padding:"3px 10px", fontSize:11, fontFamily:"DM Sans", fontWeight:600 }}>
+                      {isPending ? " Pending" : tr.status === "approved" ? " Approved" : "x Rejected"}
+                    </span>
+                  </div>
+
+                  {/* Order info */}
+                  <div style={{ background:"rgba(0,0,0,.2)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
+                    <div style={{ fontFamily:"Syne", color:"#fff", fontSize:13, fontWeight:700 }}>{tr.order.customer}</div>
+                    <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>#{tr.order.invoiceNo}   {tr.order.store}   {fmt(tr.order.total)}</div>
+                  </div>
+
+                  {/* Transfer direction */}
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:tr.reason?8:12 }}>
+                    <div style={{ background:"rgba(255,107,53,.15)", borderRadius:8, padding:"5px 10px", fontFamily:"Syne", color:"#FF6B35", fontSize:12, fontWeight:700 }}>{fromDriver?.name || tr.fromDriverId}</div>
+                    <span style={{ color:"rgba(255,255,255,.4)", fontSize:14 }}>-></span>
+                    <div style={{ background:"rgba(0,212,255,.15)", borderRadius:8, padding:"5px 10px", fontFamily:"Syne", color:"#00D4FF", fontSize:12, fontWeight:700 }}>{toDriver?.name || tr.toDriverId}</div>
+                  </div>
+
+                  {tr.reason && <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:12, fontStyle:"italic" }}> "{tr.reason}"</div>}
+
+                  {isPending && (
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={() => { onRejectTransfer(tr.id); showToast("Transfer rejected"); }}
+                        style={{ flex:1, background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:10, padding:"10px", color:"#EF4444", fontFamily:"Syne", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                        x Reject
+                      </button>
+                      <button onClick={() => { onApproveTransfer(tr.id); showToast(" Order transferred to " + (toDriver?.name) + "!", "success"); }}
+                        style={{ flex:2, background:"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                         Approve Transfer
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/*  Driver App  */
+function DriverApp({ user, orders, expenses, onAddExpense, onScan, onStatusUpdate, onLogout, onRequestTransfer }) {
+  const [tab, setTab]               = useState("warehouse");
+  const [toast, setToast]           = useState(null);
+  const [transferOrder, setTransferOrder] = useState(null);
+  const [reportData, setReportData] = useState(null);
+
+  function showToast(msg) { setToast({ msg, ttype:"success" }); setTimeout(function() { setToast(null); }, 3000); }
+
+  const myOrders   = orders.filter(o => o.driverId === user.id);
+  const collected  = myOrders.filter(o => o.scanned && o.status === "pending").length;
+  const pending    = myOrders.filter(o => !o.scanned && o.status === "pending").length;
+  const myExpenses = (expenses||[]).filter(e => e.driverId === user.id);
+
+  function handleTransferRequest(order, from, to, reason) {
+    onRequestTransfer(order, from, to, reason);
+    setTransferOrder(null);
+    showToast("🔄 Transfer request sent!", "warn");
+  }
+
+  const TABS = [
+    { id:"warehouse", icon:"🏭", label:"Warehouse" },
+    { id:"delivery",  icon:"🚚", label:"Delivery", badge: collected },
+    { id:"report",    icon:"📊", label:"Report" },
+    { id:"expenses",  icon:"$", label:"Expenses" },
+    { id:"profile",   icon:"👤", label:"Profile" },
+  ];
+
+  return (
+    <div style={{ maxWidth:430, margin:"0 auto", background:"#0A0F1E", minHeight:"100vh", display:"flex", flexDirection:"column", position:"relative" }}>
+      {toast && <Toast msg={toast.msg} toastKind={toast.ttype} />}
+
+      {/* Report preview - renders on top, covers full app */}
+      {tab==="preview" && reportData && <ReportPreview data={reportData} onClose={() => setTab("report")} />}
+
+      {/* Global Transfer Modal - accessible from any tab */}
+      {transferOrder && (
+        <TransferModal
+          order={transferOrder}
+          fromDriverId={user.id}
+          onRequestTransfer={handleTransferRequest}
+          onClose={() => setTransferOrder(null)}
+        />
+      )}
+
+      {/* Header */}
+      <div style={{ padding:"16px 20px 12px", background:"#0A0F1E", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:18, fontWeight:800 }}>DeliverFlow</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>Hi, {user.name}    {myOrders.length} orders today</div>
+          </div>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            {pending > 0 && <span style={{ background:"rgba(245,158,11,.2)", color:"#F59E0B", borderRadius:20, padding:"3px 10px", fontFamily:"DM Sans", fontSize:12, fontWeight:600 }}> {pending} to collect</span>}
+            <button onClick={onLogout} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:8, padding:"5px 10px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:11, cursor:"pointer" }}>Exit</button>
+          </div>
+        </div>
+      </div>
+
+      {/* No orders state */}
+      {myOrders.length === 0 && (
+        <div style={{ background:"rgba(245,158,11,.08)", border:"1px solid rgba(245,158,11,.2)", borderRadius:0, padding:"12px 20px", display:"flex", gap:10, alignItems:"center" }}>
+          <span style={{ fontSize:18 }}></span>
+          <span style={{ fontFamily:"DM Sans", color:"#F59E0B", fontSize:13 }}>Waiting for admin to assign orders... Check back soon.</span>
+        </div>
+      )}
+
+      {/* Content */}
+      <div style={{ flex:1, overflowY:"auto", paddingTop:12, display:"flex", flexDirection:"column" }}>
+        {tab==="warehouse" && <DriverWarehouseTab orders={orders} driverId={user.id}
+          onScan={(id) => { onScan(id); showToast("📦 Order collected!", "success"); }}
+          onRequestTransfer={handleTransferRequest}
+          onOpenTransfer={setTransferOrder}
+        />}
+        {tab==="delivery" && <DriverDeliveryTab orders={orders} driverId={user.id}
+          onStatusUpdate={(id,status,note,newPay) => { onStatusUpdate(id,status,note,newPay); showToast((STATUS_CFG[status].icon) + " " + (status),status==="delivered"?"success":"warn"); }}
+          onOpenTransfer={setTransferOrder}
+        />}
+        {tab==="report"    && <DriverReportTab   orders={orders} driverId={user.id} expenses={myExpenses} onOpenReport={(data) => { setReportData(data); setTab("preview"); }} />}
+        {tab==="preview"   && reportData && <ReportPreview data={reportData} onClose={() => setTab("report")} />}
+        {tab==="expenses"  && <DriverExpensesTab  driverId={user.id} driverName={user.name} expenses={myExpenses} orders={myOrders} onAddExpense={onAddExpense} />}
+        {tab==="profile"   && <DriverProfileTab   user={user} orders={myOrders} expenses={myExpenses} />}
+      </div>
+
+      {/* Bottom Nav */}
+      <div style={{ display:"flex", background:"#0D1326", borderTop:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, background:"none", border:"none", padding:"12px 0 8px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, position:"relative" }}>
+            <span style={{ fontSize:18 }}>{t.icon}</span>
+            <span style={{ fontFamily:"DM Sans", fontSize:11, fontWeight:tab===t.id?600:400, color:tab===t.id?"#00D4FF":"rgba(255,255,255,.3)" }}>{t.label}</span>
+            {tab===t.id && <div style={{ width:4, height:4, borderRadius:"50%", background:"#00D4FF" }} />}
+            {t.badge > 0 && <div style={{ position:"absolute", top:6, right:"50%", transform:"translateX(100%)", background:"#10B981", borderRadius:10, padding:"1px 5px", fontSize:9, color:"#fff", fontFamily:"DM Sans", fontWeight:700 }}>{t.badge}</div>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/*  ROOT  */
+// ─── Supabase config - REPLACE with your project values ─────────────────────
+const SUPABASE_URL  = "https://ekcldonzncaguwgfooky.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVrY2xkb256bmNhZ3V3Z2Zvb2t5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNTI4NTcsImV4cCI6MjA4OTgyODg1N30.Us2eCY-jgo5JIE-Vrl7Z0RyCEr88q2iXMJZk4wo_OSc";
+
+// ─── Supabase SDK loader + client ────────────────────────────────────────────
+function loadSupabaseSDK(callback) {
+  if (window.supabase) { callback(); return; }
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js";
+  s.onload = callback;
+  s.onerror = function() { console.warn("Failed to load Supabase SDK"); };
+  document.head.appendChild(s);
+}
+
+function getSupabase() {
+  if (window._supabase) return window._supabase;
+  if (window.supabase && window.supabase.createClient) {
+    window._supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    return window._supabase;
+  }
+  return null;
+}
+
+// ─── localStorage fallback helpers ───────────────────────────────────────────
+const LS_KEYS = {
+  orders: "df_orders",
+  transfers: "df_transfers",
+  expenses: "df_expenses",
+  driverProfiles: "df_driver_profiles",
+  drivers: "df_drivers",
+  lastClearDate: "df_last_clear_date",
+  history: "df_daily_history",
+};
+function lsGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e) { return fallback; }
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
+}
+
+// ─── Supabase DB helpers ──────────────────────────────────────────────────────
+async function dbLoadOrders() {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("orders").select("*").order("created_at", { ascending: true });
+  if (error) { console.warn("Supabase load orders:", error.message); return null; }
+  return data.map(function(r) { return {
+    id: r.id, invoiceNo: r.invoice_no, onlineOrderNo: r.online_order_no||"",
+    date: r.date, store: r.store, customer: r.customer,
+    address: r.address, phone: r.phone, total: Number(r.total),
+    paymentType: r.payment_type, originalPaymentType: r.original_payment_type||"",
+    status: r.status, driverId: r.driver_id, scanned: r.scanned||false,
+    note: r.note||"", deliveredAt: r.delivered_at, updatedAt: r.updated_at,
+  }; });
+}
+
+async function dbUpsertOrders(orders) {
+  const sb = getSupabase();
+  if (!sb) return;
+  const rows = orders.map(function(o) { return {
+    id: o.id, invoice_no: o.invoiceNo, online_order_no: o.onlineOrderNo||"",
+    date: o.date, store: o.store, customer: o.customer,
+    address: o.address||"", phone: o.phone||"", total: o.total,
+    payment_type: o.paymentType, original_payment_type: o.originalPaymentType||"",
+    status: o.status, driver_id: o.driverId, scanned: o.scanned||false,
+    note: o.note||"", updated_at: new Date().toISOString(),
+  }; });
+  const { error } = await sb.from("orders").upsert(rows, { onConflict: "id" });
+  if (error) console.warn("Supabase upsert orders:", error.message);
+}
+
+async function dbUpdateOrder(id, fields) {
+  const sb = getSupabase();
+  if (!sb) return;
+  const row = {};
+  if (fields.status !== undefined)      row.status = fields.status;
+  if (fields.driverId !== undefined)    row.driver_id = fields.driverId;
+  if (fields.scanned !== undefined)     row.scanned = fields.scanned;
+  if (fields.note !== undefined)        row.note = fields.note;
+  if (fields.paymentType !== undefined) row.payment_type = fields.paymentType;
+  if (fields.originalPaymentType !== undefined) row.original_payment_type = fields.originalPaymentType;
+  row.updated_at = new Date().toISOString();
+  const { error } = await sb.from("orders").update(row).eq("id", id);
+  if (error) console.warn("Supabase update order:", error.message);
+}
+
+async function dbLoadExpenses() {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("expenses").select("*").order("created_at", { ascending: false });
+  if (error) { console.warn("Supabase load expenses:", error.message); return null; }
+  return data.map(function(r) { return {
+    id: r.id, driverId: r.driver_id, driverName: r.driver_name||"",
+    type: r.type, amount: Number(r.amount), note: r.note||"",
+    createdAt: r.created_at,
+  }; });
+}
+
+async function dbInsertExpense(exp) {
+  const sb = getSupabase();
+  if (!sb) return;
+  const { error } = await sb.from("expenses").insert({
+    id: exp.id, driver_id: exp.driverId, driver_name: exp.driverName||"",
+    type: exp.type, amount: exp.amount, note: exp.note||"",
+    created_at: exp.createdAt||new Date().toISOString(),
+  });
+  if (error) console.warn("Supabase insert expense:", error.message);
+}
+
+async function dbLoadTransfers() {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("transfers").select("*").order("created_at", { ascending: false });
+  if (error) { console.warn("Supabase load transfers:", error.message); return null; }
+  return data.map(function(r) { return {
+    id: r.id, order: r.order_data ? JSON.parse(r.order_data) : {},
+    fromDriverId: r.from_driver_id, toDriverId: r.to_driver_id,
+    reason: r.reason||"", status: r.status,
+  }; });
+}
+
+async function dbUpsertTransfer(tr) {
+  const sb = getSupabase();
+  if (!sb) return;
+  const { error } = await sb.from("transfers").upsert({
+    id: tr.id, order_data: JSON.stringify(tr.order||{}),
+    from_driver_id: tr.fromDriverId, to_driver_id: tr.toDriverId,
+    reason: tr.reason||"", status: tr.status,
+  }, { onConflict: "id" });
+  if (error) console.warn("Supabase upsert transfer:", error.message);
+}
+
+async function dbLoadDriverProfiles() {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("driver_profiles").select("*");
+  if (error) { console.warn("Supabase load drivers:", error.message); return null; }
+  const profiles = {};
+  data.forEach(function(r) {
+    profiles[r.id] = {
+      id: r.id, name: r.name, avatar: r.avatar||"", phone: r.phone||"",
+      status: r.status||"active", vehicleType: r.vehicle_type||"Car",
+      vehicleNo: r.vehicle_no||"", licenseNo: r.license_no||"",
+      nationality: r.nationality||"", joinDate: r.join_date||"",
+      daftarExpiry: r.daftar_expiry||"",
+    };
+  });
+  return profiles;
+}
+
+async function dbUpsertDriverProfile(id, fields) {
+  const sb = getSupabase();
+  if (!sb) return;
+  const { error } = await sb.from("driver_profiles").upsert({
+    id, name: fields.name||id, avatar: fields.avatar||"",
+    phone: fields.phone||"", status: fields.status||"active",
+    vehicle_type: fields.vehicleType||"Car", vehicle_no: fields.vehicleNo||"",
+    license_no: fields.licenseNo||"", nationality: fields.nationality||"",
+    join_date: fields.joinDate||"", daftar_expiry: fields.daftarExpiry||"",
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "id" });
+  if (error) console.warn("Supabase upsert driver:", error.message);
+}
+
+const DEFAULT_PROFILES = {
+  asif:      { vehicleType:"Car",  vehicleNo:"", licenseNo:"", nationality:"Indian",    phone:"+96555001001", status:"active", joinDate:"2023-01-15", daftarExpiry:"2026-08-01", avatar:"AS" },
+  jasir:     { vehicleType:"Van",  vehicleNo:"", licenseNo:"", nationality:"Pakistani", phone:"+96555001002", status:"active", joinDate:"2022-06-10", daftarExpiry:"2026-11-15", avatar:"JA" },
+  prathyush: { vehicleType:"Bike", vehicleNo:"", licenseNo:"", nationality:"Indian",    phone:"+96555001003", status:"active", joinDate:"2024-03-01", daftarExpiry:"2025-12-31", avatar:"PR" },
+  iqbal:     { vehicleType:"Car",  vehicleNo:"", licenseNo:"", nationality:"Pakistani", phone:"+96555001004", status:"inactive", joinDate:"2021-09-20", daftarExpiry:"2027-03-10", avatar:"IQ" },
+};
+
+export default function App() {
+  const [user, setUser]               = useState(null);
+  const [orders, setOrders]           = useState(function() { return lsGet(LS_KEYS.orders, []); });
+  const [transfers, setTransfers]     = useState(function() { return lsGet(LS_KEYS.transfers, []); });
+  const [adminNotifs, setAdminNotifs] = useState([]);
+  const [expenses, setExpenses]       = useState(function() { return lsGet(LS_KEYS.expenses, []); });
+  const [driverProfiles, setDriverProfiles] = useState(function() { return lsGet(LS_KEYS.driverProfiles, DEFAULT_PROFILES); });
+  const [saveStatus, setSaveStatus]   = useState("");
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const [history, setHistory] = useState(function() { return lsGet(LS_KEYS.history, []); });
+  useEffect(function() { lsSet(LS_KEYS.history, history); }, [history]);
+  const [dbConnected, setDbConnected] = useState(false);
+  const [syncing, setSyncing]         = useState(false);
+
+  // ── Auto-save to localStorage (offline cache) ─────────────────────────────
+  useEffect(function() { lsSet(LS_KEYS.orders, orders); }, [orders]);
+  useEffect(function() { lsSet(LS_KEYS.transfers, transfers); }, [transfers]);
+  useEffect(function() { lsSet(LS_KEYS.expenses, expenses); }, [expenses]);
+  useEffect(function() { lsSet(LS_KEYS.driverProfiles, driverProfiles); }, [driverProfiles]);
+
+  // ── Auto-clear at midnight ────────────────────────────────────────────────
+  useEffect(function() {
+    function checkMidnightClear() {
+      var today = new Date().toDateString();
+      var lastClear = lsGet(LS_KEYS.lastClearDate, "");
+      if (lastClear !== today) {
+        // New day detected — save snapshot then clear
+        saveHistorySnapshot(orders, expenses);
+        setOrders([]); setTransfers([]); setAdminNotifs([]); setExpenses([]);
+        lsSet(LS_KEYS.orders, []); lsSet(LS_KEYS.transfers, []); lsSet(LS_KEYS.expenses, []);
+        lsSet(LS_KEYS.lastClearDate, today);
+        // Also clear from Supabase
+        var sb = getSupabase();
+        if (sb) {
+          sb.from("orders").delete().gte("created_at","1970-01-01").then(function() {});
+          sb.from("expenses").delete().gte("created_at","1970-01-01").then(function() {});
+          sb.from("transfers").delete().gte("created_at","1970-01-01").then(function() {});
+        }
+        console.log("Auto-cleared for new day:", today);
+      }
+    }
+
+    // Check immediately on app load
+    checkMidnightClear();
+
+    // Then check every minute so it catches midnight precisely
+    var interval = setInterval(checkMidnightClear, 60000);
+    return function() { clearInterval(interval); };
+  }, []);
+
+  // ── Load Supabase SDK + data on mount ────────────────────────────────────
+  useEffect(function() {
+    if (SUPABASE_URL.includes("YOUR_PROJECT")) {
+      console.log("Supabase not configured - using localStorage only");
+      return;
+    }
+
+    function runLoad() {
+      var sb = getSupabase();
+      if (!sb) { console.warn("Supabase SDK not ready"); return; }
+      setSyncing(true);
+    Promise.all([
+      dbLoadOrders(),
+      dbLoadExpenses(),
+      dbLoadTransfers(),
+      dbLoadDriverProfiles(),
+    ]).then(function(results) {
+      var dbOrders = results[0], dbExpenses = results[1], dbTransfers = results[2], dbProfiles = results[3];
+      if (dbOrders)    { setOrders(dbOrders);       lsSet(LS_KEYS.orders, dbOrders); }
+      if (dbExpenses)  { setExpenses(dbExpenses);   lsSet(LS_KEYS.expenses, dbExpenses); }
+      if (dbTransfers) { setTransfers(dbTransfers); lsSet(LS_KEYS.transfers, dbTransfers); }
+      if (dbProfiles)  {
+        // Merge DB profiles with DRIVERS array
+        Object.keys(dbProfiles).forEach(function(id) {
+          var p = dbProfiles[id];
+          var idx = DRIVERS.findIndex(function(d) { return d.id === id; });
+          if (idx >= 0) { DRIVERS[idx] = { ...DRIVERS[idx], ...p }; }
+          else { DRIVERS.push(p); }
+        });
+        setDriverProfiles(dbProfiles);
+        lsSet(LS_KEYS.driverProfiles, dbProfiles);
+      }
+      setDbConnected(true);
+      setSyncing(false);
+    }).catch(function(err) {
+      console.warn("Supabase load failed, using cache:", err);
+      setSyncing(false);
+    });
+
+    // Realtime: orders table
+    var ordersSub = sb.channel("orders-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, function(payload) {
+        setOrders(function(prev) {
+          if (payload.eventType === "DELETE") {
+            return prev.filter(function(o) { return o.id !== payload.old.id; });
+          }
+          var r = payload.new;
+          var updated = {
+            id: r.id, invoiceNo: r.invoice_no, onlineOrderNo: r.online_order_no||"",
+            date: r.date, store: r.store, customer: r.customer,
+            address: r.address, phone: r.phone, total: Number(r.total),
+            paymentType: r.payment_type, originalPaymentType: r.original_payment_type||"",
+            status: r.status, driverId: r.driver_id, scanned: r.scanned||false,
+            note: r.note||"",
+          };
+          var exists = prev.find(function(o) { return o.id === r.id; });
+          if (exists) return prev.map(function(o) { return o.id === r.id ? { ...o, ...updated } : o; });
+          return [...prev, updated];
+        });
+      }).subscribe();
+
+      // Realtime: expenses table
+      var expensesSub = sb.channel("expenses-changes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "expenses" }, function(payload) {
+        var r = payload.new;
+        var newExp = { id: r.id, driverId: r.driver_id, driverName: r.driver_name||"", type: r.type, amount: Number(r.amount), note: r.note||"", createdAt: r.created_at };
+        setExpenses(function(prev) {
+          if (prev.find(function(e) { return e.id === r.id; })) return prev;
+          return [newExp, ...prev];
+        });
+      }).subscribe();
+
+    } // end runLoad
+
+    loadSupabaseSDK(runLoad);
+
+    return function() {
+      // cleanup happens inside runLoad's closure
+    };
+  }, []);
+
+  function addDriver(newDriver) {
+    setDriverProfiles(function(prev) { return { ...prev, [newDriver.id]: newDriver }; });
+    if (!DRIVERS.find(function(d) { return d.id === newDriver.id; })) DRIVERS.push(newDriver);
+    dbUpsertDriverProfile(newDriver.id, newDriver);
+  }
+
+  function updateDriverProfile(driverId, fields) {
+    setDriverProfiles(function(prev) { return { ...prev, [driverId]: { ...prev[driverId], ...fields } }; });
+    var idx = DRIVERS.findIndex(function(d) { return d.id === driverId; });
+    if (idx >= 0) DRIVERS[idx] = { ...DRIVERS[idx], ...fields };
+    dbUpsertDriverProfile(driverId, fields);
+  }
+
+  // ── Clear all data for new day ────────────────────────────────────────────
+  function saveHistorySnapshot(currentOrders, currentExpenses) {
+    if (!currentOrders || currentOrders.length === 0) return;
+    var dateStr = new Date().toLocaleDateString("en-KW", { day:"numeric", month:"short", year:"numeric" });
+    var snap = { date: dateStr, timestamp: new Date().toISOString(), drivers: [] };
+
+    DRIVERS.forEach(function(d) {
+      var dOrds = currentOrders.filter(function(o) { return o.driverId === d.id; });
+      if (dOrds.length === 0) return;
+      var delivered  = dOrds.filter(function(o) { return o.status === "delivered"; });
+      var cancelled  = dOrds.filter(function(o) { return o.status === "cancelled"; });
+      var postponed  = dOrds.filter(function(o) { return o.status === "postponed"; });
+      var pending    = dOrds.filter(function(o) { return o.status === "pending"; });
+      var exchange   = dOrds.filter(function(o) { return isExchange(o.paymentType); });
+      var nonExDel   = delivered.filter(function(o) { return !isExchange(o.paymentType) && !isExchange(o.originalPaymentType); });
+      var cashCOD    = delivered.filter(function(o) { return (o.paymentType==="Cash"||o.paymentType==="COD") && !o.originalPaymentType; }).reduce(function(a,o) { return a+Number(o.total); }, 0);
+      var dExp       = (currentExpenses||[]).filter(function(e) { return e.driverId === d.id; });
+      var totalExp   = dExp.reduce(function(a,e) { return a+Number(e.amount); }, 0);
+      var comm       = calcCommission(nonExDel.length);
+      var expBreakdown = {};
+      dExp.forEach(function(e) { expBreakdown[e.type] = (expBreakdown[e.type]||0) + Number(e.amount); });
+
+      snap.drivers.push({
+        id: d.id, name: d.name, avatar: d.avatar,
+        totalAssigned: dOrds.length,
+        delivered: delivered.length,
+        cancelled: cancelled.length,
+        postponed: postponed.length,
+        pending: pending.length,
+        exchange: exchange.length,
+        nonExDelivered: nonExDel.length,
+        cashCollected: cashCOD,
+        commissionEarned: comm.earned,
+        commissionAmount: comm.amount,
+        vehicleExpenses: totalExp,
+        expenseBreakdown: expBreakdown,
+        netAmount: cashCOD + (comm.earned ? comm.amount : 0) - totalExp,
+        successRate: dOrds.length > 0 ? Math.round(delivered.length / dOrds.length * 100) : 0,
+      });
+    });
+
+    setHistory(function(prev) {
+      var updated = [snap, ...prev].slice(0, 90); // keep 90 days
+      lsSet(LS_KEYS.history, updated);
+      return updated;
+    });
+
+    // Also save to Supabase daily_history table if connected
+    var sb = getSupabase();
+    if (sb) {
+      sb.from("daily_history").insert({
+        id: uid(),
+        date: snap.date,
+        snapshot: JSON.stringify(snap),
+        created_at: snap.timestamp,
+      }).then(function() {}).catch(function() {});
+    }
+  }
+
+  function clearAllData() {
+    // Use a custom confirm since window.confirm is blocked in some environments
+    setClearConfirm(true);
+  }
+
+  function doClearAllData() {
+    setClearConfirm(false);
+    saveHistorySnapshot(orders, expenses);
+    setOrders([]); setTransfers([]); setAdminNotifs([]); setExpenses([]);
+    lsSet(LS_KEYS.orders, []); lsSet(LS_KEYS.transfers, []); lsSet(LS_KEYS.expenses, []);
+    // Clear from Supabase
+    var sb = getSupabase();
+    if (sb) {
+      sb.from("orders").delete().gte("created_at","1970-01-01").then(function() {});
+      sb.from("expenses").delete().gte("created_at","1970-01-01").then(function() {});
+      sb.from("transfers").delete().gte("created_at","1970-01-01").then(function() {});
+    }
+    setSaveStatus("Day cleared!");
+    setTimeout(function() { setSaveStatus(""); }, 2500);
+  }
+
+  function addOrders(newOrders) {
+    setOrders(prev => {
+      const existingIds = new Set(prev.map(o => o.invoiceNo));
+      const fresh = newOrders.filter(o => !existingIds.has(o.invoiceNo));
+      return [...prev, ...fresh];
+    });
+  }
+
+  function markScanned(idOrInvoice) {
+    setOrders(prev => prev.map(o =>
+      (o.id === idOrInvoice || o.invoiceNo === idOrInvoice)
+        ? { ...o, scanned:true, scannedAt: new Date().toISOString() }
+        : o
+    ));
+  }
+
+  function updateStatus(idOrInvoice, status, note, newPaymentType) {
+    let updatedOrder = null;
+    setOrders(prev => prev.map(o => {
+      if (o.id === idOrInvoice || o.invoiceNo === idOrInvoice) {
+        updatedOrder = { ...o, status, note, updatedAt: new Date().toISOString(),
+          ...(status==="delivered" ? { deliveredAt: new Date().toISOString() } : {}),
+          ...(newPaymentType ? { paymentType: newPaymentType, originalPaymentType: o.paymentType } : {}),
+        };
+        return updatedOrder;
+      }
+      return o;
+    }));
+    // Fire admin notification
+    setTimeout(() => {
+      if (!updatedOrder) return;
+      const driver = DRIVERS.find(d => d.id === updatedOrder.driverId);
+      const icon   = STATUS_CFG[status]?.icon || "📋";
+      setAdminNotifs(prev => [{
+        id:       uid(),
+        notifType: status,
+        orderId:  updatedOrder.invoiceNo,
+        customer: updatedOrder.customer,
+        store:    updatedOrder.store,
+        amount:   updatedOrder.total,
+        payment:  newPaymentType || updatedOrder.paymentType,
+        driver:   driver?.name || updatedOrder.driverId,
+        note:     note || "",
+        icon,
+        read:     false,
+        time:     new Date().toISOString(),
+      }, ...prev]);
+      playSound("notify");
+    }, 100);
+  }
+
+  function requestTransfer(order, fromDriverId, toDriverId, reason) {
+    setTransfers(prev => [...prev, {
+      id: Math.random().toString(36).slice(2,9),
+      order, fromDriverId, toDriverId, reason,
+      status: "pending", // pending | approved | rejected
+      createdAt: new Date().toISOString(),
+    }]);
+  }
+
+  function approveTransfer(transferId) {
+    const tr = transfers.find(t => t.id === transferId);
+    if (!tr) return;
+    // Reassign order to new driver
+    setOrders(prev => prev.map(o =>
+      (o.invoiceNo === tr.order.invoiceNo) ? { ...o, driverId: tr.toDriverId } : o
+    ));
+    setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status:"approved" } : t));
+  }
+
+  function rejectTransfer(transferId) {
+    setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status:"rejected" } : t));
+  }
+
+  return (
+    <>
+      <style>{FONT + "* { -webkit-tap-highlight-color:transparent; box-sizing:border-box; } ::-webkit-scrollbar { width:0; } @keyframes fadeIn { from{opacity:0;transform:translateX(-50%) translateY(-6px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }"}</style>
+      {!user && <LoginScreen onLogin={setUser} />}
+      {user?.role === "admin"  && <AdminApp  user={user} orders={orders} transfers={transfers} adminNotifs={adminNotifs} onMarkNotifRead={(id)=>setAdminNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n))} onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))} expenses={expenses} onAddExpense={(exp)=>setExpenses(p=>[...p,{...exp,id:uid(),createdAt:new Date().toISOString()}])} onOrdersAdd={addOrders} onStatusUpdate={updateStatus} onApproveTransfer={approveTransfer} onRejectTransfer={rejectTransfer} driverProfiles={driverProfiles} onUpdateDriver={updateDriverProfile} onAddDriver={addDriver} onClearData={clearAllData} saveStatus={saveStatus} dbConnected={dbConnected} syncing={syncing} clearConfirm={clearConfirm} onConfirmClear={doClearAllData} onCancelClear={function(){setClearConfirm(false);}} history={history} onLogout={() => setUser(null)} />}
+      {user?.role === "driver" && <DriverApp user={user} orders={orders} expenses={expenses} onAddExpense={(exp)=>setExpenses(p=>[...p,{...exp,driverId:user.id,id:uid(),createdAt:new Date().toISOString()}])} onScan={markScanned} onStatusUpdate={updateStatus} onRequestTransfer={requestTransfer} onLogout={() => setUser(null)} />}
+    </>
+  );
+}
