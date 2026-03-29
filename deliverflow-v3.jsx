@@ -1840,6 +1840,7 @@ function DriverOrderRow({ order, onTransfer, selected, onToggleSelect }) {
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
               <span style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
+              {(order.extraAmount > 0) && <span style={{ fontFamily:"Syne", color:"#EA580C", fontSize:11, fontWeight:700 }}>{"+"+fmt(order.extraAmount)}</span>}
               <span style={{ color:"rgba(255,255,255,.3)", fontSize:11 }}>{exp ? "^" : "v"}</span>
             </div>
           </div>
@@ -2038,7 +2039,7 @@ function DriverManualOrderForm({ driverId, onAdd }) {
   );
 }
 
-function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onAddOrder }) {
+function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onAddOrder, onEditOrder }) {
   const [statusModal, setStatusModal] = useState(null);
   const [filter,      setFilter]      = useState("collected");
   const [storeFilter, setStoreFilter] = useState("all");
@@ -2081,10 +2082,11 @@ function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, o
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", minHeight:0, position:"relative" }}>
       {statusModal && (
-        <StatusUpdateModal order={statusModal} onUpdate={function(id, status, note, newPaymentType) {
-          onStatusUpdate(id, status, note, newPaymentType);
+        <StatusUpdateModal order={statusModal} onUpdate={function(id, status, note, newPaymentType, newTotal, extraAmount) {
+          onStatusUpdate(id, status, note, newPaymentType, newTotal, extraAmount);
           const payMsg = newPaymentType ? "   Payment -> " + newPaymentType : "";
-          showToast((STATUS_CFG[status] ? STATUS_CFG[status].icon + " " : "") + status + payMsg);
+          const extraMsg = extraAmount > 0 ? "   +KD " + Number(extraAmount).toFixed(3) + " extra" : "";
+          showToast((STATUS_CFG[status] ? STATUS_CFG[status].icon + " " : "") + status + payMsg + extraMsg);
           setStatusModal(null);
         }} onClose={function() { setStatusModal(null); }} />
       )}
@@ -2264,7 +2266,7 @@ function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, o
           }
           return (
             <div key={oid}>
-              <DeliveryOrderCard order={o} onUpdate={function() { setStatusModal(o); }} onOpenTransfer={onOpenTransfer} onRequestHelp={onRequestHelp} orderTags={orderTags} onSetTag={onSetTag} />
+              <DeliveryOrderCard order={o} onUpdate={function() { setStatusModal(o); }} onOpenTransfer={onOpenTransfer} onRequestHelp={onRequestHelp} orderTags={orderTags} onSetTag={onSetTag} onEditOrder={onEditOrder} />
             </div>
           );
         });
@@ -2328,9 +2330,68 @@ function TagButton({ invoiceNo, orderTags, onSetTag }) {
   );
 }
 
-function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag }) {
-  const [exp, setExp] = useState(false);
+function EditOrderModal({ order, onSave, onClose }) {
+  const [oo,    setOo]    = useState(order.onlineOrderNo || "");
+  const [name,  setName]  = useState(order.customer || "");
+  const [addr,  setAddr]  = useState(order.address || "");
+  const [phone, setPhone] = useState(order.phone || "");
+
+  function save() {
+    if (!name.trim()) return;
+    onSave(order.id || order.invoiceNo, {
+      onlineOrderNo: oo.trim(),
+      customer: name.trim(),
+      address:  addr.trim(),
+      phone:    phone.trim(),
+    });
+    onClose();
+  }
+
+  const inputStyle = { width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.25)", borderRadius:12, padding:"12px 14px", color:"#fff", fontFamily:"DM Sans", fontSize:14, outline:"none" };
+  const labelStyle = { fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:11, marginBottom:5, textTransform:"uppercase", letterSpacing:.5, display:"block" };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:9100, display:"flex", alignItems:"flex-end" }}>
+      <div style={{ width:"100%", background:"#0F1629", borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"85dvh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+          <div style={{ fontFamily:"Syne", color:"#fff", fontSize:17, fontWeight:700 }}>✏️ Edit Order Details</div>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,.6)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>✕</button>
+        </div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:20 }}>
+          #{order.invoiceNo} · {order.store}
+        </div>
+
+        {[
+          ["Online Order No", oo,    setOo,    "text", "e.g. 75869 or 26941"],
+          ["Customer Name",   name,  setName,  "text", "Customer full name"],
+          ["Address",         addr,  setAddr,  "text", "Delivery address"],
+          ["Mobile Number",   phone, setPhone, "tel",  "+965 XXXX XXXX"],
+        ].map(([label, val, setter, type, ph]) => (
+          <div key={label} style={{ marginBottom:14 }}>
+            <label style={labelStyle}>{label}</label>
+            <input type={type} value={val} onChange={e => setter(e.target.value)}
+              placeholder={ph} style={inputStyle} />
+          </div>
+        ))}
+
+        <div style={{ display:"flex", gap:10, marginTop:8 }}>
+          <button onClick={onClose} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"DM Sans", cursor:"pointer" }}>
+            Cancel
+          </button>
+          <button onClick={save} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onEditOrder }) {
+  const [exp,      setExp]      = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const isActive    = order.scanned && order.status === "pending";
   const isCancelled = order.status === "cancelled";
   const isPostponed = order.status === "postponed";
@@ -2405,6 +2466,9 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           <span style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
+          {(order.extraAmount > 0) && (
+            <span style={{ fontFamily:"Syne", color:"#EA580C", fontSize:11, fontWeight:700, background:"rgba(234,88,12,.12)", borderRadius:20, padding:"2px 8px", border:"1px solid rgba(234,88,12,.3)" }}>+{fmt(order.extraAmount)} extra</span>
+          )}
           <span style={{ fontFamily:"DM Sans", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
           {isExchangeOrder && (
             <span style={{ background:"rgba(107,114,128,.2)", color:"#9CA3AF", borderRadius:20, padding:"2px 10px", fontSize:11, fontFamily:"Syne", fontWeight:700, border:"1px solid rgba(107,114,128,.3)" }}>Exchange</span>
@@ -2505,7 +2569,21 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
               Request Transfer to Another Driver
             </button>
           )}
+
+          {/* Edit Order Details */}
+          <button onClick={function(e) { e.stopPropagation(); setEditOpen(true); }}
+            style={{ width:"100%", marginTop:8, background:"rgba(0,212,255,.08)", border:"1px solid rgba(0,212,255,.25)", borderRadius:12, padding:11, color:"#00D4FF", fontFamily:"Syne", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+            ✏️ Edit Order Details
+          </button>
         </div>
+      )}
+
+      {editOpen && (
+        <EditOrderModal
+          order={order}
+          onSave={function(id, fields) { if (onEditOrder) onEditOrder(id, fields); }}
+          onClose={function() { setEditOpen(false); }}
+        />
       )}
     </div>
   );
@@ -2529,6 +2607,7 @@ function StatusUpdateModal({ order, onUpdate, onClose }) {
   const [actualAmt,    setActualAmt]   = useState("");
   const [partialReason,setPartialReason] = useState("");
   const [otherReason,  setOtherReason]  = useState("");
+  const [extraAmt,     setExtraAmt]    = useState("");
 
   const isCOD   = (order.paymentType === "Cash" || order.paymentType === "COD") && !isExchange(order.paymentType);
   const total   = Number(order.total);
@@ -2554,7 +2633,11 @@ function StatusUpdateModal({ order, onUpdate, onClose }) {
       var reasonText = partialReason === "Other" ? (otherReason || "Other") : partialReason;
       fullNote = (note ? note + " | " : "") + "Partial delivery: KD " + actualNum.toFixed(3) + " of KD " + total.toFixed(3) + (reasonText ? " (" + reasonText + ")" : "");
     }
-    onUpdate(order.id||order.invoiceNo, status, fullNote, finalPayment || null, (partialMode && actualNum > 0 && actualNum < total) ? actualNum : null);
+    var extraNum = parseFloat(extraAmt) || 0;
+    if (extraNum > 0) {
+      fullNote = (fullNote ? fullNote + " | " : "") + "Extra collected: KD " + extraNum.toFixed(3);
+    }
+    onUpdate(order.id||order.invoiceNo, status, fullNote, finalPayment || null, (partialMode && actualNum > 0 && actualNum < total) ? actualNum : null, extraNum > 0 ? extraNum : null);
   }
 
   return (
@@ -2692,6 +2775,24 @@ function StatusUpdateModal({ order, onUpdate, onClose }) {
                       placeholder="Describe the reason..."
                       style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(239,68,68,.3)", borderRadius:8, padding:"8px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:12, outline:"none", marginTop:6 }} />
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Extra Amount — for all delivered orders */}
+          {status === "delivered" && (
+            <div style={{ background:"rgba(255,165,0,.06)", border:"1px solid rgba(255,165,0,.2)", borderRadius:14, padding:14, marginBottom:14 }}>
+              <div style={{ fontFamily:"Syne", color:"#FFA500", fontSize:13, fontWeight:700, marginBottom:4 }}>➕ Extra Amount to Collect?</div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:10 }}>
+                e.g. delivery charge, extra items not in original order
+              </div>
+              <input type="number" value={extraAmt} onChange={function(e){ setExtraAmt(e.target.value); }}
+                placeholder="0.000 KD  (leave blank if none)" step="0.001" min="0"
+                style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,165,0,.3)", borderRadius:10, padding:"10px 14px", color:"#FFA500", fontFamily:"Syne", fontSize:15, fontWeight:700, outline:"none", marginBottom: (parseFloat(extraAmt)||0)>0 ? 8 : 0 }} />
+              {(parseFloat(extraAmt)||0) > 0 && (
+                <div style={{ fontFamily:"DM Sans", color:"#FFA500", fontSize:12 }}>
+                  Total with extra: <strong>KD {(Number(order.total) + (parseFloat(extraAmt)||0)).toFixed(3)}</strong>
                 </div>
               )}
             </div>
@@ -3065,13 +3166,18 @@ function OrderRow({ o, i, statusBg, statusColor }) {
       <span style={{ color:"#94A3B8", minWidth:56 }}>{o.date||""}</span>
       <span style={{ fontWeight:700, minWidth:70, color:"#0F172A" }}>{"#"+o.invoiceNo}</span>
       <span style={{ flex:2, minWidth:100 }}>{o.customer}</span>
-      <span style={{ minWidth:60 }}>{o.onlineOrderNo||"-"}</span>
+      <span style={{ minWidth:60, fontWeight:o.onlineOrderNo?700:400, color:o.onlineOrderNo?"#0F172A":"#94A3B8" }}>{o.onlineOrderNo||"-"}</span>
       <span style={{ fontWeight:700, minWidth:72, color:"#0F172A" }}>{"KD "+Number(o.total).toFixed(3)}</span>
+      {(o.extraAmount > 0) && <span style={{ fontWeight:700, minWidth:60, color:"#EA580C" }}>{"+KD "+Number(o.extraAmount).toFixed(3)}</span>}
       <span style={{ minWidth:80, color:"#475569" }}>{o.paymentType}</span>
       <span style={{ background:statusBg[st], color:statusColor[st], borderRadius:20, padding:"1px 8px", fontWeight:600, whiteSpace:"nowrap" }}>
         {isEx?"Exchange":o.status.charAt(0).toUpperCase()+o.status.slice(1)}
       </span>
-      {o.note && <span style={{ color:"#94A3B8", fontStyle:"italic", flex:1 }}>{o.note}</span>}
+      {(o.note || o.extraAmount > 0) && (
+        <span style={{ color:"#94A3B8", fontStyle:"italic", flex:1 }}>
+          {o.extraAmount > 0 ? "⚡ Extra: KD "+Number(o.extraAmount).toFixed(3)+(o.note?" | "+o.note:"") : o.note}
+        </span>
+      )}
     </div>
   );
 }
@@ -3228,7 +3334,7 @@ function ReportPreview({ data, onClose }) {
         <div style={{ pageBreakBefore:"auto", marginTop:16 }}>
         <div style={{ fontFamily:"Syne", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Bill-wise Details</div>
         <div style={{ display:"flex", gap:8, background:"#0A0F1E", padding:"7px 10px", borderRadius:"10px 10px 0 0", marginBottom:2 }}>
-          {["Date","Invoice No","Customer","OO No.","Total","Payment","Status","Note"].map(h=>(
+          {["Date","Invoice No","Customer","OO No.","Total","Extra","Payment","Status","Note"].map(h=>(
             <span key={h} style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:10, fontWeight:600, textTransform:"uppercase", flex:h==="Customer"||h==="Note"?2:1, minWidth:0 }}>{h}</span>
           ))}
         </div>
@@ -3247,7 +3353,9 @@ function ReportPreview({ data, onClose }) {
           const sVisa  = sDelOrds.filter(o=>o.paymentType==="VISA/Mastercard").reduce((a,o)=>a+Number(o.total),0);
           const sLink  = sDelOrds.filter(o=>o.paymentType==="GoCollect"||o.paymentType?.includes("Link")||o.paymentType?.includes("WAMD")||o.paymentType?.includes("Trikart Link")).reduce((a,o)=>a+Number(o.total),0);
           const sSplit = sDelOrds.filter(o=>o.paymentType?.startsWith("Split")).reduce((a,o)=>a+Number(o.total),0);
+          const sExtra = allStoreOrds.filter(o=>o.extraAmount>0).reduce((a,o)=>a+Number(o.extraAmount||0),0);
           const sTotal = sCash+sKnet+sDeema+sTabby+sVisa+sLink+sSplit;
+          const sTotalWithExtra = sTotal + sExtra;
           return (
             <div key={store} style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:10, overflow:"hidden", marginBottom:10, pageBreakInside:"avoid" }}>
               {/* Store header */}
@@ -3295,9 +3403,11 @@ function ReportPreview({ data, onClose }) {
                   {sVisa>0  && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"#DC2626" }}>VISA/MC: <strong>KD {sVisa.toFixed(3)}</strong></span>}
                   {sLink>0  && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"#0891B2" }}>Link: <strong>KD {sLink.toFixed(3)}</strong></span>}
                   {sSplit>0 && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"#6B7280" }}>Split: <strong>KD {sSplit.toFixed(3)}</strong></span>}
+                  {sExtra>0 && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"#EA580C" }}>⚡ Extra: <strong>KD {sExtra.toFixed(3)}</strong></span>}
                 </div>
                 <div style={{ fontFamily:"Syne", fontSize:12, fontWeight:700, color:"#0F172A", textAlign:"right" }}>
-                  Store Total (Delivered): KD {sTotal.toFixed(3)}
+                  Store Total (Delivered): KD {sTotalWithExtra.toFixed(3)}
+                  {sExtra>0 && <span style={{ fontFamily:"DM Sans", fontSize:10, color:"#EA580C", marginLeft:6, fontWeight:400 }}>(incl. KD {sExtra.toFixed(3)} extra)</span>}
                 </div>
               </div>
             </div>
@@ -3593,6 +3703,7 @@ function DriverReportTab({ orders, driverId, expenses, onOpenReport }) {
       { label:"Trikart Link",        amt: nonExDel.filter(o=>o.paymentType?.includes("Trikart Link")).reduce((a,o)=>a+Number(o.total),0) },
       { label:"WAMD (Link)",         amt: nonExDel.filter(o=>o.paymentType?.includes("WAMD")).reduce((a,o)=>a+Number(o.total),0) },
       { label:"Split (Cash+Link)",   amt: nonExDel.filter(o=>o.paymentType?.startsWith("Split")).reduce((a,o)=>a+Number(o.total),0) },
+      { label:"⚡ Extra Collected",   amt: myOrders.filter(o=>o.extraAmount>0).reduce((a,o)=>a+Number(o.extraAmount||0),0) },
     ].filter(r => r.amt > 0);
     return { drvName, myOrders, deliveredOrds, cancelledOrds, postponedOrds, pendingOrds, exchangeOrds, nonExDel, orderedStores, collectionRows, comm, myExpenses, totalExpAmt, successRate: myOrders.length>0?Math.round(deliveredOrds.length/myOrders.length*100):0 };
   }
@@ -4724,11 +4835,12 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
           <DateFilterBar orders={allMyOrders} selectedDate={selectedDate} onSetSelectedDate={onSetSelectedDate} />
         )}
         {tab==="delivery" && <DriverDeliveryTab orders={orders} driverId={user.id}
-          onStatusUpdate={(id,status,note,newPay) => { onStatusUpdate(id,status,note,newPay); showToast((STATUS_CFG[status].icon) + " " + (status),status==="delivered"?"success":"warn"); }}
+          onStatusUpdate={(id,status,note,newPay,newTotal,extraAmount) => { onStatusUpdate(id,status,note,newPay,newTotal,extraAmount); showToast((STATUS_CFG[status].icon) + " " + (status),status==="delivered"?"success":"warn"); }}
           onOpenTransfer={setTransferOrder}
           onRequestHelp={function(order,key,label){ onRequestHelp && onRequestHelp(order,key,label,user); }}
           orderTags={orderTags} onSetTag={onSetTag}
           onAddOrder={onAddOrder}
+          onEditOrder={updateOrderDetails}
         />}
         {tab==="report"    && <DriverReportTab   orders={myOrders} driverId={user.id} expenses={myExpenses} onOpenReport={(data) => { setReportData(data); setTab("preview"); }} />}
         {tab==="preview"   && reportData && <ReportPreview data={reportData} onClose={() => setTab("report")} />}
@@ -5597,7 +5709,7 @@ setOrders(function(prev) {
     });
   }
 
-  function updateStatus(idOrInvoice, status, note, newPaymentType, newTotal) {
+  function updateStatus(idOrInvoice, status, note, newPaymentType, newTotal, extraAmount) {
     let updatedOrder = null;
     setOrders(function(prev) {
       const updated = prev.map(function(o) {
@@ -5606,6 +5718,7 @@ setOrders(function(prev) {
             ...(status==="delivered" ? { deliveredAt: new Date().toISOString() } : {}),
             ...(newPaymentType ? { paymentType: newPaymentType, originalPaymentType: o.paymentType } : {}),
             ...(typeof newTotal === "number" && newTotal > 0 ? { total: newTotal, originalTotal: o.total } : {}),
+            ...(typeof extraAmount === "number" && extraAmount > 0 ? { extraAmount } : {}),
           };
           // Save to Supabase immediately
           dbUpdateOrder(updatedOrder.id, {
@@ -5680,6 +5793,30 @@ setOrders(function(prev) {
         created_at: new Date().toISOString(),
       }).then(function(){}).catch(function(){});
     }
+  }
+
+  function updateOrderDetails(idOrInvoice, fields) {
+    setOrders(function(prev) {
+      const updated = prev.map(function(o) {
+        if (o.id === idOrInvoice || o.invoiceNo === idOrInvoice) {
+          const patched = { ...o, ...fields };
+          const sb = getSupabase && getSupabase();
+          if (sb && o.id) {
+            const row = { updated_at: new Date().toISOString() };
+            if (fields.onlineOrderNo !== undefined) row.online_order_no = fields.onlineOrderNo;
+            if (fields.customer      !== undefined) row.customer         = fields.customer;
+            if (fields.address       !== undefined) row.address          = fields.address;
+            if (fields.phone         !== undefined) row.phone            = fields.phone;
+            sb.from("orders").update(row).eq("id", o.id)
+              .then(function(){}, function(e){ console.warn("edit order err", e); });
+          }
+          return patched;
+        }
+        return o;
+      });
+      lsSet(LS_KEYS.orders, updated);
+      return updated;
+    });
   }
 
   function removeOrder(idOrInvoice) {
