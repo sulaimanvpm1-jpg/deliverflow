@@ -2052,7 +2052,7 @@ function DriverManualOrderForm({ driverId, onAdd }) {
   );
 }
 
-function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onAddOrder, onEditOrder }) {
+function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onAddOrder, onEditOrder, selectedDate }) {
   const [statusModal, setStatusModal] = useState(null);
   const [filter,      setFilter]      = useState("collected");
   const [storeFilter, setStoreFilter] = useState("all");
@@ -2072,7 +2072,17 @@ function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, o
   function showToast(msg) { setToast({ msg, ttype:"success" }); setTimeout(function() { setToast(null); }, 3000); }
 
   const _allMine = orders.filter(function(o) { return o.driverId === driverId; });
-  const myOrders = _allMine; // show all - status tabs handle separation
+  const myOrders = selectedDate
+    ? _allMine.filter(function(o) {
+        const _d = o.assignedDate || o.date || "";
+        const _p = _d.split("/");
+        if (_p.length === 3) {
+          const _dt = new Date(parseInt(_p[2]), parseInt(_p[1]) - 1, parseInt(_p[0]));
+          return _dt.toDateString() === selectedDate;
+        }
+        return true;
+      })
+    : _allMine;
   const myStores   = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.store; }).filter(Boolean))));
   const myPayments = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.paymentType; }).filter(function(p) { return p && p !== "Exchange"; }))));
 
@@ -4859,6 +4869,7 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
           orderTags={orderTags} onSetTag={onSetTag}
           onAddOrder={onAddOrder}
           onEditOrder={onEditOrder}
+          selectedDate={selectedDate}
         />}
         {tab==="report"    && <DriverReportTab   orders={myOrders} driverId={user.id} expenses={myExpenses} onOpenReport={(data) => { setReportData(data); setTab("preview"); }} />}
         {tab==="preview"   && reportData && <ReportPreview data={reportData} onClose={() => setTab("report")} />}
