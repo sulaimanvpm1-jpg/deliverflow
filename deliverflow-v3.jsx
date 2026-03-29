@@ -5124,8 +5124,19 @@ window.App = function App() {
       var dbOrders = results[0], dbExpenses = results[1], dbTransfers = results[2], dbProfiles = results[3];
       // Only use DB data if it has records; otherwise keep localStorage cache
       if (dbOrders && dbOrders.length > 0) {
-        // Load all orders from DB — no date filtering, day filter handles display
-        setOrders(dbOrders); lsSet(LS_KEYS.orders, dbOrders);
+        // Merge DB orders with local cache — preserve locally-correct onlineOrderNo
+        // if DB has empty value (can happen from old broken parser uploads)
+        const localOrders = lsGet(LS_KEYS.orders, []);
+        const localMap = {};
+        localOrders.forEach(o => { if (o.invoiceNo) localMap[o.invoiceNo] = o; });
+        const mergedDbOrders = dbOrders.map(o => {
+          const loc = localMap[o.invoiceNo];
+          if (loc && loc.onlineOrderNo && !o.onlineOrderNo) {
+            return { ...o, onlineOrderNo: loc.onlineOrderNo };
+          }
+          return o;
+        });
+        setOrders(mergedDbOrders); lsSet(LS_KEYS.orders, mergedDbOrders);
       }
       // Note: if DB is empty, we do NOT push localStorage back
       if (dbExpenses && dbExpenses.length > 0)  { setExpenses(dbExpenses);   lsSet(LS_KEYS.expenses, dbExpenses); }
@@ -5164,7 +5175,7 @@ window.App = function App() {
             fixedCustomer = "Unknown";
           }
           var updated = {
-            id: r.id, invoiceNo: r.invoice_no, onlineOrderNo: fixedOO,
+            id: r.id, invoiceNo: r.invoice_no, onlineOrderNo: fixedOO || (exists?.onlineOrderNo) || "",
             date: r.date, assignedDate: (function(){
             if (r.assigned_date) return r.assigned_date;
             if (r.updated_at) { var d=new Date(r.updated_at); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); }
