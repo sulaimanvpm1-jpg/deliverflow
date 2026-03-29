@@ -1403,7 +1403,20 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
   const [tab, setTab]                   = useState("scan");
   const [bulkSelected, setBulkSelected] = useState(new Set());
   const [removeMode, setRemoveMode]       = useState(false);
-  const myOrders  = orders.filter(o => o.driverId === driverId);
+  const _today = new Date().toDateString();
+  const _allMine = orders.filter(o => o.driverId === driverId);
+  const myOrders = _allMine.filter(function(o) {
+    // Show all pending (unscanned or scanned-not-delivered) regardless of date
+    if (o.status === "pending") return true;
+    // Show non-pending only if assigned today
+    const d = o.assignedDate || o.date || "";
+    const p = d.split("/");
+    if (p.length === 3) {
+      const dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+      return dt.toDateString() === _today;
+    }
+    return true;
+  });
   const allOrders = orders; // to look up other drivers' orders
   const unscanned = myOrders.filter(o => !o.scanned && o.status === "pending");
   const scanned   = myOrders.filter(o => o.scanned);
@@ -2058,7 +2071,8 @@ function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, o
 
   function showToast(msg) { setToast({ msg, ttype:"success" }); setTimeout(function() { setToast(null); }, 3000); }
 
-  const myOrders  = orders.filter(function(o) { return o.driverId === driverId; });
+  const _allMine = orders.filter(function(o) { return o.driverId === driverId; });
+  const myOrders = _allMine; // show all - status tabs handle separation
   const myStores   = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.store; }).filter(Boolean))));
   const myPayments = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.paymentType; }).filter(function(p) { return p && p !== "Exchange"; }))));
 
@@ -4737,9 +4751,13 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
 }
 
 /*  Driver App  */
-function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDeleteExpense, onScan, onStatusUpdate, onLogout, onRequestTransfer, onRemoveOrder, onRequestHelp, orderTags, onSetTag, upcomingCount, onAddOrder, selectedDate, onSetSelectedDate }) {
+function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDeleteExpense, onScan, onStatusUpdate, onLogout, onRequestTransfer, onRemoveOrder, onRequestHelp, orderTags, onSetTag, upcomingCount, onAddOrder, selectedDate, onSetSelectedDate, onEditOrder }) {
   // Wrapper: driver manual orders go through addOrders but also mark as scanned
   const [tab, setTab]               = useState("warehouse");
+  // Shim so updateOrderDetails is always in scope
+  function updateOrderDetails(idOrInvoice, fields) {
+    if (onEditOrder) return onEditOrder(idOrInvoice, fields);
+  }
   const [toast, setToast]           = useState(null);
   const [transferOrder, setTransferOrder] = useState(null);
   const [reportData, setReportData] = useState(null);
@@ -4840,7 +4858,7 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
           onRequestHelp={function(order,key,label){ onRequestHelp && onRequestHelp(order,key,label,user); }}
           orderTags={orderTags} onSetTag={onSetTag}
           onAddOrder={onAddOrder}
-          onEditOrder={updateOrderDetails}
+          onEditOrder={onEditOrder}
         />}
         {tab==="report"    && <DriverReportTab   orders={myOrders} driverId={user.id} expenses={myExpenses} onOpenReport={(data) => { setReportData(data); setTab("preview"); }} />}
         {tab==="preview"   && reportData && <ReportPreview data={reportData} onClose={() => setTab("report")} />}
@@ -5865,7 +5883,7 @@ setOrders(function(prev) {
       {user?.role === "admin"  && <AdminApp  user={user} orders={orders} transfers={transfers} adminNotifs={adminNotifs} onMarkNotifRead={(id)=>setAdminNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n))} onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))} expenses={expenses} onAddExpense={function(exp){ const e={...exp,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }} onOrdersAdd={addOrders} onStatusUpdate={updateStatus} onApproveTransfer={approveTransfer} onRejectTransfer={rejectTransfer} driverProfiles={driverProfiles} onUpdateDriver={updateDriverProfile} onAddDriver={addDriver} onClearData={clearAllData} onClearCollected={clearCollected} onRemoveOrderAdmin={removeOrder} orderTags={orderTags} onSetTag={setTag} upcomingTotal={upcomingTotal} onSetUpcomingTotal={setUpcomingTotal} saveStatus={saveStatus} dbConnected={dbConnected} syncing={syncing} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} clearConfirm={clearConfirm} onConfirmClear={doClearAllData} onCancelClear={function(){setClearConfirm(false);}} history={history} passwords={passwords} onSetPassword={function(id,pwd){setPasswords(function(prev){var n={...prev};n[id]=pwd;return n;});}} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
       {user?.role === "driver" && <DriverApp user={user} orders={orders} expenses={expenses} onAddExpense={function(exp){ const e={...exp,driverId:user.id,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }}
           onUpdateExpense={function(id,fields){ setExpenses(function(p){ var n=p.map(function(e){ return e.id===id?{...e,...fields}:e; }); lsSet(LS_KEYS.expenses,n); return n; }); dbUpdateExpense(id,fields); }}
-          onDeleteExpense={function(id){ setExpenses(function(p){ var n=p.filter(function(e){ return e.id!==id; }); lsSet(LS_KEYS.expenses,n); return n; }); dbDeleteExpense(id); }} onScan={markScanned} onStatusUpdate={updateStatus} onRequestTransfer={requestTransfer} onRemoveOrder={removeOrder} onRequestHelp={requestHelp} orderTags={orderTags} onSetTag={setTag} upcomingCount={upcomingTotal} onAddOrder={addOrders} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
+          onDeleteExpense={function(id){ setExpenses(function(p){ var n=p.filter(function(e){ return e.id!==id; }); lsSet(LS_KEYS.expenses,n); return n; }); dbDeleteExpense(id); }} onScan={markScanned} onStatusUpdate={updateStatus} onEditOrder={updateOrderDetails} onRequestTransfer={requestTransfer} onRemoveOrder={removeOrder} onRequestHelp={requestHelp} orderTags={orderTags} onSetTag={setTag} upcomingCount={upcomingTotal} onAddOrder={addOrders} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
     </>
   );
 }
