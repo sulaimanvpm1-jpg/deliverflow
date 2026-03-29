@@ -557,6 +557,23 @@ function parseSAPDeliveryText(rawText) {
           i++;
           // Skip trailing Basic/Terms/Cash words
           while (i < tokens.length && /^(?:Basic|Payment|Terms|Cash)$/i.test(tokens[i])) i++;
+          // Address comes AFTER payment in this SAP PDF format — read it now
+          var addrGuard = 0;
+          while (i < tokens.length && addrGuard < 40) {
+            addrGuard++;
+            var aTok = tokens[i];
+            if (/^Customer\s*:?\s*$/i.test(aTok)) break;
+            if (/^(?:ReStore|Trikart|Webstore)/i.test(aTok)) break;
+            if (/^\d{7}$/.test(aTok)) break;
+            if (/^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Building|Floor|Block|Office|Kuwait)$/i.test(aTok)) { i++; continue; }
+            if (/^(?:Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date)$/i.test(aTok)) { i++; continue; }
+            if (/^\d{1,2}:\d{2}/.test(aTok)) { i++; continue; }
+            if (/^\d+\/\d+$/.test(aTok)) { i++; continue; }
+            if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(aTok)) { i++; continue; }
+            if (/^(?:Page:|Printed\s|Printed by|Printed on)/i.test(aTok)) { i++; continue; }
+            addrTokens.push(aTok);
+            i++;
+          }
           break;
         }
 
@@ -586,7 +603,7 @@ function parseSAPDeliveryText(rawText) {
       const cleanAddrTokens = addrTokens.filter(function(t) {
         if (!t) return false;
         if (JUNK_RE.test(t)) return false;
-        if (/Printed|SAP Business|Business One/i.test(t)) return false;
+        if (/Printed|SAP Business|Business One|Page:/i.test(t)) return false;
         if (/^\d{1,2}:\d{2}/.test(t)) return false;
         if (/^\d+\/\d+$/.test(t)) return false;
         return true;
@@ -596,15 +613,16 @@ function parseSAPDeliveryText(rawText) {
       const addrParts = [];
       for (let ai = 1; ai < cleanAddrTokens.length; ai++) {
         const at = cleanAddrTokens[ai];
-        if (/^[+\d][\d\s\-()]{6,}$/.test(at.replace(/\s/g, ""))) {
-          phone = at;
+        const _atPhone = at.replace(/^T\s*:\s*/i, '').trim();
+        if (/^[+\d][\d\s\-()]{6,}$/.test(_atPhone.replace(/\s/g, ""))) {
+          if (!phone) phone = _atPhone;
         } else {
           addrParts.push(at);
         }
       }
       // Clean prefixes from customer and address
       const cleanCustomer = customer
-        .replace(/^(?:Address|Name|Customer)\s*:/i, "").trim() || "Unknown";
+        .replace(/^(?:Address|Name|Customer|T)\s*:/i, "").trim() || "Unknown";
       const cleanAddress = addrParts
         .map(a => a.replace(/^(?:Address|Location|Block|Street|Building|Floor|Area|City)\s*:/i, "").trim())
         .filter(function(a){ return a && !/^[A-Z]{2}$/.test(a); })
