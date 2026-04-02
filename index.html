@@ -1,7 +1,10 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- build=1775145786 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
   <title>DeliverFlow - AMTEL TELECOM</title>
   <meta name="theme-color" content="#0A0F1E"/>
@@ -38,7 +41,9 @@ try {
   ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(window.App));
   document.getElementById("loading").style.display = "none";
 } catch(e) {
-  document.getElementById("loading").innerHTML = '<div style="padding:24px;color:#EF4444;font-size:12px;word-break:break-all">Error: '+e.message+'</div>';
+  var d=document.getElementById("loading");
+  d.style.display='flex';
+  d.innerHTML='<div style="padding:24px;color:#EF4444;font-family:monospace;font-size:13px;word-break:break-all;max-width:90vw"><b>App Error:</b><br>'+e.message+'<br><br><small>'+e.stack+'</small></div>';
 }
   </script>
 </body>
