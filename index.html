@@ -41,8 +41,6 @@
 
   <script>
     // ── Load the JSX from your GitHub repo and compile it with Babel ──────────
-    // IMPORTANT: Replace this URL with your actual GitHub raw file URL.
-    // Format: https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/deliverflow-v3.jsx
     var JSX_URL = "https://raw.githubusercontent.com/sulaimanvpm1-jpg/deliverflow/main/deliverflow-v3.jsx";
 
     fetch(JSX_URL + "?t=" + Date.now()) // cache-bust so latest version always loads
@@ -52,10 +50,27 @@
       })
       .then(function(jsxCode) {
         try {
+          // Strip ES module import statements — React is already loaded globally
+          // Also inject hooks as globals so destructured imports work
+          var cleaned = jsxCode
+            .replace(/^import\s+React[^\n]*/gm, "")
+            .replace(/^import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/gm, "")
+            .replace(/^import\s+[^\n]+from\s+['"][^'"]+['"]\s*;?/gm, "");
+
+          // Prepend global hook aliases so code using useState, useEffect etc works
+          var preamble = [
+            "var useState = React.useState;",
+            "var useEffect = React.useEffect;",
+            "var useRef = React.useRef;",
+            "var useCallback = React.useCallback;",
+            "var useMemo = React.useMemo;",
+            "var useContext = React.useContext;",
+            "var useReducer = React.useReducer;",
+          ].join("\n");
+
           // Compile JSX → plain JS using Babel
-          var compiled = Babel.transform(jsxCode, {
+          var compiled = Babel.transform(preamble + "\n" + cleaned, {
             presets: ["react"],
-            plugins: []
           }).code;
 
           // Execute the compiled code
