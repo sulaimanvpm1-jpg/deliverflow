@@ -4929,6 +4929,7 @@ const LS_KEYS = {
   session: "df_session",
   passwords: "df_passwords",
   notifs: "df_admin_notifs",
+  seenStatuses: "df_seen_statuses", // tracks invoiceNo+status pairs already notified
 };
 function lsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -5296,6 +5297,59 @@ window.App = function App() {
           return o;
         });
         setOrders(mergedDbOrders); lsSet(LS_KEYS.orders, mergedDbOrders);
+
+        // ── Missed-notification recovery ─────────────────────────────────────
+        // Any order whose status changed to delivered/cancelled/postponed while
+        // the admin was offline will not have fired a Realtime event. We detect
+        // those by comparing DB statuses against a "seen" set stored in localStorage.
+        var seenStatuses = lsGet(LS_KEYS.seenStatuses, {}); // { "invoiceNo:status": true }
+        var missedNotifs = [];
+        var ALERT_STATUSES = ["delivered", "cancelled", "postponed"];
+        mergedDbOrders.forEach(function(o) {
+          if (!ALERT_STATUSES.includes(o.status)) return;
+          var key = o.invoiceNo + ":" + o.status;
+          if (seenStatuses[key]) return; // already notified
+          // Check if it's already in the existing notifs list
+          var existingNotifs = lsGet(LS_KEYS.notifs, []);
+          var alreadyInNotifs = existingNotifs.some(function(n) {
+            return n.orderId === o.invoiceNo && n.notifType === o.status;
+          });
+          if (alreadyInNotifs) {
+            seenStatuses[key] = true; // mark as seen so we skip next time
+            return;
+          }
+          // This status change was missed — generate a notification
+          var drvName = (DRIVERS.find(function(d){ return d.id === o.driverId; })||{}).name || o.driverId || "Driver";
+          missedNotifs.push({
+            id: uid(),
+            notifType: o.status,
+            orderId: o.invoiceNo,
+            onlineOrderNo: o.onlineOrderNo || "",
+            customer: o.customer,
+            store: o.store,
+            amount: o.total,
+            payment: o.paymentType,
+            driver: drvName,
+            note: o.note || "",
+            icon: STATUS_CFG[o.status]?.icon || "📋",
+            read: false,
+            time: o.updatedAt || o.deliveredAt || new Date().toISOString(),
+            recovered: true, // flag so we know it was recovered offline
+          });
+          seenStatuses[key] = true;
+        });
+        lsSet(LS_KEYS.seenStatuses, seenStatuses);
+        if (missedNotifs.length > 0) {
+          setAdminNotifs(function(prev) {
+            // Prepend missed notifs, newest first (by time)
+            missedNotifs.sort(function(a, b) { return new Date(b.time) - new Date(a.time); });
+            var combined = [...missedNotifs, ...prev];
+            lsSet(LS_KEYS.notifs, combined.slice(0, 100));
+            return combined.slice(0, 100);
+          });
+          playSound("notify");
+        }
+        // ─────────────────────────────────────────────────────────────────────
       }
       // Note: if DB is empty, we do NOT push localStorage back
       if (dbExpenses && dbExpenses.length > 0)  { setExpenses(dbExpenses);   lsSet(LS_KEYS.expenses, dbExpenses); }
@@ -5350,15 +5404,22 @@ window.App = function App() {
           if (payload.eventType === "UPDATE" && exists && exists.status !== r.status &&
               (r.status === "delivered" || r.status === "cancelled" || r.status === "postponed")) {
             var drvName = (DRIVERS.find(function(d){ return d.id===r.driver_id; })||{}).name || r.driver_id;
+            // Mark as seen to prevent duplicate recovery notification on next reload
+            var seenStatuses2 = lsGet(LS_KEYS.seenStatuses, {});
+            seenStatuses2[r.invoice_no + ":" + r.status] = true;
+            lsSet(LS_KEYS.seenStatuses, seenStatuses2);
             setAdminNotifs(function(prev2) {
-              return [{
+              var newNotif = {
                 id: uid(), notifType: r.status, orderId: r.invoice_no,
                 onlineOrderNo: r.online_order_no||"",
                 customer: r.customer, store: r.store, amount: Number(r.total),
                 payment: r.payment_type, driver: drvName, note: r.note||"",
                 icon: STATUS_CFG[r.status]?.icon||"", read: false,
                 time: new Date().toISOString(),
-              }, ...prev2];
+              };
+              var updated2 = [newNotif, ...prev2];
+              lsSet(LS_KEYS.notifs, updated2.slice(0, 100));
+              return updated2;
             });
             playSound("notify");
           }
@@ -5767,21 +5828,30 @@ setOrders(function(prev) {
       if (!updatedOrder) return;
       const driver = DRIVERS.find(d => d.id === updatedOrder.driverId);
       const icon   = STATUS_CFG[status]?.icon || "📋";
-      setAdminNotifs(prev => [{
-        id:       uid(),
-        notifType: status,
-        orderId:  updatedOrder.invoiceNo,
-        onlineOrderNo: updatedOrder.onlineOrderNo || "",
-        customer: updatedOrder.customer,
-        store:    updatedOrder.store,
-        amount:   updatedOrder.total,
-        payment:  newPaymentType || updatedOrder.paymentType,
-        driver:   driver?.name || updatedOrder.driverId,
-        note:     note || "",
-        icon,
-        read:     false,
-        time:     new Date().toISOString(),
-      }, ...prev]);
+      // Mark this invoiceNo+status as seen so recovery on reload won't duplicate it
+      var seenStatuses = lsGet(LS_KEYS.seenStatuses, {});
+      seenStatuses[updatedOrder.invoiceNo + ":" + status] = true;
+      lsSet(LS_KEYS.seenStatuses, seenStatuses);
+      setAdminNotifs(prev => {
+        var newNotif = {
+          id:       uid(),
+          notifType: status,
+          orderId:  updatedOrder.invoiceNo,
+          onlineOrderNo: updatedOrder.onlineOrderNo || "",
+          customer: updatedOrder.customer,
+          store:    updatedOrder.store,
+          amount:   updatedOrder.total,
+          payment:  newPaymentType || updatedOrder.paymentType,
+          driver:   driver?.name || updatedOrder.driverId,
+          note:     note || "",
+          icon,
+          read:     false,
+          time:     new Date().toISOString(),
+        };
+        var updated = [newNotif, ...prev];
+        lsSet(LS_KEYS.notifs, updated.slice(0, 100));
+        return updated;
+      });
       playSound("notify");
     }, 100);
   }
