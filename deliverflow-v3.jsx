@@ -770,6 +770,14 @@ setProgress("Found " + result.orders.length + " orders for " + (result.driverNam
 
 
 
+// ── API Key helpers — stored in localStorage, never in code ──────────────────
+function getApiKey() {
+  try { return localStorage.getItem("df_anthropic_key") || ""; } catch(e) { return ""; }
+}
+function saveApiKey(key) {
+  try { localStorage.setItem("df_anthropic_key", key.trim()); } catch(e) {}
+}
+
 // ── Label Scanner — shared by Admin & Driver manual order forms ──────────────
 function LabelScanner({ onExtracted, onError }) {
   const [scanning, setScanning] = useState(false);
@@ -778,22 +786,30 @@ function LabelScanner({ onExtracted, onError }) {
   function handleFile(e) {
     var file = e.target.files && e.target.files[0];
     if (!file) return;
+
+    var apiKey = getApiKey();
+    if (!apiKey) {
+      onError && onError("No API key set. Go to Admin → Vehicles tab → API Key Settings and enter your Anthropic API key.");
+      e.target.value = "";
+      return;
+    }
+
     setScanning(true);
     var reader = new FileReader();
     reader.onload = function(ev) {
       var base64 = ev.target.result.split(",")[1];
       var mediaType = file.type || "image/jpeg";
-      // Use allorigins CORS proxy to reach Anthropic API from browser
       fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-api-key": apiKey,
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
-          model: "claude-opus-4-5",
-          max_tokens: 1000,
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 500,
           messages: [{
             role: "user",
             content: [
@@ -805,7 +821,11 @@ function LabelScanner({ onExtracted, onError }) {
       })
       .then(function(res) {
         if (!res.ok) {
-          return res.text().then(function(t) { throw new Error("API " + res.status + ": " + t); });
+          return res.text().then(function(t) {
+            var msg = t;
+            try { msg = JSON.parse(t).error && JSON.parse(t).error.message || t; } catch(e2) {}
+            throw new Error(res.status === 401 ? "Invalid API key. Check Admin → Vehicles → API Key Settings." : "API error " + res.status + ": " + msg);
+          });
         }
         return res.json();
       })
@@ -817,15 +837,14 @@ function LabelScanner({ onExtracted, onError }) {
           var clean = text.replace(/```json|```/g, "").trim();
           var parsed = JSON.parse(clean);
           onExtracted(parsed);
-        } catch(e) {
+        } catch(ex) {
           onError && onError("Could not read label. Please enter details manually.");
         }
       })
       .catch(function(err) {
         setScanning(false);
         console.warn("LabelScanner error:", err);
-        // CORS block — fall back to manual extract from image shown to user
-        onError && onError("Scan failed — API not reachable from browser. Please enter details manually.");
+        onError && onError(err.message || "Scan failed. Please enter details manually.");
       });
     };
     reader.readAsDataURL(file);
@@ -4277,6 +4296,18 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
     ? DRIVERS.map(d => ({ ...d, ...(driverProfiles||{})[d.id] }))
     : DRIVERS;
 
+  // API Key state
+  const [apiKeyInput, setApiKeyInput] = useState(function(){ return getApiKey(); });
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  function handleSaveApiKey() {
+    saveApiKey(apiKeyInput);
+    setApiKeySaved(true);
+    setTimeout(function(){ setApiKeySaved(false); }, 2500);
+  }
+  var savedKey = getApiKey();
+  var keyPreview = savedKey ? (savedKey.slice(0,10) + "..." + savedKey.slice(-4)) : "";
+
   return (
     <div style={{ padding:"0 16px 80px" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
@@ -4284,6 +4315,37 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
         <button onClick={function(){ setShowAdd(true); }} style={{ background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:10, padding:"7px 14px", color:"#fff", fontFamily:"Syne", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Add Driver</button>
       </div>
       <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:14 }}>Manage drivers, view commission &amp; expenses</div>
+
+      {/* API Key Settings */}
+      <div style={{ background:"rgba(0,212,255,.05)", border:"1px solid rgba(0,212,255,.2)", borderRadius:14, padding:"14px", marginBottom:16 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+          <span style={{ fontSize:18 }}>🔑</span>
+          <div style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:13, fontWeight:700 }}>Label Scan API Key</div>
+          {savedKey && <span style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:20, padding:"2px 8px", fontFamily:"DM Sans", color:"#10B981", fontSize:10, fontWeight:600 }}>✓ Set</span>}
+        </div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:10 }}>
+          Required for 📷 Scan Label feature. Get your key from{" "}
+          <span style={{ color:"#00D4FF" }}>console.anthropic.com</span>
+          {savedKey && <span style={{ color:"rgba(255,255,255,.3)" }}>  Current: {keyPreview}</span>}
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <input
+            type={showApiKey ? "text" : "password"}
+            value={apiKeyInput}
+            onChange={function(e){ setApiKeyInput(e.target.value); setApiKeySaved(false); }}
+            placeholder="sk-ant-api03-..."
+            style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.25)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"monospace", fontSize:12, outline:"none", boxSizing:"border-box" }}
+          />
+          <button onClick={function(){ setShowApiKey(function(v){ return !v; }); }}
+            style={{ background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"9px 12px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:11, cursor:"pointer", flexShrink:0 }}>
+            {showApiKey ? "Hide" : "Show"}
+          </button>
+          <button onClick={handleSaveApiKey}
+            style={{ background: apiKeySaved ? "rgba(16,185,129,.2)" : "rgba(0,212,255,.15)", border: apiKeySaved ? "1px solid #10B981" : "1px solid rgba(0,212,255,.4)", borderRadius:10, padding:"9px 14px", color: apiKeySaved ? "#10B981" : "#00D4FF", fontFamily:"DM Sans", fontSize:12, fontWeight:700, cursor:"pointer", flexShrink:0 }}>
+            {apiKeySaved ? "✓ Saved!" : "Save"}
+          </button>
+        </div>
+      </div>
 
       {/* Login Credentials Summary */}
       <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.07)", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
