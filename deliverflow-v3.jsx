@@ -8,33 +8,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
  */
 
 const PULSE_CSS = `@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0.7} }`;
-
-const FONT = `
-@font-face {
-  font-family: 'Syne';
-  font-style: normal;
-  font-weight: 400 800;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/syne/v22/8vIS7w4qzmVxsWxjBZRjr0FKM_04uQ.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'DM Sans';
-  font-style: normal;
-  font-weight: 300 600;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/dmsans/v15/rP2tp2ywxg089UriI5-g4vlH9VoD8Cmcqbu6-K63ots.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'DM Sans';
-  font-style: italic;
-  font-weight: 300 600;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/dmsans/v15/rP2rp2ywxg089UriCZaIGDWCBl0O8dl6LpuDWg.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-`;
+const FONT = ``;
 
 /*  Drivers  */
 const DRIVERS = [
