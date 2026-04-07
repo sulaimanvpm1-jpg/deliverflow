@@ -783,25 +783,36 @@ function LabelScanner({ onExtracted, onError }) {
     reader.onload = function(ev) {
       var base64 = ev.target.result.split(",")[1];
       var mediaType = file.type || "image/jpeg";
+      // Use allorigins CORS proxy to reach Anthropic API from browser
       fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-opus-4-5",
           max_tokens: 1000,
           messages: [{
             role: "user",
             content: [
               { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-              { type: "text", text: "Extract order details from this delivery label image. Return ONLY a JSON object with these exact keys (use empty string if not found):\n{\n  \"store\": \"\",\n  \"invoiceNo\": \"\",\n  \"onlineOrderNo\": \"\",\n  \"customer\": \"\",\n  \"address\": \"\",\n  \"phone\": \"\",\n  \"total\": \"\",\n  \"paymentType\": \"\"\n}\nFor store: match to one of 'Trikart Online', 'Webstore Online', 'ReStore Online', or use the label's store name.\nFor paymentType: map 'Cash Basic' or 'Cash' to 'Cash', 'KNET' to 'KNET', etc.\nFor total: extract the numeric amount only (e.g. '19.900').\nFor invoiceNo: the barcode number or invoice/order number on the label.\nReturn only the raw JSON, no markdown, no explanation." }
+              { type: "text", text: "Extract order details from this delivery label image. Return ONLY a JSON object with these exact keys (use empty string if not found):\n{\n  \"store\": \"\",\n  \"invoiceNo\": \"\",\n  \"onlineOrderNo\": \"\",\n  \"customer\": \"\",\n  \"address\": \"\",\n  \"phone\": \"\",\n  \"total\": \"\",\n  \"paymentType\": \"\"\n}\nFor store: match to one of 'Trikart Online', 'Webstore Online', 'ReStore Online', or use the label's store name.\nFor paymentType: map 'Cash Basic' or 'Cash' to 'Cash', 'KNET' to 'KNET', etc.\nFor total: extract the numeric amount only (e.g. '19.900').\nFor invoiceNo: the barcode number printed below the barcode on the label.\nReturn only the raw JSON, no markdown, no explanation." }
             ]
           }]
         })
       })
-      .then(function(res) { return res.json(); })
+      .then(function(res) {
+        if (!res.ok) {
+          return res.text().then(function(t) { throw new Error("API " + res.status + ": " + t); });
+        }
+        return res.json();
+      })
       .then(function(data) {
         setScanning(false);
         var text = (data.content && data.content[0] && data.content[0].text) || "";
+        if (!text) { onError && onError("Could not read label. Please enter details manually."); return; }
         try {
           var clean = text.replace(/```json|```/g, "").trim();
           var parsed = JSON.parse(clean);
@@ -810,13 +821,14 @@ function LabelScanner({ onExtracted, onError }) {
           onError && onError("Could not read label. Please enter details manually.");
         }
       })
-      .catch(function() {
+      .catch(function(err) {
         setScanning(false);
-        onError && onError("Scan failed. Please enter details manually.");
+        console.warn("LabelScanner error:", err);
+        // CORS block — fall back to manual extract from image shown to user
+        onError && onError("Scan failed — API not reachable from browser. Please enter details manually.");
       });
     };
     reader.readAsDataURL(file);
-    // Reset so same file can be re-selected
     e.target.value = "";
   }
 
