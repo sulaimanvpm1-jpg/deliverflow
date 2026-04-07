@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build=2026040702 -->
+<!DOCTYPE html><!-- build=2026040703 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -12,11 +12,28 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="DeliverFlow"/>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=block">
-
   <style>
+    @font-face {
+      font-family: 'Syne';
+      font-style: normal;
+      font-weight: 400 800;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/syne/v22/8vIS7w4qzmVxsWxjBZRjr0FKM_04uQ.woff2) format('woff2');
+    }
+    @font-face {
+      font-family: 'DM Sans';
+      font-style: normal;
+      font-weight: 300 600;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/dmsans/v15/rP2tp2ywxg089UriI5-g4vlH9VoD8Cmcqbu6-K63ots.woff2) format('woff2');
+    }
+    @font-face {
+      font-family: 'DM Sans';
+      font-style: italic;
+      font-weight: 300 600;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/dmsans/v15/rP2rp2ywxg089UriCZaIGDWCBl0O8dl6LpuDWg.woff2) format('woff2');
+    }
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;background:#0A0F1E;overflow:hidden;font-family:'DM Sans',sans-serif;}
     #root{height:100%;width:100%;display:flex;justify-content:center}
@@ -76,18 +93,10 @@
 
           if (!window.App) throw new Error("App not defined after load");
 
-          var mount = function() {
-            ReactDOM.createRoot(document.getElementById("root")).render(
-              React.createElement(window.App)
-            );
-            document.getElementById("loading").style.display = "none";
-          };
-
-          if (document.fonts && document.fonts.ready) {
-            document.fonts.ready.then(mount);
-          } else {
-            mount();
-          }
+          ReactDOM.createRoot(document.getElementById("root")).render(
+            React.createElement(window.App)
+          );
+          document.getElementById("loading").style.display = "none";
 
         } catch(e) {
           document.getElementById("loading").innerHTML =
