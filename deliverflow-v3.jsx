@@ -9,7 +9,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 const PULSE_CSS = `@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0.7} }`;
 
-const FONT = `@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');`;
+// Fonts loaded via index.html <link> tags — @import in dynamic style tags is unreliable
+const FONT = ``;
 
 /*  Drivers  */
 const DRIVERS = [
