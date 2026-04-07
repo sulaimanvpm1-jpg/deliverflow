@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build=2026040705 -->
+<!DOCTYPE html><!-- build=2026040706 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -12,23 +12,19 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="DeliverFlow"/>
 
+  <!-- STEP 1: Load Syne + DM Sans as early as possible, before anything else -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap">
 
   <style>
-    /* CSS variables control all fonts in the app */
-    :root {
-      --font-head: 'Syne', system-ui, sans-serif;
-      --font-body: 'DM Sans', system-ui, sans-serif;
-    }
     *{margin:0;padding:0;box-sizing:border-box}
-    html,body{height:100%;background:#0A0F1E;overflow:hidden;font-family:var(--font-body);}
+    html,body{height:100%;background:#0A0F1E;overflow:hidden;font-family:'DM Sans',sans-serif;}
     #root{height:100%;width:100%;display:flex;justify-content:center}
     #loading{position:fixed;inset:0;background:#0A0F1E;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:9999;}
-    .logo{font-family:var(--font-head);font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:8px;}
+    .logo{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:8px;}
     .logo span{color:#FF6B35}
-    .sub{font-family:var(--font-body);font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:32px;letter-spacing:2px;text-transform:uppercase;}
+    .sub{font-family:'DM Sans',sans-serif;font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:32px;letter-spacing:2px;text-transform:uppercase;}
     .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,0.08);border-top-color:#FF6B35;border-radius:50%;animation:spin 0.8s linear infinite;}
     @keyframes spin{to{transform:rotate(360deg)}}
     ::-webkit-scrollbar{width:0}
@@ -49,55 +45,72 @@
   <script>
     var JSX_URL = "https://raw.githubusercontent.com/sulaimanvpm1-jpg/deliverflow/main/deliverflow-v3.jsx";
 
-    fetch(JSX_URL + "?t=" + Date.now())
-      .then(function(res) {
-        if (!res.ok) throw new Error("Failed to fetch JSX: " + res.status);
-        return res.text();
-      })
-      .then(function(jsxCode) {
-        try {
-          var cleaned = jsxCode
-            .replace(/^import\s+React[^\n]*/gm, "")
-            .replace(/^import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/gm, "")
-            .replace(/^import\s+[^\n]+from\s+['"][^'"]+['"]\s*;?/gm, "");
+    // STEP 2: Pre-register fonts via FontFace API so they are definitely available
+    // before React renders a single character
+    var fontPromises = [];
+    if (window.FontFace) {
+      [
+        ['Syne', 'https://fonts.gstatic.com/s/syne/v22/8vIS7w4qzmVxsWxjBZRjr0FKM_04uQ.woff2', {weight:'400 800', style:'normal'}],
+        ['DM Sans', 'https://fonts.gstatic.com/s/dmsans/v15/rP2tp2ywxg089UriI5-g4vlH9VoD8Cmcqbu6-K63ots.woff2', {weight:'300 600', style:'normal'}],
+      ].forEach(function(f) {
+        var face = new FontFace(f[0], 'url(' + f[1] + ')', f[2]);
+        fontPromises.push(face.load().then(function(loaded) {
+          document.fonts.add(loaded);
+        }).catch(function(){}));
+      });
+    }
 
-          var preamble = [
-            "var useState    = React.useState;",
-            "var useEffect   = React.useEffect;",
-            "var useRef      = React.useRef;",
-            "var useCallback = React.useCallback;",
-            "var useMemo     = React.useMemo;",
-            "var useContext  = React.useContext;",
-            "var useReducer  = React.useReducer;",
-          ].join("\n");
+    Promise.all(fontPromises).then(function() {
+      // STEP 3: Now fetch and run the JSX
+      fetch(JSX_URL + "?t=" + Date.now())
+        .then(function(res) {
+          if (!res.ok) throw new Error("Failed to fetch JSX: " + res.status);
+          return res.text();
+        })
+        .then(function(jsxCode) {
+          try {
+            var cleaned = jsxCode
+              .replace(/^import\s+React[^\n]*/gm, "")
+              .replace(/^import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/gm, "")
+              .replace(/^import\s+[^\n]+from\s+['"][^'"]+['"]\s*;?/gm, "");
 
-          var compiled = Babel.transform(preamble + "\n" + cleaned, {
-            presets: ["react"],
-          }).code;
+            var preamble = [
+              "var useState    = React.useState;",
+              "var useEffect   = React.useEffect;",
+              "var useRef      = React.useRef;",
+              "var useCallback = React.useCallback;",
+              "var useMemo     = React.useMemo;",
+              "var useContext  = React.useContext;",
+              "var useReducer  = React.useReducer;",
+            ].join("\n");
 
-          var script = document.createElement("script");
-          script.textContent = compiled;
-          document.head.appendChild(script);
+            var compiled = Babel.transform(preamble + "\n" + cleaned, {
+              presets: ["react"],
+            }).code;
 
-          if (!window.App) throw new Error("App not defined after load");
+            var script = document.createElement("script");
+            script.textContent = compiled;
+            document.head.appendChild(script);
 
-          ReactDOM.createRoot(document.getElementById("root")).render(
-            React.createElement(window.App)
-          );
-          document.getElementById("loading").style.display = "none";
+            if (!window.App) throw new Error("App not defined after load");
 
-        } catch(e) {
+            ReactDOM.createRoot(document.getElementById("root")).render(
+              React.createElement(window.App)
+            );
+            document.getElementById("loading").style.display = "none";
+
+          } catch(e) {
+            document.getElementById("loading").innerHTML =
+              '<div style="padding:24px;color:#EF4444;font-size:13px;word-break:break-all;max-width:400px">' +
+              '<strong>App Error:</strong><br>' + e.message + '</div>';
+          }
+        })
+        .catch(function(e) {
           document.getElementById("loading").innerHTML =
             '<div style="padding:24px;color:#EF4444;font-size:13px;word-break:break-all;max-width:400px">' +
-            '<strong>App Error:</strong><br>' + e.message + '</div>';
-        }
-      })
-      .catch(function(e) {
-        document.getElementById("loading").innerHTML =
-          '<div style="padding:24px;color:#EF4444;font-size:13px;word-break:break-all;max-width:400px">' +
-          '<strong>Load Error:</strong><br>' + e.message +
-          '<br><br>Check your GitHub URL is correct and the file is public.</div>';
-      });
+            '<strong>Load Error:</strong><br>' + e.message + '</div>';
+        });
+    });
   </script>
 </body>
 </html>
