@@ -4609,14 +4609,14 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
             </div>
             {/* Store filter for alerts */}
             {adminNotifs.length > 0 && (
-                <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
-                  {["all","Trikart Online","Webstore Online","ReStore Online"].map(function(s){
-                    var sel = alertStoreFilter === s;
-                    return <button key={s} onClick={function(){ setAlertStoreFilter(s); }}
-                      style={{ background:sel?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:sel?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:sel?"#00D4FF":"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:11, cursor:"pointer" }}>
-                      {s==="all"?"All Stores":s.replace(" Online","")}</button>;
-                  })}
-                </div>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
+                {["all","Trikart Online","Webstore Online","ReStore Online"].map(function(s){
+                  var sel = alertStoreFilter === s;
+                  return <button key={s} onClick={function(){ setAlertStoreFilter(s); }}
+                    style={{ background:sel?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:sel?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:sel?"#00D4FF":"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:11, cursor:"pointer" }}>
+                    {s==="all"?"All Stores":s.replace(" Online","")}</button>;
+                })}
+              </div>
             )}
             {/* Date filter for alerts */}
             {adminNotifs.length > 0 && (function(){
@@ -4922,7 +4922,7 @@ const LS_KEYS = {
   session: "df_session",
   passwords: "df_passwords",
   notifs: "df_admin_notifs",
-  seenStatuses: "df_seen_statuses", // tracks invoiceNo+status pairs already notified
+  seenStatuses: "df_seen_statuses",
 };
 function lsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -5257,214 +5257,210 @@ window.App = function App() {
   // ── Auto-clear at midnight ────────────────────────────────────────────────
   // Midnight auto-clear removed — data is kept permanently with day filter
 
-  // ── Load Supabase SDK + data on mount ────────────────────────────────────
+  // ── Load Supabase SDK + Realtime subscriptions (once on mount) ───────────
   useEffect(function() {
     if (SUPABASE_URL.includes("YOUR_PROJECT")) {
       console.log("Supabase not configured - using localStorage only");
       return;
     }
 
-    function runLoad() {
+    function setupRealtime() {
       var sb = getSupabase();
       if (!sb) { console.warn("Supabase SDK not ready"); return; }
-      setSyncing(true);
-    Promise.all([
-      dbLoadOrders(),
-      dbLoadExpenses(),
-      dbLoadTransfers(),
-      dbLoadDriverProfiles(),
-    ]).then(function(results) {
-      var dbOrders = results[0], dbExpenses = results[1], dbTransfers = results[2], dbProfiles = results[3];
-      // Only use DB data if it has records; otherwise keep localStorage cache
-      if (dbOrders && dbOrders.length > 0) {
-        // Merge DB orders with local cache — preserve locally-correct onlineOrderNo
-        // if DB has empty value (can happen from old broken parser uploads)
-        const localOrders = lsGet(LS_KEYS.orders, []);
-        const localMap = {};
-        localOrders.forEach(o => { if (o.invoiceNo) localMap[o.invoiceNo] = o; });
-        const mergedDbOrders = dbOrders.map(o => {
-          const loc = localMap[o.invoiceNo];
-          if (loc && loc.onlineOrderNo && !o.onlineOrderNo) {
-            return { ...o, onlineOrderNo: loc.onlineOrderNo };
-          }
-          return o;
-        });
-        setOrders(mergedDbOrders); lsSet(LS_KEYS.orders, mergedDbOrders);
 
-        // ── Missed-notification recovery ─────────────────────────────────────
-        // Any order whose status changed to delivered/cancelled/postponed while
-        // the admin was offline will not have fired a Realtime event. We detect
-        // those by comparing DB statuses against a "seen" set stored in localStorage.
-        var seenStatuses = lsGet(LS_KEYS.seenStatuses, {}); // { "invoiceNo:status": true }
-        var missedNotifs = [];
-        var ALERT_STATUSES = ["delivered", "cancelled", "postponed"];
-        mergedDbOrders.forEach(function(o) {
-          if (!ALERT_STATUSES.includes(o.status)) return;
-          var key = o.invoiceNo + ":" + o.status;
-          if (seenStatuses[key]) return; // already notified
-          // Check if it's already in the existing notifs list
-          var existingNotifs = lsGet(LS_KEYS.notifs, []);
-          var alreadyInNotifs = existingNotifs.some(function(n) {
-            return n.orderId === o.invoiceNo && n.notifType === o.status;
+      // Realtime: orders table
+      sb.channel("orders-changes")
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, function(payload) {
+          setOrders(function(prev) {
+            if (payload.eventType === "DELETE") {
+              return prev.filter(function(o) { return o.id !== payload.old.id; });
+            }
+            var r = payload.new;
+            var fixedCustomer = r.customer || "";
+            var fixedOO = r.online_order_no || "";
+            if (/^\d{4,12}$/.test(fixedCustomer) && !fixedOO) {
+              fixedOO = fixedCustomer;
+              fixedCustomer = "Unknown";
+            }
+            var exists = prev.find(function(o) { return o.id === r.id; });
+            var updated = {
+              id: r.id, invoiceNo: r.invoice_no, onlineOrderNo: fixedOO || (exists && exists.onlineOrderNo) || "",
+              date: r.date, assignedDate: (function(){
+                if (r.assigned_date) return r.assigned_date;
+                if (r.updated_at) { var d=new Date(r.updated_at); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); }
+                return r.date || "";
+              })(), store: r.store, customer: fixedCustomer,
+              address: r.address, phone: r.phone, total: Number(r.total),
+              paymentType: r.payment_type, originalPaymentType: r.original_payment_type||"",
+              status: r.status, driverId: r.driver_id, scanned: r.scanned||false,
+              note: r.note||"",
+            };
+            // Generate admin notification for status changes from other devices
+            var ALERT_STATUSES = ["delivered","cancelled","postponed"];
+            if (payload.eventType === "UPDATE" && exists && exists.status !== r.status && ALERT_STATUSES.indexOf(r.status) !== -1) {
+              var seenKey = r.invoice_no + ":" + r.status;
+              var seen = lsGet(LS_KEYS.seenStatuses, {});
+              if (!seen[seenKey]) {
+                seen[seenKey] = true;
+                lsSet(LS_KEYS.seenStatuses, seen);
+                var drvName = (DRIVERS.find(function(d){ return d.id===r.driver_id; })||{}).name || r.driver_id;
+                setAdminNotifs(function(prev2) {
+                  var newNotif = {
+                    id: uid(), notifType: r.status, orderId: r.invoice_no,
+                    onlineOrderNo: r.online_order_no||"",
+                    customer: r.customer, store: r.store, amount: Number(r.total),
+                    payment: r.payment_type, driver: drvName, note: r.note||"",
+                    icon: STATUS_CFG[r.status] ? STATUS_CFG[r.status].icon : "", read: false,
+                    time: new Date().toISOString(),
+                  };
+                  var combined = [newNotif, ...prev2];
+                  lsSet(LS_KEYS.notifs, combined.slice(0, 100));
+                  return combined;
+                });
+                playSound("notify");
+              }
+            }
+            if (exists) return prev.map(function(o) { return o.id === r.id ? Object.assign({}, o, updated) : o; });
+            return [...prev, updated];
           });
-          if (alreadyInNotifs) {
-            seenStatuses[key] = true; // mark as seen so we skip next time
-            return;
-          }
-          // This status change was missed — generate a notification
-          var drvName = (DRIVERS.find(function(d){ return d.id === o.driverId; })||{}).name || o.driverId || "Driver";
-          missedNotifs.push({
-            id: uid(),
-            notifType: o.status,
-            orderId: o.invoiceNo,
-            onlineOrderNo: o.onlineOrderNo || "",
-            customer: o.customer,
-            store: o.store,
-            amount: o.total,
-            payment: o.paymentType,
-            driver: drvName,
-            note: o.note || "",
-            icon: STATUS_CFG[o.status]?.icon || "📋",
-            read: false,
-            time: o.updatedAt || o.deliveredAt || new Date().toISOString(),
-            recovered: true, // flag so we know it was recovered offline
-          });
-          seenStatuses[key] = true;
-        });
-        lsSet(LS_KEYS.seenStatuses, seenStatuses);
-        if (missedNotifs.length > 0) {
-          setAdminNotifs(function(prev) {
-            // Prepend missed notifs, newest first (by time)
-            missedNotifs.sort(function(a, b) { return new Date(b.time) - new Date(a.time); });
-            var combined = [...missedNotifs, ...prev];
-            lsSet(LS_KEYS.notifs, combined.slice(0, 100));
-            return combined.slice(0, 100);
-          });
-          playSound("notify");
-        }
-        // ─────────────────────────────────────────────────────────────────────
-      }
-      // Note: if DB is empty, we do NOT push localStorage back
-      if (dbExpenses && dbExpenses.length > 0)  { setExpenses(dbExpenses);   lsSet(LS_KEYS.expenses, dbExpenses); }
-      if (dbTransfers && dbTransfers.length > 0) { setTransfers(dbTransfers); lsSet(LS_KEYS.transfers, dbTransfers); }
-      if (dbProfiles)  {
-        // Merge DB profiles with DRIVERS array
-        Object.keys(dbProfiles).forEach(function(id) {
-          var p = dbProfiles[id];
-          var idx = DRIVERS.findIndex(function(d) { return d.id === id; });
-          if (idx >= 0) { DRIVERS[idx] = { ...DRIVERS[idx], ...p }; }
-          else { DRIVERS.push(p); }
-        });
-        setDriverProfiles(dbProfiles);
-        lsSet(LS_KEYS.driverProfiles, dbProfiles);
-      }
-      setDbConnected(true);
-      setSyncing(false);
-    }).catch(function(err) {
-      console.warn("Supabase load failed, using cache:", err);
-      setSyncing(false);
-    });
+        }).subscribe();
 
-    // Realtime: orders table
-    var ordersSub = sb.channel("orders-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, function(payload) {
-        setOrders(function(prev) {
-          if (payload.eventType === "DELETE") {
-            return prev.filter(function(o) { return o.id !== payload.old.id; });
-          }
+      // Realtime: expenses table
+      sb.channel("expenses-changes")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "expenses" }, function(payload) {
           var r = payload.new;
-          // Fix legacy data: if customer is purely numeric (OO# was wrongly set as customer)
-          var fixedCustomer = r.customer || "";
-          var fixedOO = r.online_order_no || "";
-          if (/^\d{4,12}$/.test(fixedCustomer) && !fixedOO) {
-            fixedOO = fixedCustomer;
-            fixedCustomer = "Unknown";
-          }
-          var updated = {
-            id: r.id, invoiceNo: r.invoice_no, onlineOrderNo: fixedOO || (exists?.onlineOrderNo) || "",
-            date: r.date, assignedDate: (function(){
-            if (r.assigned_date) return r.assigned_date;
-            if (r.updated_at) { var d=new Date(r.updated_at); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); }
-            return r.date || "";
-          })(), store: r.store, customer: fixedCustomer,
-            address: r.address, phone: r.phone, total: Number(r.total),
-            paymentType: r.payment_type, originalPaymentType: r.original_payment_type||"",
-            status: r.status, driverId: r.driver_id, scanned: r.scanned||false,
-            note: r.note||"",
-          };
-          var exists = prev.find(function(o) { return o.id === r.id; });
-          // Generate admin notification for status changes from other devices
-          if (payload.eventType === "UPDATE" && exists && exists.status !== r.status &&
-              (r.status === "delivered" || r.status === "cancelled" || r.status === "postponed")) {
-            var drvName = (DRIVERS.find(function(d){ return d.id===r.driver_id; })||{}).name || r.driver_id;
-            // Mark as seen to prevent duplicate recovery notification on next reload
-            var seenStatuses2 = lsGet(LS_KEYS.seenStatuses, {});
-            seenStatuses2[r.invoice_no + ":" + r.status] = true;
-            lsSet(LS_KEYS.seenStatuses, seenStatuses2);
-            setAdminNotifs(function(prev2) {
-              var newNotif = {
-                id: uid(), notifType: r.status, orderId: r.invoice_no,
-                onlineOrderNo: r.online_order_no||"",
-                customer: r.customer, store: r.store, amount: Number(r.total),
-                payment: r.payment_type, driver: drvName, note: r.note||"",
-                icon: STATUS_CFG[r.status]?.icon||"", read: false,
-                time: new Date().toISOString(),
-              };
-              var updated2 = [newNotif, ...prev2];
-              lsSet(LS_KEYS.notifs, updated2.slice(0, 100));
-              return updated2;
+          var newExp = { id: r.id, driverId: r.driver_id, driverName: r.driver_name||"", type: r.type, amount: Number(r.amount), note: r.note||"", createdAt: r.created_at };
+          setExpenses(function(prev) {
+            if (prev.find(function(e) { return e.id === r.id; })) return prev;
+            return [newExp, ...prev];
+          });
+        }).subscribe();
+
+      // Realtime: help_requests
+      sb.channel("help-requests-changes")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "help_requests" }, function(payload) {
+          var r = payload.new;
+          setAdminNotifs(function(prev) {
+            if (prev.find(function(n) { return n.id === r.id; })) return prev;
+            var n = [{
+              id: r.id, notifType: "help", helpKey: r.help_key,
+              orderId: r.invoice_no, customer: r.customer, store: r.store || "",
+              amount: 0, payment: "", driver: r.driver_name, note: r.help_label,
+              icon: "SOS", read: false, time: r.created_at || new Date().toISOString(),
+            }, ...prev];
+            lsSet(LS_KEYS.notifs, n.slice(0, 100));
+            return n;
+          });
+          playSound("help");
+        }).subscribe();
+    }
+
+    loadSupabaseSDK(setupRealtime);
+    return function() {};
+  }, []);
+
+  // ── Fetch DB data + recover missed notifications on every login ───────────
+  useEffect(function() {
+    if (!user) return; // only run when logged in
+    if (SUPABASE_URL.includes("YOUR_PROJECT")) return;
+
+    function runFetch() {
+      var sb = getSupabase();
+      if (!sb) return;
+      setSyncing(true);
+      Promise.all([
+        dbLoadOrders(),
+        dbLoadExpenses(),
+        dbLoadTransfers(),
+        dbLoadDriverProfiles(),
+      ]).then(function(results) {
+        var dbOrders = results[0], dbExpenses = results[1], dbTransfers = results[2], dbProfiles = results[3];
+
+        if (dbOrders && dbOrders.length > 0) {
+          var localOrders = lsGet(LS_KEYS.orders, []);
+          var localMap = {};
+          localOrders.forEach(function(o) { if (o.invoiceNo) localMap[o.invoiceNo] = o; });
+          var mergedDbOrders = dbOrders.map(function(o) {
+            var loc = localMap[o.invoiceNo];
+            if (loc && loc.onlineOrderNo && !o.onlineOrderNo) return Object.assign({}, o, { onlineOrderNo: loc.onlineOrderNo });
+            return o;
+          });
+          setOrders(mergedDbOrders);
+          lsSet(LS_KEYS.orders, mergedDbOrders);
+
+          // ── Missed-notification recovery ─────────────────────────────────
+          // Compare every DB order against the seen-statuses ledger.
+          // Any delivered/cancelled/postponed order not yet notified gets a notification now.
+          var ALERT_STATUSES = ["delivered","cancelled","postponed"];
+          var seenStatuses = lsGet(LS_KEYS.seenStatuses, {});
+          var existingNotifs = lsGet(LS_KEYS.notifs, []);
+          var missedNotifs = [];
+
+          mergedDbOrders.forEach(function(o) {
+            if (ALERT_STATUSES.indexOf(o.status) === -1) return;
+            var key = o.invoiceNo + ":" + o.status;
+            if (seenStatuses[key]) return; // already notified
+            // Also skip if it's already in the persisted notifs list
+            var alreadySaved = existingNotifs.some(function(n) {
+              return n.orderId === o.invoiceNo && n.notifType === o.status;
+            });
+            if (alreadySaved) { seenStatuses[key] = true; return; }
+            // This is a missed notification — generate it
+            var drvName = (DRIVERS.find(function(d){ return d.id === o.driverId; })||{}).name || o.driverId || "Driver";
+            missedNotifs.push({
+              id: uid(),
+              notifType: o.status,
+              orderId: o.invoiceNo,
+              onlineOrderNo: o.onlineOrderNo || "",
+              customer: o.customer,
+              store: o.store,
+              amount: o.total,
+              payment: o.paymentType,
+              driver: drvName,
+              note: o.note || "",
+              icon: STATUS_CFG[o.status] ? STATUS_CFG[o.status].icon : "📋",
+              read: false,
+              time: o.updatedAt || o.deliveredAt || new Date().toISOString(),
+            });
+            seenStatuses[key] = true;
+          });
+
+          lsSet(LS_KEYS.seenStatuses, seenStatuses);
+
+          if (missedNotifs.length > 0) {
+            missedNotifs.sort(function(a, b) { return new Date(b.time) - new Date(a.time); });
+            setAdminNotifs(function(prev) {
+              var combined = missedNotifs.concat(prev);
+              lsSet(LS_KEYS.notifs, combined.slice(0, 100));
+              return combined.slice(0, 100);
             });
             playSound("notify");
           }
-          if (exists) return prev.map(function(o) { return o.id === r.id ? { ...o, ...updated } : o; });
-          return [...prev, updated];
-        });
-      }).subscribe();
+          // ─────────────────────────────────────────────────────────────────
+        }
 
-      // Realtime: expenses table
-      var expensesSub = sb.channel("expenses-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "expenses" }, function(payload) {
-        var r = payload.new;
-        var newExp = { id: r.id, driverId: r.driver_id, driverName: r.driver_name||"", type: r.type, amount: Number(r.amount), note: r.note||"", createdAt: r.created_at };
-        setExpenses(function(prev) {
-          if (prev.find(function(e) { return e.id === r.id; })) return prev;
-          return [newExp, ...prev];
-        });
-      }).subscribe();
+        if (dbExpenses && dbExpenses.length > 0)  { setExpenses(dbExpenses);   lsSet(LS_KEYS.expenses, dbExpenses); }
+        if (dbTransfers && dbTransfers.length > 0) { setTransfers(dbTransfers); lsSet(LS_KEYS.transfers, dbTransfers); }
+        if (dbProfiles) {
+          Object.keys(dbProfiles).forEach(function(id) {
+            var p = dbProfiles[id];
+            var idx = DRIVERS.findIndex(function(d) { return d.id === id; });
+            if (idx >= 0) { DRIVERS[idx] = Object.assign({}, DRIVERS[idx], p); }
+            else { DRIVERS.push(p); }
+          });
+          setDriverProfiles(dbProfiles);
+          lsSet(LS_KEYS.driverProfiles, dbProfiles);
+        }
+        setDbConnected(true);
+        setSyncing(false);
+      }).catch(function(err) {
+        console.warn("Supabase load failed, using cache:", err);
+        setSyncing(false);
+      });
+    }
 
-      // Realtime: help_requests — driver sends help, admin gets instant notification
-      sb.channel("help-requests-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "help_requests" }, function(payload) {
-        var r = payload.new;
-        setAdminNotifs(function(prev) {
-          if (prev.find(function(n) { return n.id === r.id; })) return prev;
-          return [{
-            id: r.id,
-            notifType: "help",
-            helpKey: r.help_key,
-            orderId: r.invoice_no,
-            customer: r.customer,
-            store: r.store || "",
-            amount: 0,
-            payment: "",
-            driver: r.driver_name,
-            note: r.help_label,
-            icon: "SOS",
-            read: false,
-            time: r.created_at || new Date().toISOString(),
-          }, ...prev];
-        });
-        playSound("help");
-      }).subscribe();
-
-    } // end runLoad
-
-    loadSupabaseSDK(runLoad);
-
-    return function() {
-      // cleanup happens inside runLoad's closure
-    };
-  }, []);
+    loadSupabaseSDK(runFetch);
+  }, [user]);
 
   // ── Driver online presence tracking ───────────────────────────────────────
   // Rule: Driver is ONLINE if they have logged in and NOT explicitly signed out.
@@ -5821,10 +5817,10 @@ setOrders(function(prev) {
       if (!updatedOrder) return;
       const driver = DRIVERS.find(d => d.id === updatedOrder.driverId);
       const icon   = STATUS_CFG[status]?.icon || "📋";
-      // Mark this invoiceNo+status as seen so recovery on reload won't duplicate it
-      var seenStatuses = lsGet(LS_KEYS.seenStatuses, {});
-      seenStatuses[updatedOrder.invoiceNo + ":" + status] = true;
-      lsSet(LS_KEYS.seenStatuses, seenStatuses);
+      // Mark seen so recovery on next login doesn't duplicate it
+      var seen = lsGet(LS_KEYS.seenStatuses, {});
+      seen[updatedOrder.invoiceNo + ":" + status] = true;
+      lsSet(LS_KEYS.seenStatuses, seen);
       setAdminNotifs(prev => {
         var newNotif = {
           id:       uid(),
@@ -5841,9 +5837,9 @@ setOrders(function(prev) {
           read:     false,
           time:     new Date().toISOString(),
         };
-        var updated = [newNotif, ...prev];
-        lsSet(LS_KEYS.notifs, updated.slice(0, 100));
-        return updated;
+        var combined = [newNotif, ...prev];
+        lsSet(LS_KEYS.notifs, combined.slice(0, 100));
+        return combined;
       });
       playSound("notify");
     }, 100);
