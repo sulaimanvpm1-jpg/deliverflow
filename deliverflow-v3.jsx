@@ -767,47 +767,84 @@ setProgress("Found " + result.orders.length + " orders for " + (result.driverNam
 
 /*  Admin: Upload & Assign  */
 
-function UpcomingWidget({ upcomingTotal, onSetUpcomingTotal }) {
-  function add(n) {
-    var next = Math.max(0, Math.min(999, (upcomingTotal || 0) + n));
-    if (onSetUpcomingTotal) onSetUpcomingTotal(next);
+
+
+
+// ── Label Scanner — shared by Admin & Driver manual order forms ──────────────
+function LabelScanner({ onExtracted, onError }) {
+  const [scanning, setScanning] = useState(false);
+  const inputRef = React.useRef(null);
+
+  function handleFile(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setScanning(true);
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var base64 = ev.target.result.split(",")[1];
+      var mediaType = file.type || "image/jpeg";
+      fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+              { type: "text", text: "Extract order details from this delivery label image. Return ONLY a JSON object with these exact keys (use empty string if not found):\n{\n  \"store\": \"\",\n  \"invoiceNo\": \"\",\n  \"onlineOrderNo\": \"\",\n  \"customer\": \"\",\n  \"address\": \"\",\n  \"phone\": \"\",\n  \"total\": \"\",\n  \"paymentType\": \"\"\n}\nFor store: match to one of 'Trikart Online', 'Webstore Online', 'ReStore Online', or use the label's store name.\nFor paymentType: map 'Cash Basic' or 'Cash' to 'Cash', 'KNET' to 'KNET', etc.\nFor total: extract the numeric amount only (e.g. '19.900').\nFor invoiceNo: the barcode number or invoice/order number on the label.\nReturn only the raw JSON, no markdown, no explanation." }
+            ]
+          }]
+        })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        setScanning(false);
+        var text = (data.content && data.content[0] && data.content[0].text) || "";
+        try {
+          var clean = text.replace(/```json|```/g, "").trim();
+          var parsed = JSON.parse(clean);
+          onExtracted(parsed);
+        } catch(e) {
+          onError && onError("Could not read label. Please enter details manually.");
+        }
+      })
+      .catch(function() {
+        setScanning(false);
+        onError && onError("Scan failed. Please enter details manually.");
+      });
+    };
+    reader.readAsDataURL(file);
+    // Reset so same file can be re-selected
+    e.target.value = "";
   }
+
   return (
-    <div style={{ background:"rgba(255,107,53,.08)", border:"1px solid rgba(255,107,53,.2)", borderRadius:14, padding:"16px", marginBottom:16 }}>
-      <div style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:13, fontWeight:700, marginBottom:2 }}>Upcoming Orders</div>
-      <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:14 }}>Shown to all drivers on their dashboard</div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-        <div style={{ display:"flex", gap:8 }}>
-          {[-10,-1].map(function(n){ return (
-            <button key={n} onClick={function(){ add(n); }}
-              style={{ width:44, height:44, borderRadius:10, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", color:"#fff", fontFamily:"Syne", fontSize:18, fontWeight:700, cursor:"pointer" }}>
-              {n}
-            </button>
-          ); })}
-        </div>
-        <div style={{ textAlign:"center" }}>
-          <div style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:38, fontWeight:900, lineHeight:1 }}>{upcomingTotal || 0}</div>
-          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.3)", fontSize:10, marginTop:2 }}>orders</div>
-        </div>
-        <div style={{ display:"flex", gap:8 }}>
-          {[1,10].map(function(n){ return (
-            <button key={n} onClick={function(){ add(n); }}
-              style={{ width:44, height:44, borderRadius:10, background:"rgba(255,107,53,.2)", border:"1px solid rgba(255,107,53,.4)", color:"#FF6B35", fontFamily:"Syne", fontSize:18, fontWeight:700, cursor:"pointer" }}>
-              +{n}
-            </button>
-          ); })}
-        </div>
-      </div>
-      {(upcomingTotal || 0) > 0 && (
-        <button onClick={function(){ if(onSetUpcomingTotal) onSetUpcomingTotal(0); }}
-          style={{ marginTop:10, display:"block", width:"100%", background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.15)", borderRadius:8, padding:"6px", color:"rgba(239,68,68,.6)", fontFamily:"DM Sans", fontSize:11, cursor:"pointer" }}>
-          Reset to 0
-        </button>
-      )}
-    </div>
+    <>
+      <input ref={inputRef} type="file" accept="image/*" capture="environment"
+        onChange={handleFile}
+        style={{ display:"none" }} />
+      <button
+        onClick={function(){ if (!scanning) inputRef.current && inputRef.current.click(); }}
+        style={{
+          display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+          background: scanning ? "rgba(0,212,255,.08)" : "rgba(0,212,255,.12)",
+          border: "1.5px solid rgba(0,212,255,.35)",
+          borderRadius:10, padding:"8px 14px",
+          color: scanning ? "rgba(0,212,255,.5)" : "#00D4FF",
+          fontFamily:"DM Sans", fontSize:12, fontWeight:600,
+          cursor: scanning ? "default" : "pointer",
+          whiteSpace:"nowrap", flexShrink:0,
+          transition:"opacity .2s",
+        }}>
+        {scanning
+          ? <><span style={{ fontSize:14, animation:"pulse 1s ease-in-out infinite" }}>⏳</span> Reading…</>
+          : <><span style={{ fontSize:16 }}>📷</span> Scan Label</>}
+      </button>
+    </>
   );
 }
-
 
 function ManualOrderForm({ onAdd, driverList }) {
   const [show, setShow]     = useState(false);
@@ -825,6 +862,28 @@ function ManualOrderForm({ onAdd, driverList }) {
   const [areaSearch, setAreaSearch] = useState("");
   const [showAreaDrop, setShowAreaDrop] = useState(false);
   const [customStoreName, setCustomStoreName] = useState("");
+  const [scanMsg, setScanMsg] = useState("");
+
+  function fillFromScan(fields) {
+    if (!show) setShow(true);
+    setScanMsg("");
+    if (fields.store) {
+      var knownStores = ["Trikart Online","Webstore Online","ReStore Online"];
+      if (knownStores.includes(fields.store)) { setStore(fields.store); }
+      else { setStore("Other"); setCustomStoreName(fields.store); }
+    }
+    if (fields.invoiceNo)     setInv(fields.invoiceNo);
+    if (fields.onlineOrderNo) setOoNo(fields.onlineOrderNo);
+    if (fields.customer)      setCust(fields.customer);
+    if (fields.address)       setAddr(fields.address);
+    if (fields.phone)         setPhone(fields.phone);
+    if (fields.total)         setTotal(String(fields.total));
+    if (fields.paymentType) {
+      var knownPays = ["Cash","KNET","Deema","Tabby","VISA/Mastercard","Tap/KNET","GoCollect","Exchange"];
+      if (knownPays.includes(fields.paymentType)) setPay(fields.paymentType);
+    }
+    setScanMsg("✅ Label scanned — please review and confirm details below.");
+  }
   const MANUAL_PAYS = ["Cash","KNET","Deema","Tabby","VISA/Mastercard","Tap/KNET","GoCollect","Exchange"];
   const ALL_AREAS = ['Abdali', 'Abdulla Al-Salem', 'Abdullah Al-Mubarak', 'Abdullah Port', 'Abu Al Hasaniya', 'Abu Futaira', 'Abu Halifa', 'Adailiya', 'Adan', 'Ahmadi', 'Airport District', 'Ali As-Salim', 'Amghara', 'Andalus', 'Ardiya', 'Ardiya Herafiya', 'Ardiya Industrial Area', 'Ashbelya', 'Bayan', 'Bida', 'Bnaid Al-Qar', 'Bneidar', 'Daher', 'Daiya', 'Dasma', 'Dhajeej', 'Doha', 'Doha Port', 'Egaila', 'Fahad Al-Ahmad', 'Fahaheel', 'Faiha', 'Farwaniya', 'Fintas', 'Firdous', 'Funaitis', 'Granada (Kuwait)', 'Hadiya', 'Hawally', 'Hittin', 'Jaber Al-Ahmad', 'Jaber Al-Ali', 'Jabriya', 'Jahra', 'Jahra Industrial Area', 'Jawaher Al Wafra', 'Jibla', 'Jileia', 'Jleeb Al-Shuyoukh', 'Kabad', 'Kaifan', 'Khairan', 'Khaitan', 'Khaldiya', 'Kuwait City', 'Mahbula', 'Maidan Hawalli', 'Mangaf', 'Mansriya', 'Miqwa', 'Mirgab', 'Mishref', 'Misila', 'Mubarak Al-Kabeer', 'Naeem', 'Nahda / East Sulaibikhat', 'Nahdha', 'Nasseem', 'New Khairan City', 'New Wafra', 'North West Sulaibikhat', 'Nuwaiseeb', 'Nuzha', 'Omariya', 'Oyoun', 'Qadsiya', 'Qairawan', 'Qasr', 'Qurain', 'Qurtuba', 'Qusour', 'Rabiya', 'Rai', 'Rawda', 'Rehab', 'Riggae', 'Rihab', 'Riqqa', 'Rumaithiya', 'Saad Al Abdullah', 'Sabah Al Salem', 'Sabah Al-Ahmad', 'Sabah Al-Nasser', 'Sabahiya', 'Sabhan', 'Salam', 'Salmi', 'Salmiya', 'Salwa', 'Shaab', 'Shamiya', 'Sharq', 'Shuaiba (North & South)', 'Shuhada', 'Shuwaikh', 'Shuwaikh Industrial Area', 'Shuwaikh Port', 'Siddiq', 'Sikrab', 'South Doha / Qairawan', 'South Sabahiya', 'South Surra', 'Sulaibikhat', 'Sulaibiya', 'Sulaibiya Agricultural Area', 'Surra', 'Taima', 'Wafra', 'Waha', 'Yarmouk', 'Zahra', 'Zoor'];
 
@@ -853,23 +912,40 @@ function ManualOrderForm({ onAdd, driverList }) {
       note: "Manual entry",
     });
     // Reset
-    setInv(""); setOoNo(""); setCust(""); setAddr(""); setPhone(""); setTotal(""); setPay("Cash"); setArea(""); setAreaSearch(""); setCustomStoreName("");
+    setInv(""); setOoNo(""); setCust(""); setAddr(""); setPhone(""); setTotal(""); setPay("Cash"); setArea(""); setAreaSearch(""); setCustomStoreName(""); setScanMsg("");
     setShow(false);
   }
 
   if (!show) return (
-    <button onClick={function(){ setShow(true); }}
-      style={{ width:"100%", background:"rgba(255,107,53,.08)", border:"1px dashed rgba(255,107,53,.4)", borderRadius:12, padding:"12px", color:"#FF6B35", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer", marginBottom:12 }}>
-      + Add Manual Order
-    </button>
+    <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+      <button onClick={function(){ setShow(true); }}
+        style={{ flex:1, background:"rgba(255,107,53,.08)", border:"1px dashed rgba(255,107,53,.4)", borderRadius:12, padding:"12px", color:"#FF6B35", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+        + Add Manual Order
+      </button>
+      <LabelScanner
+        onExtracted={function(fields){ fillFromScan(fields); }}
+        onError={function(msg){ setScanMsg("⚠️ " + msg); setShow(true); }}
+      />
+    </div>
   );
 
   return (
     <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,107,53,.3)", borderRadius:14, padding:16, marginBottom:14 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
         <div style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:14, fontWeight:800 }}>Manual Order Entry</div>
-        <button onClick={function(){ setShow(false); setErr(""); }} style={{ background:"none", border:"none", color:"rgba(255,255,255,.4)", fontSize:18, cursor:"pointer" }}>✕</button>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <LabelScanner
+            onExtracted={fillFromScan}
+            onError={function(msg){ setScanMsg("⚠️ " + msg); }}
+          />
+          <button onClick={function(){ setShow(false); setErr(""); setScanMsg(""); }} style={{ background:"none", border:"none", color:"rgba(255,255,255,.4)", fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
       </div>
+      {scanMsg && (
+        <div style={{ background: scanMsg.startsWith("✅") ? "rgba(16,185,129,.1)" : "rgba(239,68,68,.1)", border:"1px solid " + (scanMsg.startsWith("✅") ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"), borderRadius:10, padding:"8px 12px", fontFamily:"DM Sans", fontSize:12, color: scanMsg.startsWith("✅") ? "#10B981" : "#EF4444", marginBottom:12 }}>
+          {scanMsg}
+        </div>
+      )}
 
       {/* Store */}
       <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>STORE</div>
@@ -967,7 +1043,7 @@ function ManualOrderForm({ onAdd, driverList }) {
   );
 }
 
-function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpdate, upcomingTotal, onSetUpcomingTotal }) {
+function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpdate }) {
   const [parsed, setParsed] = useState(null);
   const [assignTo, setAssignTo] = useState("");
   const [toast, setToast] = useState(null);
@@ -1014,7 +1090,7 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
     <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
       {toast && <Toast msg={toast.msg} toastKind={toast.ttype} />}
 
-      <UpcomingWidget upcomingTotal={upcomingTotal} onSetUpcomingTotal={onSetUpcomingTotal} />
+
       <ManualOrderForm driverList={DRIVERS.filter(function(d){ return d.status==="active"; })} onAdd={function(order){
         onOrdersParsed([order], order.driverId);
       }} />
@@ -1917,6 +1993,7 @@ function DriverManualOrderForm({ driverId, onAdd }) {
   const [total, setTotal]   = useState("");
   const [pay, setPay]       = useState("Cash");
   const [err, setErr]       = useState("");
+  const [scanMsg, setScanMsg] = useState("");
 
   const [area, setArea]         = useState("");
   const [areaSearch, setAreaSearch] = useState("");
@@ -1924,6 +2001,27 @@ function DriverManualOrderForm({ driverId, onAdd }) {
   const [customStoreName, setCustomStoreName] = useState("");
   const PAYS = ["Cash","KNET","Deema","Tabby","VISA/Mastercard","Tap/KNET","Exchange"];
   const ALL_AREAS = ['Abdali', 'Abdulla Al-Salem', 'Abdullah Al-Mubarak', 'Abdullah Port', 'Abu Al Hasaniya', 'Abu Futaira', 'Abu Halifa', 'Adailiya', 'Adan', 'Ahmadi', 'Airport District', 'Ali As-Salim', 'Amghara', 'Andalus', 'Ardiya', 'Ardiya Herafiya', 'Ardiya Industrial Area', 'Ashbelya', 'Bayan', 'Bida', 'Bnaid Al-Qar', 'Bneidar', 'Daher', 'Daiya', 'Dasma', 'Dhajeej', 'Doha', 'Doha Port', 'Egaila', 'Fahad Al-Ahmad', 'Fahaheel', 'Faiha', 'Farwaniya', 'Fintas', 'Firdous', 'Funaitis', 'Granada (Kuwait)', 'Hadiya', 'Hawally', 'Hittin', 'Jaber Al-Ahmad', 'Jaber Al-Ali', 'Jabriya', 'Jahra', 'Jahra Industrial Area', 'Jawaher Al Wafra', 'Jibla', 'Jileia', 'Jleeb Al-Shuyoukh', 'Kabad', 'Kaifan', 'Khairan', 'Khaitan', 'Khaldiya', 'Kuwait City', 'Mahbula', 'Maidan Hawalli', 'Mangaf', 'Mansriya', 'Miqwa', 'Mirgab', 'Mishref', 'Misila', 'Mubarak Al-Kabeer', 'Naeem', 'Nahda / East Sulaibikhat', 'Nahdha', 'Nasseem', 'New Khairan City', 'New Wafra', 'North West Sulaibikhat', 'Nuwaiseeb', 'Nuzha', 'Omariya', 'Oyoun', 'Qadsiya', 'Qairawan', 'Qasr', 'Qurain', 'Qurtuba', 'Qusour', 'Rabiya', 'Rai', 'Rawda', 'Rehab', 'Riggae', 'Rihab', 'Riqqa', 'Rumaithiya', 'Saad Al Abdullah', 'Sabah Al Salem', 'Sabah Al-Ahmad', 'Sabah Al-Nasser', 'Sabahiya', 'Sabhan', 'Salam', 'Salmi', 'Salmiya', 'Salwa', 'Shaab', 'Shamiya', 'Sharq', 'Shuaiba (North & South)', 'Shuhada', 'Shuwaikh', 'Shuwaikh Industrial Area', 'Shuwaikh Port', 'Siddiq', 'Sikrab', 'South Doha / Qairawan', 'South Sabahiya', 'South Surra', 'Sulaibikhat', 'Sulaibiya', 'Sulaibiya Agricultural Area', 'Surra', 'Taima', 'Wafra', 'Waha', 'Yarmouk', 'Zahra', 'Zoor'];
+
+  function fillFromScan(fields) {
+    if (!show) setShow(true);
+    setScanMsg("");
+    if (fields.store) {
+      var knownStores = ["Trikart Online","Webstore Online","ReStore Online"];
+      if (knownStores.includes(fields.store)) { setStore(fields.store); }
+      else { setStore("Other"); setCustomStoreName(fields.store); }
+    }
+    if (fields.invoiceNo)     setInv(fields.invoiceNo);
+    if (fields.onlineOrderNo) setOoNo(fields.onlineOrderNo);
+    if (fields.customer)      setCust(fields.customer);
+    if (fields.address)       setAddr(fields.address);
+    if (fields.phone)         setPhone(fields.phone);
+    if (fields.total)         setTotal(String(fields.total));
+    if (fields.paymentType) {
+      var knownPays = ["Cash","KNET","Deema","Tabby","VISA/Mastercard","Tap/KNET","Exchange"];
+      if (knownPays.includes(fields.paymentType)) setPay(fields.paymentType);
+    }
+    setScanMsg("✅ Label scanned — please review and confirm details below.");
+  }
 
   function submit() {
     if (!invoiceNo.trim()) { setErr("Invoice number required"); return; }
@@ -1948,23 +2046,40 @@ function DriverManualOrderForm({ driverId, onAdd }) {
       assignedDate: (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })(),
       note: "Manual entry by driver",
     }]);
-    setInv(""); setOoNo(""); setCust(""); setAddr(""); setPhone(""); setTotal(""); setPay("Cash"); setArea(""); setAreaSearch(""); setCustomStoreName("");
+    setInv(""); setOoNo(""); setCust(""); setAddr(""); setPhone(""); setTotal(""); setPay("Cash"); setArea(""); setAreaSearch(""); setCustomStoreName(""); setScanMsg("");
     setShow(false);
   }
 
   if (!show) return (
-    <button onClick={function(){ setShow(true); }}
-      style={{ width:"100%", background:"rgba(255,107,53,.07)", border:"1px dashed rgba(255,107,53,.35)", borderRadius:12, padding:"11px", color:"#FF6B35", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
-      + Add Manual Order
-    </button>
+    <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+      <button onClick={function(){ setShow(true); }}
+        style={{ flex:1, background:"rgba(255,107,53,.07)", border:"1px dashed rgba(255,107,53,.35)", borderRadius:12, padding:"11px", color:"#FF6B35", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+        + Add Manual Order
+      </button>
+      <LabelScanner
+        onExtracted={function(fields){ fillFromScan(fields); }}
+        onError={function(msg){ setScanMsg("⚠️ " + msg); setShow(true); }}
+      />
+    </div>
   );
 
   return (
     <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,107,53,.3)", borderRadius:14, padding:14, marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
         <div style={{ fontFamily:"Syne", color:"#FF6B35", fontSize:14, fontWeight:800 }}>Add Manual Order</div>
-        <button onClick={function(){ setShow(false); setErr(""); }} style={{ background:"none", border:"none", color:"rgba(255,255,255,.4)", fontSize:18, cursor:"pointer" }}>✕</button>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <LabelScanner
+            onExtracted={fillFromScan}
+            onError={function(msg){ setScanMsg("⚠️ " + msg); }}
+          />
+          <button onClick={function(){ setShow(false); setErr(""); setScanMsg(""); }} style={{ background:"none", border:"none", color:"rgba(255,255,255,.4)", fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
       </div>
+      {scanMsg && (
+        <div style={{ background: scanMsg.startsWith("✅") ? "rgba(16,185,129,.1)" : "rgba(239,68,68,.1)", border:"1px solid " + (scanMsg.startsWith("✅") ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"), borderRadius:10, padding:"8px 12px", fontFamily:"DM Sans", fontSize:12, color: scanMsg.startsWith("✅") ? "#10B981" : "#EF4444", marginBottom:10 }}>
+          {scanMsg}
+        </div>
+      )}
 
       {/* Store */}
       <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>STORE</div>
@@ -4481,7 +4596,7 @@ function DateFilterBar({ orders, selectedDate, onSetSelectedDate }) {
   );
 }
 
-function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onClearNotifs, expenses, onAddExpense, onOrdersAdd, onStatusUpdate, onApproveTransfer, onRejectTransfer, driverProfiles, onUpdateDriver, onAddDriver, onClearData, onClearCollected, onRemoveOrderAdmin, upcomingTotal, onSetUpcomingTotal, saveStatus, dbConnected, syncing, onlineDrivers, activeDrivers, clearConfirm, onConfirmClear, onCancelClear, history, passwords, onSetPassword, selectedDate, onSetSelectedDate, onLogout }) {
+function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onClearNotifs, expenses, onAddExpense, onOrdersAdd, onStatusUpdate, onApproveTransfer, onRejectTransfer, driverProfiles, onUpdateDriver, onAddDriver, onClearData, onClearCollected, onRemoveOrderAdmin, saveStatus, dbConnected, syncing, onlineDrivers, activeDrivers, clearConfirm, onConfirmClear, onCancelClear, history, passwords, onSetPassword, selectedDate, onSetSelectedDate, onLogout }) {
   const [tab, setTab] = useState("upload");
   const [toast, setToast] = useState(null);
   const [filterDate, setFilterDate] = useState("all");
@@ -4590,7 +4705,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
       {orders.length > 0 && <DateFilterBar orders={orders} selectedDate={selectedDate} onSetSelectedDate={onSetSelectedDate} />}
 
       <div style={{ flex:1, overflowY:"auto", paddingTop:16, display:"flex", flexDirection:"column", WebkitOverflowScrolling:"touch" }}>
-        {tab==="upload" && <AdminUploadTab allOrders={orders} onOrdersParsed={handleOrdersAssign} onAssignDriver={() => {}} onStatusUpdate={onStatusUpdate} upcomingTotal={upcomingTotal} onSetUpcomingTotal={onSetUpcomingTotal} />}
+        {tab==="upload" && <AdminUploadTab allOrders={orders} onOrdersParsed={handleOrdersAssign} onAssignDriver={() => {}} onStatusUpdate={onStatusUpdate} />}
         {tab==="orders" && <AdminOrdersTab orders={filteredOrders} onStatusUpdate={onStatusUpdate} onRemoveOrder={onRemoveOrderAdmin} />}
 
         {/*  Notifications Tab  */}
@@ -4754,7 +4869,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
 }
 
 /*  Driver App  */
-function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDeleteExpense, onScan, onStatusUpdate, onLogout, onRequestTransfer, onRemoveOrder, onRequestHelp, orderTags, onSetTag, upcomingCount, onAddOrder, selectedDate, onSetSelectedDate, onEditOrder }) {
+function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDeleteExpense, onScan, onStatusUpdate, onLogout, onRequestTransfer, onRemoveOrder, onRequestHelp, orderTags, onSetTag, onAddOrder, selectedDate, onSetSelectedDate, onEditOrder }) {
   // Wrapper: driver manual orders go through addOrders but also mark as scanned
   const [tab, setTab]               = useState("warehouse");
   // Shim so updateOrderDetails is always in scope
@@ -4820,12 +4935,6 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
             <div style={{ fontFamily:"Syne", color:"#fff", fontSize:18, fontWeight:800 }}>DeliverFlow</div>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:2, flexWrap:"wrap" }}>
               <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>Hi, {user.name}   {myOrders.length} orders today</span>
-              {upcomingCount > 0 && (
-                <span style={{ background:"linear-gradient(135deg,rgba(255,107,53,.25),rgba(255,61,113,.2))", border:"1px solid rgba(255,107,53,.5)", borderRadius:20, padding:"2px 10px", fontFamily:"Syne", color:"#FF6B35", fontSize:11, fontWeight:700, display:"flex", alignItems:"center", gap:4 }}>
-                  <span style={{ width:6, height:6, borderRadius:"50%", background:"#FF6B35", display:"inline-block", animation:"pulse 1.2s ease-in-out infinite" }} />
-                  {upcomingCount} upcoming orders
-                </span>
-              )}
             </div>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
@@ -5227,22 +5336,6 @@ window.App = function App() {
   const [orderTags, setOrderTags] = useState(function() { return lsGet("df_order_tags", {}); });
   useEffect(function() { lsSet("df_order_tags", orderTags); }, [orderTags]);
   function setTag(invoiceNo, tag) { setOrderTags(function(p){ var n={...p}; if(tag) n[invoiceNo]=tag; else delete n[invoiceNo]; return n; }); }
-  const [upcomingTotal, setUpcomingTotal] = useState(function(){ return lsGet("df_upcoming_total", 0); });
-  const _upcomingMounted = React.useRef(false);
-  useEffect(function(){
-    lsSet("df_upcoming_total", upcomingTotal);
-    if (!_upcomingMounted.current) { _upcomingMounted.current = true; return; }
-    var _sb = getSupabase && getSupabase();
-    if (_sb) {
-      _sb.from("driver_presence").upsert({
-        driver_id: "__upcoming__",
-        driver_name: String(upcomingTotal),
-        online: true,
-        active: upcomingTotal > 0,
-        updated_at: new Date().toISOString()
-      }, { onConflict: "driver_id" }).then(function(){}, function(){});
-    }
-  }, [upcomingTotal]);
   useEffect(function() { lsSet(LS_KEYS.history, history); }, [history]);
   const [dbConnected, setDbConnected] = useState(false);
   const [syncing, setSyncing]         = useState(false);
@@ -5509,26 +5602,13 @@ window.App = function App() {
             updated_at: new Date().toISOString()
           }, { onConflict: "driver_id" }).then(function(){}, function(){});
         }
-        // Poll upcoming count from Supabase so driver sees admin's changes cross-device
-        function pollUpcoming() {
-          sb.from("driver_presence").select("driver_name,active").eq("driver_id", "__upcoming__").then(function(res) {
-            if (res && res.data && res.data.length > 0) {
-              var cnt = res.data[0].active ? parseInt(res.data[0].driver_name) || 0 : 0;
-              setUpcomingTotal(cnt);
-              lsSet("df_upcoming_total", cnt);
-            } else {
-              setUpcomingTotal(0);
-            }
-          }).catch(function(){});
-        }
-        pollUpcoming();
         markPresence(!document.hidden);
         // Update active status immediately on visibility change
         document.addEventListener("visibilitychange", function() {
           markPresence(!document.hidden);
         });
-        // Ping every 20s — faster active/idle detection, also polls upcoming
-        var iv = setInterval(function(){ markPresence(!document.hidden); pollUpcoming(); }, 20000);
+        // Ping every 20s for active/idle detection
+        var iv = setInterval(function(){ markPresence(!document.hidden); }, 20000);
         window._presenceInterval = iv;
       }
 
@@ -5540,17 +5620,9 @@ window.App = function App() {
             var online = {};
             var active = {};
             res.data.forEach(function(row) {
-              if (row.driver_id === "__upcoming__") {
-                // Sync upcoming count from DB to localStorage
-                var dbCount = row.active ? parseInt(row.driver_name) || 0 : 0;
-                lsSet("df_upcoming_total", dbCount);
-                setUpcomingTotal(dbCount);
-                return;
-              }
+              if (row.driver_id === "__upcoming__") return; // ignore legacy rows
               if (row.online) {
                 online[row.driver_id] = { name: row.driver_name, online_at: row.updated_at };
-                // Only show breathing animation if updated_at is recent (< 45s ago)
-                // This prevents stale "active" rows from showing animation indefinitely
                 var age = row.updated_at ? (Date.now() - new Date(row.updated_at).getTime()) : 999999;
                 if (row.active && age < 45000) active[row.driver_id] = true;
               }
@@ -5950,10 +6022,10 @@ setOrders(function(prev) {
           onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))}
           onlineDrivers={onlineDrivers} activeDrivers={activeDrivers}
           onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
-      {user?.role === "admin"  && <AdminApp  user={user} orders={orders} transfers={transfers} adminNotifs={adminNotifs} onMarkNotifRead={(id)=>setAdminNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n))} onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))} expenses={expenses} onAddExpense={function(exp){ const e={...exp,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }} onOrdersAdd={addOrders} onStatusUpdate={updateStatus} onApproveTransfer={approveTransfer} onRejectTransfer={rejectTransfer} driverProfiles={driverProfiles} onUpdateDriver={updateDriverProfile} onAddDriver={addDriver} onClearData={clearAllData} onClearCollected={clearCollected} onRemoveOrderAdmin={removeOrder} orderTags={orderTags} onSetTag={setTag} upcomingTotal={upcomingTotal} onSetUpcomingTotal={setUpcomingTotal} saveStatus={saveStatus} dbConnected={dbConnected} syncing={syncing} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} clearConfirm={clearConfirm} onConfirmClear={doClearAllData} onCancelClear={function(){setClearConfirm(false);}} history={history} passwords={passwords} onSetPassword={function(id,pwd){setPasswords(function(prev){var n={...prev};n[id]=pwd;return n;});}} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
+      {user?.role === "admin"  && <AdminApp  user={user} orders={orders} transfers={transfers} adminNotifs={adminNotifs} onMarkNotifRead={(id)=>setAdminNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n))} onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))} expenses={expenses} onAddExpense={function(exp){ const e={...exp,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }} onOrdersAdd={addOrders} onStatusUpdate={updateStatus} onApproveTransfer={approveTransfer} onRejectTransfer={rejectTransfer} driverProfiles={driverProfiles} onUpdateDriver={updateDriverProfile} onAddDriver={addDriver} onClearData={clearAllData} onClearCollected={clearCollected} onRemoveOrderAdmin={removeOrder} orderTags={orderTags} onSetTag={setTag} saveStatus={saveStatus} dbConnected={dbConnected} syncing={syncing} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} clearConfirm={clearConfirm} onConfirmClear={doClearAllData} onCancelClear={function(){setClearConfirm(false);}} history={history} passwords={passwords} onSetPassword={function(id,pwd){setPasswords(function(prev){var n={...prev};n[id]=pwd;return n;});}} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
       {user?.role === "driver" && <DriverApp user={user} orders={orders} expenses={expenses} onAddExpense={function(exp){ const e={...exp,driverId:user.id,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }}
           onUpdateExpense={function(id,fields){ setExpenses(function(p){ var n=p.map(function(e){ return e.id===id?{...e,...fields}:e; }); lsSet(LS_KEYS.expenses,n); return n; }); dbUpdateExpense(id,fields); }}
-          onDeleteExpense={function(id){ setExpenses(function(p){ var n=p.filter(function(e){ return e.id!==id; }); lsSet(LS_KEYS.expenses,n); return n; }); dbDeleteExpense(id); }} onScan={markScanned} onStatusUpdate={updateStatus} onEditOrder={updateOrderDetails} onRequestTransfer={requestTransfer} onRemoveOrder={removeOrder} onRequestHelp={requestHelp} orderTags={orderTags} onSetTag={setTag} upcomingCount={upcomingTotal} onAddOrder={addOrders} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
+          onDeleteExpense={function(id){ setExpenses(function(p){ var n=p.filter(function(e){ return e.id!==id; }); lsSet(LS_KEYS.expenses,n); return n; }); dbDeleteExpense(id); }} onScan={markScanned} onStatusUpdate={updateStatus} onEditOrder={updateOrderDetails} onRequestTransfer={requestTransfer} onRemoveOrder={removeOrder} onRequestHelp={requestHelp} orderTags={orderTags} onSetTag={setTag} onAddOrder={addOrders} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
     </>
   );
 }
