@@ -1,706 +1,561 @@
-<!DOCTYPE html><!-- build=1775561200 - DeliverFlow v3.6 with Civil ID -->
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23FF7A45'/%3E%3Cpolygon points='50,18 76,33 50,48 24,33' fill='white'/%3E%3Cpolygon points='24,33 50,48 50,82 24,67' fill='rgba(255,255,255,0.55)'/%3E%3Cpolygon points='76,33 50,48 50,82 76,67' fill='rgba(255,255,255,0.32)'/%3E%3C/svg%3E"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
-  <title>DeliverFlow - AMTEL TELECOM</title>
-  <meta name="theme-color" content="#0D0D0D"/>
-  <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="DeliverFlow"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{height:100%;background:#0D0D0D;overflow:hidden;font-family:'Geist',system-ui,sans-serif}
-    #root{height:100%;width:100%;display:flex;justify-content:center}
-    #loading{position:fixed;inset:0;background:#0D0D0D;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Geist',system-ui,sans-serif;color:#fff;z-index:9999}
-    .logo{font-size:26px;font-weight:900;letter-spacing:2px;margin-bottom:8px}
-    .logo span{color:#FF6B2B}
-    .sub{font-size:11px;color:rgba(255,255,255,0.25);margin-bottom:32px;letter-spacing:2px;text-transform:uppercase}
-    .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,0.08);border-top-color:#FF6B2B;border-radius:50%;animation:spin 0.8s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    body.theme-light{filter:invert(1) hue-rotate(180deg)}
-    body.theme-light img,body.theme-light video{filter:invert(1) hue-rotate(180deg)}
-  </style>
-</head>
-<body class="theme-dark">
-  <div id="loading">
-    <div class="logo"><span>DELIVER</span>FLOW</div>
-    <div class="sub">AMTEL TELECOM</div>
-    <div class="spinner"></div>
-  </div>
-  <div id="root"></div>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script>
-// ─── PASTE THE ENTIRE ORIGINAL DELIVERFLOW SCRIPT BLOCK HERE ───
-// (Copy everything from your existing index.html <script> tag,
-//  then insert the Civil ID additions below BEFORE the closing })();)
-//
-// The additions below must be inserted INSIDE the existing IIFE,
-// just before the closing })(); line.
-//
-// ────────────────────────────────────────────────────────────────
-//
-// STEP 1: Open your existing index.html
-// STEP 2: Find the line near the end that says:  })();
-// STEP 3: Insert ALL the code from the <CIVIL_ID_ADDITIONS> block below
-//         just BEFORE that  })();  line
-// STEP 4: Also apply the three small patches marked PATCH-A, PATCH-B, PATCH-C
-//
-// ════════════════════════════════════════════════════════════════
-// CIVIL ID ADDITIONS — Insert just before })(); at end of script
-// ════════════════════════════════════════════════════════════════
-  </script>
+<script>
+(function(){
+  // ── Wait for DeliverFlow app to fully render ──────────────────
+  var tries = 0;
+  var iv = setInterval(function(){
+    tries++;
+    if(tries > 150){ clearInterval(iv); console.warn('[Civil ID] App not ready after 45s'); return; }
+    if(!window.React || !window.ReactDOM){ return; }
+    var loader = document.getElementById('loading');
+    if(!loader || loader.style.display !== 'none'){ return; }
+    clearInterval(iv);
+    console.log('[Civil ID] App ready — injecting Civil ID feature...');
+    startCivilID();
+  }, 300);
 
-  <!-- ══════════════════════════════════════════════════════
-       CIVIL ID FEATURE — Standalone Addition Script
-       Works alongside your existing DeliverFlow script.
-       Requires: React, ReactDOM already loaded (from above),
-       and getSupabase() defined in the main script.
-       ══════════════════════════════════════════════════════ -->
-  <script>
-(function() {
-'use strict';
+  function startCivilID(){
 
-// ── Helpers (safe re-use of React already loaded) ──────────────
-var R = React;
-var E = React.createElement;
-var FF = '"Geist",system-ui,sans-serif';
-var FM = '"Geist Mono",monospace';
+    var R  = window.React;
+    var RD = window.ReactDOM;
+    var E  = R.createElement;
+    var FF = '"Geist",system-ui,sans-serif';
+    var FM = '"Geist Mono",monospace';
 
-// ── Wait for main app to initialise before patching ────────────
-function waitFor(fn, cb, tries) {
-  tries = tries || 0;
-  if (tries > 80) { console.warn('DeliverFlow Civil ID: main app not ready'); return; }
-  try { if (fn()) { cb(); return; } } catch(e) {}
-  setTimeout(function(){ waitFor(fn, cb, tries + 1); }, 250);
-}
+    // ══════════════════════════════════════════════════════════
+    // 1. DATABASE
+    // ══════════════════════════════════════════════════════════
 
-// ════════════════════════════════════════════════════════════════
-// 1. DATABASE HELPERS
-// ════════════════════════════════════════════════════════════════
+    function getSB(){ return window.getSupabase ? window.getSupabase() : null; }
 
-window._dfSaveCivilID = async function(record) {
-  if (window.getSupabase) {
-    var sb = window.getSupabase();
-    if (sb) {
-      sb.from("civil_id_records").upsert({
-        invoice_no: record.invoiceNo,
-        online_order_no: record.onlineOrderNo || "",
-        civil_id_number: record.civilIdNumber,
-        full_name: record.fullName,
-        driver_name: record.driverName,
-        delivered_date: record.deliveredDate,
-        created_at: new Date().toISOString()
-      }, { onConflict: "invoice_no" })
-      .then(function(){}, function(e){ console.warn("Civil ID save:", e.message); });
-    }
-  }
-  try {
-    var stored = JSON.parse(localStorage.getItem("df_civil_ids") || "[]");
-    var next = stored.filter(function(r){ return r.invoiceNo !== record.invoiceNo; });
-    next.push(record);
-    localStorage.setItem("df_civil_ids", JSON.stringify(next));
-  } catch(e) {}
-};
-
-window._dfLoadCivilIDs = async function() {
-  if (window.getSupabase) {
-    var sb = window.getSupabase();
-    if (sb) {
-      try {
-        var res = await sb.from("civil_id_records").select("*").order("created_at", { ascending: false });
-        if (!res.error && res.data) {
-          return res.data.map(function(r) {
-            return {
-              invoiceNo: r.invoice_no,
-              onlineOrderNo: r.online_order_no || "",
-              civilIdNumber: r.civil_id_number,
-              fullName: r.full_name,
-              driverName: r.driver_name,
-              deliveredDate: r.delivered_date,
-              createdAt: r.created_at
-            };
-          });
-        }
-      } catch(e) { console.warn("Supabase civil_id load:", e); }
-    }
-  }
-  try { return JSON.parse(localStorage.getItem("df_civil_ids") || "[]"); }
-  catch(e) { return []; }
-};
-
-window._dfGetLocalCivilIDs = function() {
-  try { return JSON.parse(localStorage.getItem("df_civil_ids") || "[]"); }
-  catch(e) { return []; }
-};
-
-// ════════════════════════════════════════════════════════════════
-// 2. CLAUDE VISION OCR
-// ════════════════════════════════════════════════════════════════
-
-window._dfExtractCivilID = async function(base64Image, mediaType) {
-  var response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 300,
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: { type: "base64", media_type: mediaType || "image/jpeg", data: base64Image }
-          },
-          {
-            type: "text",
-            text: "This is a State of Kuwait Civil ID card. Extract ONLY these two fields and respond with ONLY valid JSON (no markdown fences, no extra text):\n{\"civil_id_number\": \"the 12-digit number next to the Civil ID No label at the top right\", \"full_name\": \"the English name after the word Name in the middle-left, written in ALL CAPS\"}\nIf a field is unreadable use empty string \"\"."
-          }
-        ]
-      }]
-    })
-  });
-  var data = await response.json();
-  var text = (data.content || []).map(function(c){ return c.text || ""; }).join("").trim();
-  return JSON.parse(text.replace(/```json|```/g, "").trim());
-};
-
-// ════════════════════════════════════════════════════════════════
-// 3. CIVIL ID COLLECTOR COMPONENT  (shown after Delivered status)
-// ════════════════════════════════════════════════════════════════
-
-window._dfCivilIDCollector = function CivilIDCollector(props) {
-  var order = props.order;
-  var driverName = props.driverName;
-  var onSaved = props.onSaved;
-  var onSkip = props.onSkip;
-
-  var _s0 = R.useState("prompt"), step = _s0[0], setStep = _s0[1];
-  var _s1 = R.useState(null), extracted = _s1[0], setExtracted = _s1[1];
-  var _s2 = R.useState(""), editName = _s2[0], setEditName = _s2[1];
-  var _s3 = R.useState(""), editCivID = _s3[0], setEditCivID = _s3[1];
-  var _s4 = R.useState(""), errMsg = _s4[0], setErrMsg = _s4[1];
-  var fileRef = R.useRef();
-
-  async function handleFile(file) {
-    if (!file) return;
-    setStep("processing"); setErrMsg("");
-    try {
-      var b64 = await new Promise(function(res, rej) {
-        var fr = new FileReader();
-        fr.onload = function(){ res(fr.result.split(",")[1]); };
-        fr.onerror = rej;
-        fr.readAsDataURL(file);
-      });
-      var result = await window._dfExtractCivilID(b64, file.type || "image/jpeg");
-      setExtracted(result);
-      setEditName((result.full_name || "").toUpperCase());
-      setEditCivID((result.civil_id_number || "").replace(/\D/g,""));
-      setStep("confirm");
-    } catch(ex) {
-      setErrMsg("Could not read card automatically. Please enter manually.");
-      setEditName(""); setEditCivID("");
-      setStep("confirm");
-    }
-  }
-
-  async function doSave() {
-    if (!editCivID.trim() && !editName.trim()) {
-      setErrMsg("Please enter at least the Civil ID number or name."); return;
-    }
-    var today = new Date().toLocaleDateString("en-KW", { day:"numeric", month:"short", year:"numeric" });
-    var rec = {
-      invoiceNo: order.invoiceNo,
-      onlineOrderNo: order.onlineOrderNo || "",
-      civilIdNumber: editCivID.trim(),
-      fullName: editName.trim(),
-      driverName: driverName,
-      deliveredDate: today,
-      createdAt: new Date().toISOString()
+    window.dfSaveCivilID = async function(record){
+      var sb = getSB();
+      if(sb){
+        sb.from('civil_id_records').upsert({
+          invoice_no:      record.invoiceNo,
+          online_order_no: record.onlineOrderNo || '',
+          civil_id_number: record.civilIdNumber,
+          full_name:       record.fullName,
+          driver_name:     record.driverName,
+          delivered_date:  record.deliveredDate,
+          created_at:      new Date().toISOString()
+        },{ onConflict:'invoice_no' })
+        .then(function(){}, function(e){ console.warn('Civil ID save:',e.message); });
+      }
+      try{
+        var arr = JSON.parse(localStorage.getItem('df_civil_ids')||'[]');
+        arr = arr.filter(function(r){ return r.invoiceNo !== record.invoiceNo; });
+        arr.push(record);
+        localStorage.setItem('df_civil_ids', JSON.stringify(arr));
+      }catch(e){}
     };
-    await window._dfSaveCivilID(rec);
-    setStep("saved");
-    setTimeout(function(){ if (onSaved) onSaved(rec); }, 900);
-  }
 
-  var card = {
-    background: "#141414",
-    border: "1px solid rgba(0,212,255,.25)",
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 14
-  };
+    window.dfLoadCivilIDs = async function(){
+      var sb = getSB();
+      if(sb){
+        try{
+          var res = await sb.from('civil_id_records').select('*').order('created_at',{ascending:false});
+          if(!res.error && res.data){
+            return res.data.map(function(r){
+              return {
+                invoiceNo:     r.invoice_no,
+                onlineOrderNo: r.online_order_no||'',
+                civilIdNumber: r.civil_id_number,
+                fullName:      r.full_name,
+                driverName:    r.driver_name,
+                deliveredDate: r.delivered_date,
+                createdAt:     r.created_at
+              };
+            });
+          }
+        }catch(e){ console.warn('Civil ID load:',e); }
+      }
+      try{ return JSON.parse(localStorage.getItem('df_civil_ids')||'[]'); }
+      catch(e){ return []; }
+    };
 
-  // ── SAVED ──
-  if (step === "saved") return E("div", { style: Object.assign({}, card, { border: "1px solid rgba(16,185,129,.4)", textAlign: "center", padding: 28 }) },
-    E("div", { style: { fontSize: 40, marginBottom: 10 } }, "✅"),
-    E("div", { style: { fontFamily: FF, color: "#10B981", fontSize: 16, fontWeight: 700 } }, "Civil ID Saved!"),
-    E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.45)", fontSize: 12, marginTop: 6 } },
-      editName + (editCivID ? " · " + editCivID : "")
-    )
-  );
+    // ══════════════════════════════════════════════════════════
+    // 2. CLAUDE VISION OCR
+    // ══════════════════════════════════════════════════════════
 
-  // ── PROMPT ──
-  if (step === "prompt") return E("div", { style: card },
-    E("div", { style: { fontFamily: FF, color: "#00D4FF", fontSize: 14, fontWeight: 700, marginBottom: 4 } }, "🪪 Collect Customer Civil ID"),
-    E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.4)", fontSize: 12, marginBottom: 14, lineHeight: 1.5 } },
-      "Photograph the customer's Kuwait Civil ID to verify identity and record for compliance."
-    ),
-    E("input", {
-      ref: fileRef, type: "file", accept: "image/*", capture: "environment",
-      style: { display: "none" },
-      onChange: function(ev) { handleFile(ev.target.files && ev.target.files[0]); ev.target.value = ""; }
-    }),
-    E("div", { style: { display: "flex", gap: 8 } },
-      E("button", {
-        onClick: function() { setStep("capturing"); setTimeout(function(){ if(fileRef.current) fileRef.current.click(); }, 80); },
-        style: { flex: 2, background: "linear-gradient(135deg,#0EA5E9,#0284C7)", border: "none", borderRadius: 12, padding: "13px", color: "#fff", fontFamily: FF, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }
-      }, "📷 Scan Civil ID"),
-      E("button", {
-        onClick: function() { setEditName(""); setEditCivID(""); setStep("confirm"); },
-        style: { flex: 1, background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 12, padding: "13px", color: "rgba(255,255,255,.5)", fontFamily: FF, fontSize: 11, cursor: "pointer" }
-      }, "Manual"),
-      E("button", {
-        onClick: onSkip,
-        style: { flex: 1, background: "none", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "13px", color: "rgba(255,255,255,.3)", fontFamily: FF, fontSize: 11, cursor: "pointer" }
-      }, "Skip")
-    )
-  );
+    window.dfExtractCivilID = async function(base64, mediaType){
+      var res = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:300,
+          messages:[{
+            role:'user',
+            content:[
+              {
+                type:'image',
+                source:{ type:'base64', media_type: mediaType||'image/jpeg', data:base64 }
+              },
+              {
+                type:'text',
+                text:'This is a State of Kuwait Civil ID card. Extract ONLY these two fields and respond with ONLY valid JSON (no markdown, no explanation):\n{"civil_id_number":"the 12-digit number next to Civil ID No label at top right","full_name":"the English name after the word Name in middle-left area in ALL CAPS"}\nIf a field is unreadable use empty string "".'
+              }
+            ]
+          }]
+        })
+      });
+      var data = await res.json();
+      var text = (data.content||[]).map(function(c){ return c.text||''; }).join('').trim();
+      return JSON.parse(text.replace(/```json|```/g,'').trim());
+    };
 
-  // ── PROCESSING / CAPTURING ──
-  if (step === "capturing" || step === "processing") return E("div", { style: Object.assign({}, card, { textAlign: "center", padding: 28 }) },
-    E("div", { style: { width: 40, height: 40, border: "3px solid rgba(0,212,255,.12)", borderTopColor: "#00D4FF", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 14px" } }),
-    E("div", { style: { fontFamily: FF, color: "#00D4FF", fontSize: 14, fontWeight: 600 } },
-      step === "capturing" ? "Opening camera…" : "Claude Vision reading Civil ID…"
-    ),
-    E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.35)", fontSize: 12, marginTop: 6 } },
-      step === "processing" ? "Extracting name and ID number from photo…" : ""
-    )
-  );
+    // ══════════════════════════════════════════════════════════
+    // 3. CivilIDCollector COMPONENT
+    // ══════════════════════════════════════════════════════════
 
-  // ── CONFIRM / MANUAL ENTRY ──
-  return E("div", { style: card },
-    E("div", { style: { fontFamily: FF, color: "#00D4FF", fontSize: 14, fontWeight: 700, marginBottom: 4 } },
-      extracted ? "🪪 Verify Extracted Details" : "🪪 Enter Civil ID Details"
-    ),
-    E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.4)", fontSize: 12, marginBottom: 14 } },
-      extracted
-        ? "AI has read the card — please verify the details below:"
-        : "Type the details from the customer's Civil ID card:"
-    ),
-    errMsg && E("div", { style: { background: "rgba(245,158,11,.1)", border: "1px solid rgba(245,158,11,.3)", borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontFamily: FF, color: "#F59E0B", fontSize: 12 } }, errMsg),
+    function CivilIDCollector(props){
+      var order      = props.order;
+      var driverName = props.driverName;
+      var onSaved    = props.onSaved;
+      var onSkip     = props.onSkip;
 
-    // Civil ID Number input
-    E("div", { style: { marginBottom: 12 } },
-      E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.4)", fontSize: 11, marginBottom: 5, letterSpacing: 1 } }, "CIVIL ID NUMBER"),
-      E("input", {
-        type: "text",
-        value: editCivID,
-        onChange: function(ev) { setEditCivID(ev.target.value.replace(/\D/g,"").slice(0,12)); },
-        placeholder: "000000000000",
-        maxLength: 12,
-        inputMode: "numeric",
-        style: { width: "100%", boxSizing: "border-box", background: "rgba(0,212,255,.07)", border: "1.5px solid rgba(0,212,255,.4)", borderRadius: 10, padding: "12px 14px", color: "#00D4FF", fontFamily: FM, fontSize: 22, fontWeight: 700, letterSpacing: 5, outline: "none" }
-      })
-    ),
+      var ss = R.useState('prompt'),  step = ss[0], setStep = ss[1];
+      var se = R.useState(null),      extr = se[0], setExtr = se[1];
+      var sn = R.useState(''),        name = sn[0], setName = sn[1];
+      var si = R.useState(''),        idno = si[0], setIdno = si[1];
+      var sm = R.useState(''),        emsg = sm[0], setEmsg = sm[1];
+      var fileRef = R.useRef();
 
-    // Full Name input
-    E("div", { style: { marginBottom: 16 } },
-      E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.4)", fontSize: 11, marginBottom: 5, letterSpacing: 1 } }, "FULL NAME (ENGLISH — AS ON CARD)"),
-      E("input", {
-        type: "text",
-        value: editName,
-        onChange: function(ev) { setEditName(ev.target.value.toUpperCase()); },
-        placeholder: "FIRSTNAME MIDDLENAME LASTNAME",
-        style: { width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.18)", borderRadius: 10, padding: "12px 14px", color: "#fff", fontFamily: FF, fontSize: 14, fontWeight: 600, letterSpacing: 1, outline: "none" }
-      })
-    ),
+      async function processFile(file){
+        if(!file) return;
+        setStep('processing'); setEmsg('');
+        try{
+          var b64 = await new Promise(function(res,rej){
+            var fr = new FileReader();
+            fr.onload  = function(){ res(fr.result.split(',')[1]); };
+            fr.onerror = rej;
+            fr.readAsDataURL(file);
+          });
+          var got = await window.dfExtractCivilID(b64, file.type||'image/jpeg');
+          setExtr(got);
+          setName((got.full_name||'').toUpperCase());
+          setIdno((got.civil_id_number||'').replace(/\D/g,''));
+          setStep('confirm');
+        }catch(ex){
+          setEmsg('Could not auto-read the card. Please enter details manually.');
+          setName(''); setIdno('');
+          setStep('confirm');
+        }
+      }
 
-    E("div", { style: { display: "flex", gap: 8 } },
-      E("button", {
-        onClick: function() { setStep("prompt"); setExtracted(null); setErrMsg(""); },
-        style: { flex: 1, background: "rgba(255,255,255,.07)", border: "none", borderRadius: 12, padding: 12, color: "rgba(255,255,255,.5)", fontFamily: FF, fontSize: 12, cursor: "pointer" }
-      }, "← Retake"),
-      E("button", {
-        onClick: doSave,
-        style: { flex: 2, background: "linear-gradient(135deg,#0EA5E9,#7C3AED)", border: "none", borderRadius: 12, padding: 13, color: "#fff", fontFamily: FF, fontWeight: 700, fontSize: 14, cursor: "pointer" }
-      }, "✓ Save Civil ID"),
-      E("button", {
-        onClick: onSkip,
-        style: { flex: 1, background: "none", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12, padding: 12, color: "rgba(255,255,255,.3)", fontFamily: FF, fontSize: 12, cursor: "pointer" }
-      }, "Skip")
-    )
-  );
-};
+      async function doSave(){
+        if(!idno.trim() && !name.trim()){
+          setEmsg('Please enter the Civil ID number or name.'); return;
+        }
+        var today = new Date().toLocaleDateString('en-KW',{day:'numeric',month:'short',year:'numeric'});
+        var rec = {
+          invoiceNo:     order.invoiceNo,
+          onlineOrderNo: order.onlineOrderNo||'',
+          civilIdNumber: idno.trim(),
+          fullName:      name.trim(),
+          driverName:    driverName,
+          deliveredDate: today,
+          createdAt:     new Date().toISOString()
+        };
+        await window.dfSaveCivilID(rec);
+        setStep('saved');
+        setTimeout(function(){ if(onSaved) onSaved(rec); }, 900);
+      }
 
-// ════════════════════════════════════════════════════════════════
-// 4. CIVIL ID RECORDS TAB  (Admin Panel)
-// ════════════════════════════════════════════════════════════════
+      var card = {
+        background:'#141414',
+        border:'1px solid rgba(0,212,255,.25)',
+        borderRadius:16,
+        padding:18,
+        marginTop:14
+      };
 
-window._dfCivilIDRecordsTab = function CivilIDRecordsTab() {
-  var _s0 = R.useState([]), records = _s0[0], setRecords = _s0[1];
-  var _s1 = R.useState(true), loading = _s1[0], setLoading = _s1[1];
-  var _s2 = R.useState(""), search = _s2[0], setSearch = _s2[1];
-
-  R.useEffect(function() {
-    window._dfLoadCivilIDs()
-      .then(function(data) { setRecords(data || []); setLoading(false); })
-      .catch(function() { setLoading(false); });
-  }, []);
-
-  var filtered = records.filter(function(r) {
-    var q = search.toLowerCase();
-    return !q
-      || (r.fullName||"").toLowerCase().includes(q)
-      || (r.civilIdNumber||"").includes(q)
-      || (r.invoiceNo||"").includes(q)
-      || (r.onlineOrderNo||"").includes(q)
-      || (r.driverName||"").toLowerCase().includes(q);
-  });
-
-  function exportCSV() {
-    var headers = ["Invoice No","Online Order No","Civil ID Number","Full Name","Driver Name","Delivered Date","Recorded At"];
-    var rows = filtered.map(function(r) {
-      return [r.invoiceNo, r.onlineOrderNo||"", r.civilIdNumber, r.fullName, r.driverName, r.deliveredDate, r.createdAt||""];
-    });
-    var csv = [headers].concat(rows).map(function(r) {
-      return r.map(function(v){ return '"' + String(v||"").replace(/"/g,'""') + '"'; }).join(",");
-    }).join("\n");
-    var blob = new Blob([csv], { type: "text/csv" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = "civil_id_records_" + new Date().toISOString().slice(0,10) + ".csv";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  return E("div", { style: { padding: "0 16px 80px" } },
-
-    // Header
-    E("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 } },
-      E("div", null,
-        E("div", { style: { fontFamily: FF, color: "#fff", fontSize: 15, fontWeight: 700 } }, "🪪 Civil ID Records"),
-        E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.4)", fontSize: 12, marginTop: 2 } },
-          records.length + " records collected"
+      // SAVED
+      if(step==='saved') return E('div',{style:Object.assign({},card,{border:'1px solid rgba(16,185,129,.4)',textAlign:'center',padding:28})},
+        E('div',{style:{fontSize:40,marginBottom:10}},'✅'),
+        E('div',{style:{fontFamily:FF,color:'#10B981',fontSize:16,fontWeight:700}},'Civil ID Saved!'),
+        E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.45)',fontSize:12,marginTop:6}},
+          name + (idno ? ' · '+idno : '')
         )
-      ),
-      records.length > 0 && E("button", {
-        onClick: exportCSV,
-        style: { background: "rgba(16,185,129,.15)", border: "1px solid rgba(16,185,129,.3)", borderRadius: 10, padding: "8px 14px", color: "#10B981", fontFamily: FF, fontSize: 12, fontWeight: 700, cursor: "pointer" }
-      }, "📥 Export CSV")
-    ),
+      );
 
-    // Supabase SQL reminder banner
-    E("div", { style: { background: "rgba(0,212,255,.05)", border: "1px solid rgba(0,212,255,.15)", borderRadius: 12, padding: "10px 14px", marginBottom: 14 } },
-      E("div", { style: { fontFamily: FF, color: "rgba(0,212,255,.7)", fontSize: 11, fontWeight: 700, marginBottom: 4 } }, "SUPABASE SETUP REQUIRED"),
-      E("div", { style: { fontFamily: '"Geist Mono",monospace', color: "rgba(255,255,255,.45)", fontSize: 10, lineHeight: 1.6 } },
-        "CREATE TABLE civil_id_records (invoice_no TEXT PRIMARY KEY, online_order_no TEXT, civil_id_number TEXT, full_name TEXT, driver_name TEXT, delivered_date TEXT, created_at TIMESTAMPTZ DEFAULT now());"
-      )
-    ),
+      // PROMPT
+      if(step==='prompt') return E('div',{style:card},
+        E('div',{style:{fontFamily:FF,color:'#00D4FF',fontSize:14,fontWeight:700,marginBottom:4}},'🪪 Collect Customer Civil ID'),
+        E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:12,marginBottom:14,lineHeight:1.5}},
+          "Photograph the customer's Kuwait Civil ID card to verify identity."
+        ),
+        E('input',{
+          ref:fileRef, type:'file', accept:'image/*', capture:'environment',
+          style:{display:'none'},
+          onChange:function(ev){ processFile(ev.target.files&&ev.target.files[0]); ev.target.value=''; }
+        }),
+        E('div',{style:{display:'flex',gap:8}},
+          E('button',{
+            onClick:function(){ setStep('capturing'); setTimeout(function(){ if(fileRef.current) fileRef.current.click(); },80); },
+            style:{flex:2,background:'linear-gradient(135deg,#0EA5E9,#0284C7)',border:'none',borderRadius:12,padding:'13px',color:'#fff',fontFamily:FF,fontWeight:700,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}
+          },'📷 Scan Civil ID'),
+          E('button',{
+            onClick:function(){ setName(''); setIdno(''); setStep('confirm'); },
+            style:{flex:1,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:12,padding:'13px',color:'rgba(255,255,255,.5)',fontFamily:FF,fontSize:11,cursor:'pointer'}
+          },'Manual'),
+          E('button',{
+            onClick:onSkip,
+            style:{flex:1,background:'none',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,padding:'13px',color:'rgba(255,255,255,.3)',fontFamily:FF,fontSize:11,cursor:'pointer'}
+          },'Skip')
+        )
+      );
 
-    // Search
-    E("input", {
-      value: search,
-      onChange: function(ev) { setSearch(ev.target.value); },
-      placeholder: "🔍 Search name, Civil ID, invoice, order no, driver…",
-      style: { width: "100%", background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12, padding: "11px 16px", color: "#fff", fontFamily: FF, fontSize: 13, marginBottom: 14, boxSizing: "border-box", outline: "none" }
-    }),
+      // PROCESSING
+      if(step==='capturing'||step==='processing') return E('div',{style:Object.assign({},card,{textAlign:'center',padding:28})},
+        E('div',{style:{width:40,height:40,border:'3px solid rgba(0,212,255,.12)',borderTopColor:'#00D4FF',borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto 14px'}}),
+        E('div',{style:{fontFamily:FF,color:'#00D4FF',fontSize:14,fontWeight:600}},
+          step==='capturing' ? 'Opening camera…' : 'Claude Vision reading Civil ID…'
+        ),
+        E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.35)',fontSize:12,marginTop:6}},
+          step==='processing' ? 'Extracting name and ID number from photo…' : ''
+        )
+      );
 
-    // Loading / empty
-    loading
-      ? E("div", { style: { textAlign: "center", color: "rgba(255,255,255,.3)", padding: 40, fontFamily: FF } }, "Loading…")
-      : filtered.length === 0
-        ? E("div", { style: { textAlign: "center", padding: "40px 20px" } },
-            E("div", { style: { fontSize: 40, marginBottom: 12 } }, "🪪"),
-            E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.4)", fontSize: 14 } },
-              records.length === 0
-                ? "No Civil IDs collected yet.\nDrivers will be prompted after each delivery."
-                : "No records match your search."
-            )
-          )
-        : filtered.map(function(r, i) {
-            return E("div", {
-              key: (r.invoiceNo || "") + i,
-              style: { background: "#141414", border: "1px solid rgba(0,212,255,.15)", borderRadius: 14, padding: "14px 16px", marginBottom: 10, overflow: "hidden" }
-            },
-              // Top row: name + status badge
-              E("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 } },
-                E("div", { style: { flex: 1, minWidth: 0 } },
-                  E("div", { style: { fontFamily: FF, color: "#fff", fontSize: 14, fontWeight: 700, marginBottom: 4 } }, r.fullName || "—"),
-                  E("div", { style: { color: "#00D4FF", fontSize: 18, fontWeight: 800, letterSpacing: 4, fontFamily: FM } }, r.civilIdNumber || "—")
-                ),
-                E("div", { style: { textAlign: "right", flexShrink: 0, marginLeft: 10 } },
-                  E("div", { style: { background: "rgba(16,185,129,.12)", border: "1px solid rgba(16,185,129,.2)", borderRadius: 20, padding: "3px 10px", fontFamily: FF, color: "#10B981", fontSize: 11, fontWeight: 600 } }, "✓ Collected"),
-                  E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.3)", fontSize: 10, marginTop: 5 } }, r.deliveredDate)
-                )
-              ),
-              // Bottom row: invoice / OO / driver
-              E("div", { style: { background: "rgba(255,255,255,.03)", borderRadius: 8, padding: "8px 12px", display: "flex", gap: 16, flexWrap: "wrap" } },
-                E("span", { style: { fontFamily: FF, color: "rgba(255,255,255,.4)", fontSize: 12 } },
-                  "Invoice: ", E("span", { style: { color: "#FF6B2B", fontWeight: 700 } }, "#" + r.invoiceNo)
-                ),
-                r.onlineOrderNo && E("span", { style: { fontFamily: FF, color: "rgba(255,255,255,.4)", fontSize: 12 } },
-                  "OO: ", E("span", { style: { color: "#00D4FF", fontWeight: 700 } }, r.onlineOrderNo)
-                ),
-                E("span", { style: { fontFamily: FF, color: "rgba(255,255,255,.4)", fontSize: 12 } },
-                  "Driver: ", E("span", { style: { color: "#fff", fontWeight: 600 } }, r.driverName)
-                )
-              )
+      // CONFIRM / MANUAL
+      return E('div',{style:card},
+        E('div',{style:{fontFamily:FF,color:'#00D4FF',fontSize:14,fontWeight:700,marginBottom:4}},
+          extr ? '🪪 Verify Extracted Details' : '🪪 Enter Civil ID Details'
+        ),
+        E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:12,marginBottom:14}},
+          extr ? 'AI has read the card — verify before saving:' : 'Enter details from the Civil ID card:'
+        ),
+        emsg && E('div',{style:{background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.3)',borderRadius:10,padding:'9px 12px',marginBottom:12,fontFamily:FF,color:'#F59E0B',fontSize:12}},emsg),
+
+        E('div',{style:{marginBottom:12}},
+          E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:11,marginBottom:5,letterSpacing:1}},'CIVIL ID NUMBER'),
+          E('input',{
+            type:'text', value:idno, maxLength:12, inputMode:'numeric',
+            placeholder:'000000000000',
+            onChange:function(ev){ setIdno(ev.target.value.replace(/\D/g,'').slice(0,12)); },
+            style:{width:'100%',boxSizing:'border-box',background:'rgba(0,212,255,.07)',border:'1.5px solid rgba(0,212,255,.4)',borderRadius:10,padding:'12px 14px',color:'#00D4FF',fontFamily:FM,fontSize:22,fontWeight:700,letterSpacing:5,outline:'none'}
+          })
+        ),
+
+        E('div',{style:{marginBottom:16}},
+          E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:11,marginBottom:5,letterSpacing:1}},'FULL NAME (ENGLISH — AS ON CARD)'),
+          E('input',{
+            type:'text', value:name,
+            placeholder:'FIRSTNAME LASTNAME',
+            onChange:function(ev){ setName(ev.target.value.toUpperCase()); },
+            style:{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.18)',borderRadius:10,padding:'12px 14px',color:'#fff',fontFamily:FF,fontSize:14,fontWeight:600,letterSpacing:1,outline:'none'}
+          })
+        ),
+
+        E('div',{style:{display:'flex',gap:8}},
+          E('button',{
+            onClick:function(){ setStep('prompt'); setExtr(null); setEmsg(''); },
+            style:{flex:1,background:'rgba(255,255,255,.07)',border:'none',borderRadius:12,padding:12,color:'rgba(255,255,255,.5)',fontFamily:FF,fontSize:12,cursor:'pointer'}
+          },'← Retake'),
+          E('button',{
+            onClick:doSave,
+            style:{flex:2,background:'linear-gradient(135deg,#0EA5E9,#7C3AED)',border:'none',borderRadius:12,padding:13,color:'#fff',fontFamily:FF,fontWeight:700,fontSize:14,cursor:'pointer'}
+          },'✓ Save Civil ID'),
+          E('button',{
+            onClick:onSkip,
+            style:{flex:1,background:'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:12,color:'rgba(255,255,255,.3)',fontFamily:FF,fontSize:12,cursor:'pointer'}
+          },'Skip')
+        )
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // 4. CivilIDRecordsTab COMPONENT  (Admin tab)
+    // ══════════════════════════════════════════════════════════
+
+    function CivilIDRecordsTab(){
+      var sr = R.useState([]),   records = sr[0], setRecords = sr[1];
+      var sl = R.useState(true), loading = sl[0], setLoading = sl[1];
+      var sq = R.useState(''),   search  = sq[0], setSearch  = sq[1];
+
+      R.useEffect(function(){
+        window.dfLoadCivilIDs()
+          .then(function(d){ setRecords(d||[]); setLoading(false); })
+          .catch(function(){  setLoading(false); });
+      },[]);
+
+      var filtered = records.filter(function(r){
+        var q = search.toLowerCase();
+        return !q
+          || (r.fullName||'').toLowerCase().includes(q)
+          || (r.civilIdNumber||'').includes(q)
+          || (r.invoiceNo||'').includes(q)
+          || (r.onlineOrderNo||'').includes(q)
+          || (r.driverName||'').toLowerCase().includes(q);
+      });
+
+      function exportCSV(){
+        var cols = ['Invoice No','Online Order No','Civil ID Number','Full Name','Driver Name','Delivered Date'];
+        var rows = filtered.map(function(r){
+          return [r.invoiceNo, r.onlineOrderNo||'', r.civilIdNumber, r.fullName, r.driverName, r.deliveredDate];
+        });
+        var csv = [cols].concat(rows).map(function(row){
+          return row.map(function(v){ return '"'+String(v||'').replace(/"/g,'""')+'"'; }).join(',');
+        }).join('\n');
+        var blob = new Blob([csv],{type:'text/csv'});
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href   = url;
+        a.download = 'civil_id_records_'+new Date().toISOString().slice(0,10)+'.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      return E('div',{style:{padding:'0 16px 80px'}},
+
+        E('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}},
+          E('div',null,
+            E('div',{style:{fontFamily:FF,color:'#fff',fontSize:15,fontWeight:700}},'🪪 Civil ID Records'),
+            E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:12,marginTop:2}}, records.length+' records collected')
+          ),
+          records.length > 0 && E('button',{
+            onClick:exportCSV,
+            style:{background:'rgba(16,185,129,.15)',border:'1px solid rgba(16,185,129,.3)',borderRadius:10,padding:'8px 14px',color:'#10B981',fontFamily:FF,fontSize:12,fontWeight:700,cursor:'pointer'}
+          },'📥 Export CSV')
+        ),
+
+        E('input',{
+          value:search,
+          onChange:function(ev){ setSearch(ev.target.value); },
+          placeholder:'🔍 Search name, Civil ID, invoice, order, driver…',
+          style:{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:'11px 16px',color:'#fff',fontFamily:FF,fontSize:13,marginBottom:14,boxSizing:'border-box',outline:'none'}
+        }),
+
+        records.length > 0 && E('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:14}},
+          [
+            ['Total',   records.length, '#00D4FF'],
+            ['Today',   records.filter(function(r){ return r.deliveredDate===new Date().toLocaleDateString('en-KW',{day:'numeric',month:'short',year:'numeric'}); }).length, '#10B981'],
+            ['Drivers', (function(){ var s=new Set(records.map(function(r){return r.driverName;})); return s.size; })(), '#FF6B2B']
+          ].map(function(item){
+            return E('div',{key:item[0],style:{background:item[2]+'12',border:'1px solid '+item[2]+'25',borderRadius:12,padding:'10px 8px',textAlign:'center'}},
+              E('div',{style:{fontFamily:FF,color:item[2],fontSize:18,fontWeight:800}},item[1]),
+              E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:10,marginTop:2}},item[0])
             );
           })
-  );
-};
+        ),
 
-// ════════════════════════════════════════════════════════════════
-// 5. PATCH: INJECT CIVIL ID COLLECTOR INTO StatusUpdateModal
-//    We override the existing StatusUpdateModal by monitoring
-//    for the delivered confirmation event via a custom hook.
-//
-//    HOW IT WORKS:
-//    - After driver taps "Confirm Delivered", a custom event
-//      "df:delivered" fires with order + driverName
-//    - The CivilIDCollectorOverlay listens and shows the UI
-// ════════════════════════════════════════════════════════════════
+        loading && E('div',{style:{textAlign:'center',color:'rgba(255,255,255,.3)',padding:40,fontFamily:FF}},'Loading…'),
 
-function CivilIDCollectorOverlay() {
-  var _s0 = R.useState(null), pendingOrder = _s0[0], setPendingOrder = _s0[1];
-  var _s1 = R.useState(""), driverName = _s1[0], setDriverName = _s1[1];
+        !loading && filtered.length===0 && E('div',{style:{textAlign:'center',padding:'40px 20px'}},
+          E('div',{style:{fontSize:40,marginBottom:12}},'🪪'),
+          E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:14,lineHeight:1.6}},
+            records.length===0
+              ? 'No Civil IDs collected yet.\nDrivers are prompted after each delivery.'
+              : 'No records match your search.'
+          )
+        ),
 
-  R.useEffect(function() {
-    function handler(ev) {
-      setPendingOrder(ev.detail.order);
-      setDriverName(ev.detail.driverName || "");
+        !loading && filtered.map(function(r,i){
+          return E('div',{key:(r.invoiceNo||'')+i,
+            style:{background:'#141414',border:'1px solid rgba(0,212,255,.15)',borderRadius:14,padding:'14px 16px',marginBottom:10}
+          },
+            E('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}},
+              E('div',{style:{flex:1,minWidth:0}},
+                E('div',{style:{fontFamily:FF,color:'#fff',fontSize:14,fontWeight:700,marginBottom:4}}, r.fullName||'—'),
+                E('div',{style:{color:'#00D4FF',fontSize:18,fontWeight:800,letterSpacing:4,fontFamily:FM}}, r.civilIdNumber||'—')
+              ),
+              E('div',{style:{textAlign:'right',flexShrink:0,marginLeft:10}},
+                E('div',{style:{background:'rgba(16,185,129,.12)',border:'1px solid rgba(16,185,129,.2)',borderRadius:20,padding:'3px 10px',fontFamily:FF,color:'#10B981',fontSize:11,fontWeight:600}},'✓ Collected'),
+                E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.3)',fontSize:10,marginTop:5}},r.deliveredDate)
+              )
+            ),
+            E('div',{style:{background:'rgba(255,255,255,.03)',borderRadius:8,padding:'8px 12px',display:'flex',gap:16,flexWrap:'wrap'}},
+              E('span',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:12}},
+                'Invoice: ',E('span',{style:{color:'#FF6B2B',fontWeight:700}},'#'+r.invoiceNo)
+              ),
+              r.onlineOrderNo && E('span',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:12}},
+                'OO: ',E('span',{style:{color:'#00D4FF',fontWeight:700}},r.onlineOrderNo)
+              ),
+              E('span',{style:{fontFamily:FF,color:'rgba(255,255,255,.4)',fontSize:12}},
+                'Driver: ',E('span',{style:{color:'#fff',fontWeight:600}},r.driverName)
+              )
+            )
+          );
+        })
+      );
     }
-    window.addEventListener("df:delivered", handler);
-    return function() { window.removeEventListener("df:delivered", handler); };
-  }, []);
 
-  if (!pendingOrder) return null;
+    // ══════════════════════════════════════════════════════════
+    // 5. OVERLAY — shown after driver confirms "Delivered"
+    //    Listens for window event "df:delivered"
+    // ══════════════════════════════════════════════════════════
 
-  return E("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,.88)", zIndex: 9999, display: "flex", alignItems: "flex-end" } },
-    E("div", { style: { width: "100%", background: "#141414", borderRadius: "24px 24px 0 0", padding: "24px 20px 32px", maxHeight: "85dvh", overflowY: "auto" } },
-      E("div", { style: { fontFamily: FF, color: "#10B981", fontSize: 18, fontWeight: 800, marginBottom: 4 } }, "✅ Delivered!"),
-      E("div", { style: { fontFamily: FF, color: "rgba(255,255,255,.45)", fontSize: 13, marginBottom: 0 } },
-        "#" + pendingOrder.invoiceNo + " — " + (pendingOrder.customer || "")
-      ),
-      E(window._dfCivilIDCollector, {
-        order: pendingOrder,
-        driverName: driverName,
-        onSaved: function() { setPendingOrder(null); },
-        onSkip: function() { setPendingOrder(null); }
-      })
-    )
-  );
-}
+    function CivilIDOverlay(){
+      var sp = R.useState(null), order      = sp[0], setOrder      = sp[1];
+      var sd = R.useState(''),   driverName = sd[0], setDriverName = sd[1];
 
-// Mount the overlay into a dedicated container
-var overlayDiv = document.createElement("div");
-overlayDiv.id = "df-civil-id-overlay";
-document.body.appendChild(overlayDiv);
-ReactDOM.createRoot(overlayDiv).render(E(CivilIDCollectorOverlay));
+      R.useEffect(function(){
+        function onDelivered(ev){
+          setOrder(ev.detail.order);
+          setDriverName(ev.detail.driverName||'');
+        }
+        window.addEventListener('df:delivered', onDelivered);
+        return function(){ window.removeEventListener('df:delivered', onDelivered); };
+      },[]);
 
-// ════════════════════════════════════════════════════════════════
-// 6. PATCH: FIRE df:delivered EVENT when driver confirms delivered
-//    We monkey-patch the global updateStatus (onStatusUpdate)
-//    by intercepting the custom event approach.
-//    Patch applied once main app window.App is ready.
-// ════════════════════════════════════════════════════════════════
+      if(!order) return null;
 
-// Store original updateStatus reference globally so we can wrap it
-var _origUpdateStatus = null;
+      return E('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,.88)',zIndex:9999,display:'flex',alignItems:'flex-end'}},
+        E('div',{style:{width:'100%',background:'#141414',borderRadius:'24px 24px 0 0',padding:'24px 20px 36px',maxHeight:'88dvh',overflowY:'auto'}},
+          E('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}},
+            E('div',{style:{fontFamily:FF,color:'#10B981',fontSize:18,fontWeight:800}},'✅ Order Delivered!'),
+            E('button',{
+              onClick:function(){ setOrder(null); },
+              style:{background:'rgba(255,255,255,.08)',border:'none',borderRadius:20,padding:'5px 12px',color:'rgba(255,255,255,.5)',fontFamily:FF,fontSize:12,cursor:'pointer'}
+            },'✕')
+          ),
+          E('div',{style:{fontFamily:FF,color:'rgba(255,255,255,.45)',fontSize:13,marginBottom:0}},
+            '#'+(order.invoiceNo||'')+' — '+(order.customer||'')
+          ),
+          E(CivilIDCollector,{
+            order:      order,
+            driverName: driverName,
+            onSaved:    function(){ setTimeout(function(){ setOrder(null); },1400); },
+            onSkip:     function(){ setOrder(null); }
+          })
+        )
+      );
+    }
 
-waitFor(
-  function() { return typeof window.App !== "undefined"; },
-  function() {
-    // Intercept calls to updateStatus by patching the event
-    // The StatusUpdateModal calls onUpdate(id, status, note, payType)
-    // We intercept at the React level by wrapping the confirm click.
-    // Since the bundle is minified, we use a MutationObserver approach:
-    // watch for status buttons being clicked and fire our event.
-    //
-    // Simpler approach: patch onStatusUpdate via React DevTools hook
-    // OR override via a document-level click sentinel on the confirm button.
-    //
-    // BEST approach: expose a patchable callback in global scope.
-    // We'll use the window.__dfOnDelivered hook.
-    console.log("[DeliverFlow Civil ID] Main app detected. Civil ID overlay active.");
+    // Mount overlay
+    var overlayDiv = document.createElement('div');
+    overlayDiv.id  = 'df-civilid-root';
+    document.body.appendChild(overlayDiv);
+    RD.createRoot(overlayDiv).render(E(CivilIDOverlay));
 
-    // Instruction for integration with existing StatusUpdateModal:
-    // In your existing StatusUpdateModal's handleConfirm(), add this line
-    // just BEFORE calling onUpdate():
-    //
-    //   if (status === "delivered") {
-    //     window.dispatchEvent(new CustomEvent("df:delivered", {
-    //       detail: { order: order, driverName: user && user.name || "" }
-    //     }));
-    //   }
-    //
-    // ──────────────────────────────────────────────────────────────
-    // AUTO-PATCH via DOM observation (works without touching source)
-    // Watch for the "Confirm Delivered" button click
-    document.addEventListener("click", function(ev) {
-      var btn = ev.target && ev.target.closest ? ev.target.closest("button") : null;
-      if (!btn) return;
-      var txt = btn.textContent || "";
-      if (txt.includes("Confirm Delivered") || txt.includes("Confirm delivered")) {
-        // Small delay to let the original handler fire first
-        setTimeout(function() {
-          // Try to get order from stored pending order
-          if (window.__dfPendingDeliveredOrder) {
-            window.dispatchEvent(new CustomEvent("df:delivered", {
-              detail: {
-                order: window.__dfPendingDeliveredOrder,
-                driverName: window.__dfCurrentDriverName || ""
+    // ══════════════════════════════════════════════════════════
+    // 6. FIRE df:delivered when "Confirm Delivered" is tapped
+    //    Intercepts the button click via capture listener
+    // ══════════════════════════════════════════════════════════
+
+    document.addEventListener('click', function(ev){
+      var btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+      if(!btn) return;
+      var txt = (btn.textContent||'').trim();
+      if(txt.startsWith('Confirm Delivered') || txt.startsWith('Confirm delivered')){
+        setTimeout(function(){
+          if(window.__dfPendingDeliveredOrder){
+            window.dispatchEvent(new CustomEvent('df:delivered',{
+              detail:{
+                order:      window.__dfPendingDeliveredOrder,
+                driverName: (window.__dfCurrentUser && window.__dfCurrentUser.name)||''
               }
             }));
             window.__dfPendingDeliveredOrder = null;
           }
-        }, 300);
+        },350);
       }
-    }, true);
-  }
-);
+    },true);
 
-// ════════════════════════════════════════════════════════════════
-// 7. ADMIN: ADD 🪪 TAB TO ADMIN PANEL
-//    Uses MutationObserver to detect when admin tab bar renders
-//    and injects a Civil ID tab button + content panel.
-// ════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════
+    // 7. INJECT 🪪 TAB INTO ADMIN PANEL
+    //    Polls until the admin tab bar is found, then adds tab
+    // ══════════════════════════════════════════════════════════
 
-var civilIDTabInjected = false;
+    var tabInjected = false;
 
-function tryInjectAdminCivilIDTab() {
-  if (civilIDTabInjected) return;
+    function injectAdminTab(){
+      if(tabInjected) return;
 
-  // Find the admin tab bar (look for the Upload/Orders/Alerts tab structure)
-  var tabBars = document.querySelectorAll('[style*="flex"][style*="background"]');
-  var tabBar = null;
-  tabBars.forEach(function(el) {
-    if (el.querySelectorAll("button").length >= 5) {
-      var btns = el.querySelectorAll("button");
-      btns.forEach(function(b) {
-        if (b.textContent && (b.textContent.includes("Upload") || b.textContent.includes("Orders"))) {
-          tabBar = el;
-        }
+      // Find tab bar — look for element containing Upload + Orders buttons
+      var allBtns = document.querySelectorAll('button');
+      var uploadBtn = null;
+      allBtns.forEach(function(b){
+        if((b.textContent||'').trim() === 'Upload') uploadBtn = b;
       });
-    }
-  });
+      if(!uploadBtn) return;
 
-  if (!tabBar) return;
+      var tabBar = uploadBtn.closest('div[style]');
+      if(!tabBar) return;
+      if(document.getElementById('df-civilid-tab-btn')) return;
 
-  // Check if already injected
-  if (document.getElementById("df-civil-id-tab-btn")) return;
+      // Create tab button matching existing style
+      var tabBtn = document.createElement('button');
+      tabBtn.id = 'df-civilid-tab-btn';
+      tabBtn.style.cssText = 'flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:10px 4px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;transition:border-color .2s;';
+      tabBtn.innerHTML =
+        '<div style="width:32px;height:32px;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:center;transition:background .2s;">' +
+          '<span style="font-size:16px;line-height:1">🪪</span>' +
+        '</div>' +
+        '<span style="font-family:\'Geist\',system-ui,sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,.3);letter-spacing:.3px;transition:color .2s;">Civil IDs</span>';
+      tabBar.appendChild(tabBtn);
 
-  // Create tab button
-  var tabBtn = document.createElement("button");
-  tabBtn.id = "df-civil-id-tab-btn";
-  tabBtn.style.cssText = "flex:1;background:none;border:none;padding:10px 4px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;border-bottom:2px solid transparent;";
-  tabBtn.innerHTML = '<div style="width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;line-height:1">🪪</span></div><span style="font-family:\'Geist\',sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,.3)">Civil IDs</span>';
-  tabBar.appendChild(tabBtn);
-
-  // Create content panel
-  var contentDiv = document.createElement("div");
-  contentDiv.id = "df-civil-id-content";
-  contentDiv.style.display = "none";
-  contentDiv.style.flex = "1";
-  contentDiv.style.overflowY = "auto";
-  contentDiv.style.paddingTop = "16px";
-
-  // Mount the React component into it
-  var root = ReactDOM.createRoot(contentDiv);
-  root.render(E(window._dfCivilIDRecordsTab));
-
-  // Insert content panel - find the flex-1 content area
-  var parentFlex = tabBar.parentElement;
-  if (parentFlex) {
-    parentFlex.appendChild(contentDiv);
-  }
-
-  // Wire up tab switching
-  tabBtn.addEventListener("click", function() {
-    // Hide all sibling content panels
-    var allContent = document.querySelectorAll('[style*="flex: 1"][style*="overflow-y: auto"], [style*="flex:1"][style*="overflowY"]');
-    allContent.forEach(function(el) {
-      if (el.id !== "df-civil-id-content") el.style.display = "none";
-    });
-    contentDiv.style.display = "block";
-    // Style active tab
-    tabBar.querySelectorAll("button").forEach(function(b) {
-      b.style.borderBottom = "2px solid transparent";
-      var span = b.querySelector("span:last-child");
-      if (span) span.style.color = "rgba(255,255,255,.3)";
-    });
-    tabBtn.style.borderBottom = "2px solid #FF6B2B";
-    var label = tabBtn.querySelector("span:last-child");
-    if (label) { label.style.color = "#FF6B2B"; label.style.fontWeight = "600"; }
-  });
-
-  civilIDTabInjected = true;
-  console.log("[DeliverFlow Civil ID] Admin tab injected successfully.");
-}
-
-// Observe DOM for admin panel rendering
-var adminObserver = new MutationObserver(function() {
-  if (!civilIDTabInjected) tryInjectAdminCivilIDTab();
-});
-adminObserver.observe(document.body, { childList: true, subtree: true });
-
-console.log("[DeliverFlow Civil ID v3.6] Feature loaded. Waiting for admin panel...");
-
-})(); // end IIFE
-  </script>
-
-  <!-- ══════════════════════════════════════════════════════
-       INTEGRATION GUIDE
-       ══════════════════════════════════════════════════════
-       This file contains ONLY the Civil ID additions.
-       To complete the integration with your full DeliverFlow:
-
-       OPTION A — RECOMMENDED (Clean Integration):
-       ─────────────────────────────────────────────
-       1. Open your original index.html
-       2. Add Geist Mono to the font link (already done above)
-       3. Find StatusUpdateModal's handleConfirm() function
-       4. In the handleConfirm() function, just BEFORE the
-          onUpdate(...) call, add:
-
-          if (status === "delivered") {
-            window.__dfPendingDeliveredOrder = order;
-            window.__dfCurrentDriverName = (window.__dfCurrentUser && window.__dfCurrentUser.name) || "";
+      // Find the scrollable content area (sibling of tab bar)
+      var contentArea = null;
+      var parent = tabBar.parentElement;
+      if(parent){
+        var children = parent.children;
+        for(var i=0;i<children.length;i++){
+          var ch = children[i];
+          if(ch !== tabBar && (ch.style.overflowY==='auto' || ch.style.flex==='1 1 0%' || ch.style.flex==='1')){
+            contentArea = ch; break;
           }
+        }
+      }
 
-       5. In DriverApp, pass user to a global:
-          useEffect(() => { window.__dfCurrentUser = user; }, [user]);
+      // Create Civil ID content panel
+      var civilPanel = document.createElement('div');
+      civilPanel.id = 'df-civilid-panel';
+      civilPanel.style.cssText = 'flex:1;overflow-y:auto;padding-top:16px;display:none;-webkit-overflow-scrolling:touch;';
+      if(parent) parent.appendChild(civilPanel);
+      RD.createRoot(civilPanel).render(E(CivilIDRecordsTab));
 
-       6. Copy ALL <script> blocks from THIS file into your
-          original index.html, placed AFTER the main app script.
+      // Tab click handler
+      tabBtn.addEventListener('click', function(){
+        // Hide main content, show civil ID panel
+        if(contentArea) contentArea.style.display = 'none';
+        civilPanel.style.display = 'block';
 
-       OPTION B — STANDALONE TEST:
-       ────────────────────────────
-       Add your full original <script> block at the top of this
-       file's first <script> tag, replacing the placeholder comment.
+        // Style active/inactive tabs
+        var siblings = tabBar.querySelectorAll('button');
+        siblings.forEach(function(b){
+          b.style.borderBottom = '2px solid transparent';
+          var lbl = b.querySelector('span:last-child');
+          if(lbl){ lbl.style.color='rgba(255,255,255,.3)'; lbl.style.fontWeight='400'; }
+          var icon = b.querySelector('div');
+          if(icon) icon.style.background='transparent';
+        });
+        tabBtn.style.borderBottom = '2px solid #FF6B2B';
+        var myLabel = tabBtn.querySelector('span:last-child');
+        if(myLabel){ myLabel.style.color='#FF6B2B'; myLabel.style.fontWeight='600'; }
 
-       SUPABASE SQL (run once in Supabase SQL Editor):
-       ────────────────────────────────────────────────
-       CREATE TABLE IF NOT EXISTS civil_id_records (
-         invoice_no       TEXT PRIMARY KEY,
-         online_order_no  TEXT DEFAULT '',
-         civil_id_number  TEXT NOT NULL DEFAULT '',
-         full_name        TEXT NOT NULL DEFAULT '',
-         driver_name      TEXT NOT NULL DEFAULT '',
-         delivered_date   TEXT NOT NULL DEFAULT '',
-         created_at       TIMESTAMPTZ DEFAULT now()
-       );
-       ALTER TABLE civil_id_records ENABLE ROW LEVEL SECURITY;
-       CREATE POLICY "Allow all" ON civil_id_records
-         FOR ALL USING (true) WITH CHECK (true);
-       ══════════════════════════════════════════════════════ -->
+        tabInjected = true;
+      });
 
-</body>
-</html>
+      // When other tabs are clicked, hide civil panel and show main content
+      tabBar.querySelectorAll('button').forEach(function(b){
+        if(b.id === 'df-civilid-tab-btn') return;
+        b.addEventListener('click', function(){
+          civilPanel.style.display = 'none';
+          if(contentArea) contentArea.style.display = '';
+        });
+      });
+
+      tabInjected = true;
+      console.log('[Civil ID] Admin tab injected ✓');
+    }
+
+    // Poll for admin panel (only visible when logged in as admin)
+    var adminPollCount = 0;
+    var adminPoll = setInterval(function(){
+      adminPollCount++;
+      if(adminPollCount > 200){ clearInterval(adminPoll); return; }
+      injectAdminTab();
+      if(tabInjected) clearInterval(adminPoll);
+    }, 500);
+
+    // Also expose components globally for manual use
+    window.CivilIDCollector  = CivilIDCollector;
+    window.CivilIDRecordsTab = CivilIDRecordsTab;
+
+    console.log('[Civil ID] Feature fully loaded ✓');
+
+  } // end startCivilID
+
+})();
+</script>
