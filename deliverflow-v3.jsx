@@ -4485,6 +4485,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
   const [tab, setTab] = useState("upload");
   const [toast, setToast] = useState(null);
   const [filterDate, setFilterDate] = useState("all");
+  const [alertStoreFilter, setAlertStoreFilter] = useState("all");
   // Filter orders by selected date
   var filteredOrders = selectedDate ? orders.filter(function(o) {
     var od = o.assignedDate || o.date || "";
@@ -4607,30 +4608,22 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
               )}
             </div>
             {/* Store filter for alerts */}
-            {adminNotifs.length > 0 && (function(){
-              var alertStoreFilter = window._alertStoreFilter || "all";
-              return (
+            {adminNotifs.length > 0 && (
                 <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
                   {["all","Trikart Online","Webstore Online","ReStore Online"].map(function(s){
                     var sel = alertStoreFilter === s;
-                    return <button key={s} onClick={function(){
-                      window._alertStoreFilter = s;
-                      // force re-render by toggling filterDate
-                      setFilterDate(function(v){ return v; });
-                    }}
+                    return <button key={s} onClick={function(){ setAlertStoreFilter(s); }}
                       style={{ background:sel?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:sel?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:sel?"#00D4FF":"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:11, cursor:"pointer" }}>
                       {s==="all"?"All Stores":s.replace(" Online","")}</button>;
                   })}
                 </div>
-              );
-            })()}
+            )}
             {/* Date filter for alerts */}
             {adminNotifs.length > 0 && (function(){
               var dates = [...new Set(adminNotifs.map(function(n){ return n.time ? new Date(n.time).toDateString() : null; }).filter(Boolean))];
-              var storeF = window._alertStoreFilter || "all";
               var filtered = adminNotifs
                 .filter(function(n){ return filterDate === "all" || (n.time && new Date(n.time).toDateString() === filterDate); })
-                .filter(function(n){ return storeF === "all" || n.store === storeF; });
+                .filter(function(n){ return alertStoreFilter === "all" || n.store === alertStoreFilter; });
               var today = new Date().toDateString();
               var yesterday = new Date(Date.now()-86400000).toDateString();
               function dateLabel(d) {
