@@ -488,6 +488,28 @@ function parseSAPDeliveryText(rawText) {
   let currentStore = "";
   let i = 0;
 
+  // Extract OO number from a token — returns {num, payHint} or null
+  function extractOO(tok) {
+    const m = tok && tok.match(/^(\d{4,6})([/\w]*)?$/);
+    if (!m) return null;
+    const dateRe2 = /^\d{1,2}[/\-]\d{1,2}[/\-]\d{4}$/;
+    const amtRe2  = /^\d+\.\d{2,3}$/;
+    if (dateRe2.test(tok) || amtRe2.test(tok)) return null;
+    const ooNum  = m[1];
+    const ooRest = tok.slice(ooNum.length).toLowerCase();
+    let payHint = null;
+    if (/\/tb\b|tabby/.test(ooRest))                payHint = "Tabby";
+    else if (/\/dm\b|deema/.test(ooRest))           payHint = "Deema";
+    else if (/\/ex\b/.test(ooRest))                 payHint = "Exchange";
+    else if (/\/js\b/.test(ooRest))                 payHint = "Cash";
+    else if (/\/knet\b|knet/.test(ooRest))          payHint = "KNET";
+    else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
+    else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
+    else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
+    if (ooNum.length === 6 && payHint === null) return null; // phone fragment
+    return { num: ooNum, payHint };
+  }
+
 
   // Skip header tokens until we find "Customer :" which marks store sections
   while (i < tokens.length) {
@@ -556,41 +578,15 @@ function parseSAPDeliveryText(rawText) {
       // Now process the collected tokens in order
       const SKIP_RE = /^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Building|Floor|Office|Kuwait|FA|JA|KU|AH|HA|Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date|▐)$/i;
 
-      // The OO number is the LAST numeric token — after the payment term
-      // Walk backwards from end to find it
-      let ooIdx = -1;
-      for (let j = orderTokens.length - 1; j >= 0; j--) {
-        const tok = orderTokens[j];
-        const m = tok.match(/^(\d{4,6})([/\w]*)?$/);
-        if (m && !dateRe.test(tok) && !amountRe.test(tok)) {
-          ooIdx = j;
-          break;
-        }
-        // Stop looking back if we hit the payment term
-        if (/^-\s*.*\s*-$/.test(tok)) { ooIdx = j + 1 < orderTokens.length ? j + 1 : -1; break; }
-      }
-
-      // Walk backwards specifically: last token before next invoice is OO if it's a number
+      // OO extraction below — see extractOO function
       // OO number is either the LAST token (normal case) or the SECOND token (page-break case).
       // Page-break case: last order on page has footer tokens after address, so OO ends up second.
       // Example page-break token order: invoice, OO, total, total, date, customer, address..., Page:, Printed...
       // Normal order: invoice, date, total, total, date, customer, address..., payment, OO
-      function extractOO(tok) {
-        const m = tok && tok.match(/^(\d{4,6})([/\w]*)?$/);
-        if (!m || dateRe.test(tok) || amountRe.test(tok)) return null;
-        const ooNum  = m[1];
-        const ooRest = tok.slice(ooNum.length).toLowerCase();
-        let payHint = null;
-        if (/\/tb\b|tabby/.test(ooRest))                payHint = "Tabby";
-        else if (/\/dm\b|deema/.test(ooRest))           payHint = "Deema";
-        else if (/\/ex\b/.test(ooRest))                 payHint = "Exchange";
-        else if (/\/js\b/.test(ooRest))                 payHint = "Cash";
-        else if (/\/knet\b|knet/.test(ooRest))          payHint = "KNET";
-        else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
-        else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
-        else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
-        if (ooNum.length === 6 && payHint === null) return null; // phone fragment
-        return { num: ooNum, payHint };
+      // extractOO defined at parser scope below
+      // Debug: log orderTokens for the 3 known-failing invoices
+      if (["1164555","1164521","1164561"].includes(invoiceNo)) {
+        console.log("DEBUG", invoiceNo, "orderTokens:", JSON.stringify(orderTokens));
       }
       // Try last token first (normal case)
       const lastOO = extractOO(orderTokens[orderTokens.length - 1] || "");
