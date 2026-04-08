@@ -2946,11 +2946,14 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
     if (!payMode) return null;
     if (payMode === "full_link") return linkPlatform ? linkPlatform + " (Link)" : null;
     if (payMode === "split")     return splitValid ? "Split: Cash " + fmt(cashNum) + " + " + splitLink + " " + fmt(linkNum) : null;
+    if (payMode === "pre_paid")  return linkPlatform ? linkPlatform : null;
     return null;
   }
   const finalPayment = buildPaymentLabel();
   const canConfirm = status && (status !== "delivered" || !isCOD || !payMode || payMode === "" ||
-    (payMode === "full_link" && linkPlatform) || (payMode === "split" && splitValid));
+    (payMode === "full_link" && linkPlatform) ||
+    (payMode === "split" && splitValid) ||
+    (payMode === "pre_paid" && linkPlatform));
 
   function handleConfirm() {
     if (!canConfirm) return;
@@ -3006,11 +3009,12 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
               <div style={{ fontFamily:"Syne", color:"#F59E0B", fontSize:13, fontWeight:700, marginBottom:10 }}>
                 💵 How was payment collected?
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
                 {[
                   { id:"",          label:"💵",  sub:"Cash Only",   color:"#F59E0B" },
                   { id:"full_link", label:"🔗",  sub:"Link Only",   color:"#A855F7" },
                   { id:"split",     label:"💵🔗", sub:"Split",       color:"#00D4FF" },
+                  { id:"pre_paid",  label:"✅",  sub:"Pre-Paid",    color:"#10B981" },
                 ].map(function(opt) {
                   return (
                     <button key={opt.id} onClick={function(){ setPayMode(opt.id); setLinkPlatform(""); setSplitLink(""); setCashAmt(""); }}
@@ -3021,6 +3025,29 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
                   );
                 })}
               </div>
+
+              {/* Pre-Paid — pick payment method */}
+              {payMode === "pre_paid" && (
+                <div>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>SELECT PRE-PAID METHOD</div>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    {[
+                      { id:"KNET",  label:"K-NET",  color:"#003DA5" },
+                      { id:"Tabby", label:"Tabby",  color:"#3DEBA0" },
+                      { id:"Deema", label:"Deema",  color:"#C0596A" },
+                      { id:"Taly",  label:"Taly",   color:"#9CA3AF" },
+                    ].map(function(pp) {
+                      return (
+                        <button key={pp.id} onClick={function(){ setLinkPlatform(pp.id); }}
+                          style={{ flex:1, minWidth:70, background:linkPlatform===pp.id?(pp.color+"33"):"rgba(255,255,255,.06)", border:linkPlatform===pp.id?("2px solid "+pp.color):"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"9px 6px", cursor:"pointer", textAlign:"center" }}>
+                          <div style={{ fontFamily:"Syne", color:linkPlatform===pp.id?pp.color:"rgba(255,255,255,.6)", fontSize:12, fontWeight:700 }}>{pp.label}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {linkPlatform && <div style={{ fontFamily:"DM Sans", color:"#10B981", fontSize:12, marginTop:8 }}>✓ Pre-paid via {linkPlatform} — no cash collection needed</div>}
+                </div>
+              )}
 
               {/* Full link — pick platform */}
               {payMode === "full_link" && (
