@@ -2768,8 +2768,27 @@ const LINK_OPTIONS = [
 // ── Civil ID Scanner ──────────────────────────────────────────────────────────
 async function dbSaveCivilId(record) {
   var sb = getSupabase();
-  if (!sb) return;
-  var { error } = await sb.from("civil_id_records").upsert({
+  if (!sb) {
+    // Try loading the SDK first, then retry
+    return new Promise(function(resolve, reject) {
+      loadSupabaseSDK(function() {
+        var sb2 = getSupabase();
+        if (!sb2) { reject(new Error("Database not connected")); return; }
+        sb2.from("civil_id_records").upsert({
+          invoice_no:      record.invoiceNo,
+          online_order_no: record.onlineOrderNo || "",
+          civil_id_number: record.civilIdNumber,
+          full_name:       record.fullName,
+          driver_name:     record.driverName,
+          delivered_date:  record.deliveredDate,
+        }, { onConflict: "invoice_no" }).then(function(res) {
+          if (res.error) { console.warn("Civil ID save error:", res.error.message); reject(res.error); }
+          else resolve();
+        }).catch(reject);
+      });
+    });
+  }
+  var res = await sb.from("civil_id_records").upsert({
     invoice_no:      record.invoiceNo,
     online_order_no: record.onlineOrderNo || "",
     civil_id_number: record.civilIdNumber,
@@ -2777,7 +2796,7 @@ async function dbSaveCivilId(record) {
     driver_name:     record.driverName,
     delivered_date:  record.deliveredDate,
   }, { onConflict: "invoice_no" });
-  if (error) { console.warn("Civil ID save error:", error.message); throw error; }
+  if (res.error) { console.warn("Civil ID save error:", res.error.message); throw res.error; }
 }
 
 async function dbLoadCivilIds() {
@@ -2790,20 +2809,30 @@ async function dbLoadCivilIds() {
 
 function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
   const [scanning, setScanning]   = useState(false);
-  const [extracted, setExtracted] = useState(null); // { civilIdNumber, fullName }
+  const [extracted, setExtracted] = useState(null);
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
   const [err, setErr]             = useState("");
   const [manualId, setManualId]   = useState("");
   const [manualName, setManualName] = useState("");
   const [showManual, setShowManual] = useState(false);
+  // API key setup — drivers need to enter key on their device once
+  const [keyInput, setKeyInput]   = useState("");
+  const [keySaved, setKeySaved]   = useState(false);
+  const [hasKey, setHasKey]       = useState(function(){ return !!getApiKey(); });
   const inputRef = React.useRef(null);
+
+  function handleSaveKey() {
+    if (!keyInput.trim()) return;
+    saveApiKey(keyInput.trim());
+    setHasKey(true); setKeySaved(true);
+  }
 
   function handlePhoto(e) {
     var file = e.target.files && e.target.files[0];
     if (!file) return;
     var apiKey = getApiKey();
-    if (!apiKey) { setErr("No API key set. Go to Admin → Vehicles → API Key Settings."); return; }
+    if (!apiKey) { setHasKey(false); e.target.value = ""; return; }
     setScanning(true); setErr("");
     var reader = new FileReader();
     reader.onload = function(ev) {
@@ -2840,17 +2869,21 @@ function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
           setShowManual(true);
         }
       })
-      .catch(function() { setScanning(false); setErr("Scan failed. Enter manually below."); setShowManual(true); });
+      .catch(function(ex) {
+        setScanning(false);
+        setErr("Scan failed. Enter manually below.");
+        setShowManual(true);
+      });
     };
     reader.readAsDataURL(file);
     e.target.value = "";
   }
 
   function handleSave() {
-    var idNum  = (extracted ? extracted.civilIdNumber : manualId).trim();
-    var name   = (extracted ? extracted.fullName : manualName).trim();
+    var idNum = (extracted ? extracted.civilIdNumber : manualId).trim();
+    var name  = (extracted ? extracted.fullName : manualName).trim();
     if (!idNum || !name) { setErr("Civil ID number and name are required."); return; }
-    setSaving(true);
+    setSaving(true); setErr("");
     var today = (function(){ var d = new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
     dbSaveCivilId({
       invoiceNo:     order.invoiceNo,
@@ -2860,9 +2893,13 @@ function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
       driverName:    driverName,
       deliveredDate: today,
     }).then(function() {
-      setSaving(false); setSaved(true);
-      setTimeout(function() { onSaved && onSaved({ civilIdNumber: idNum, fullName: name }); }, 1200);
-    }).catch(function() { setSaving(false); setErr("Failed to save. Please try again."); });
+      setSaving(false);
+      setSaved(true);
+      setTimeout(function() { onSaved && onSaved({ civilIdNumber: idNum, fullName: name }); }, 1500);
+    }).catch(function(e2) {
+      setSaving(false);
+      setErr("Save failed: " + (e2 && e2.message ? e2.message : "Please try again."));
+    });
   }
 
   return (
@@ -2875,54 +2912,69 @@ function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
         </div>
       </div>
 
+      {/* API Key setup — shown once if key not set on this device */}
+      {!hasKey && (
+        <div style={{ background:"rgba(245,158,11,.08)", border:"1px solid rgba(245,158,11,.3)", borderRadius:12, padding:"12px 14px", marginBottom:10 }}>
+          <div style={{ fontFamily:"Syne", color:"#F59E0B", fontSize:12, fontWeight:700, marginBottom:6 }}>🔑 One-time Setup Required</div>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:8 }}>
+            Ask your admin for the Anthropic API key and enter it once below. It stays saved on your phone.
+          </div>
+          <input type="password" value={keyInput} onChange={function(e){ setKeyInput(e.target.value); }}
+            placeholder="sk-ant-api03-..."
+            style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(245,158,11,.4)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:12, outline:"none", marginBottom:8 }} />
+          <button onClick={handleSaveKey} disabled={!keyInput.trim()}
+            style={{ width:"100%", background:keySaved?"rgba(16,185,129,.2)":"rgba(245,158,11,.2)", border:"1px solid rgba(245,158,11,.4)", borderRadius:10, padding:"9px", color:keySaved?"#10B981":"#F59E0B", fontFamily:"Syne", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+            {keySaved ? "✓ Key Saved — Tap Camera Below" : "Save API Key"}
+          </button>
+        </div>
+      )}
+
       {saved ? (
         <div style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:12, padding:"12px 14px", textAlign:"center" }}>
           <div style={{ fontSize:24, marginBottom:4 }}>✅</div>
           <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:13, fontWeight:700 }}>Civil ID Saved!</div>
         </div>
       ) : extracted && !showManual ? (
-        // Show extracted data for confirmation
         <div>
           <div style={{ background:"rgba(0,0,0,.2)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
-            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, letterSpacing:1 }}>EXTRACTED FROM PHOTO</div>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, letterSpacing:1 }}>EXTRACTED FROM PHOTO — PLEASE VERIFY</div>
             <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700, marginBottom:2 }}>{extracted.fullName}</div>
             <div style={{ fontFamily:"DM Sans", color:"#00D4FF", fontSize:13 }}>Civil ID: {extracted.civilIdNumber}</div>
           </div>
+          {err && <div style={{ fontFamily:"DM Sans", color:"#EF4444", fontSize:12, marginBottom:8 }}>{err}</div>}
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={function(){ setExtracted(null); setShowManual(true); }}
+            <button onClick={function(){ setExtracted(null); setShowManual(true); setErr(""); }}
               style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>
               Edit
             </button>
             <button onClick={handleSave} disabled={saving}
-              style={{ flex:2, background:"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer" }}>
-              {saving ? "Saving…" : "✓ Confirm & Save"}
+              style={{ flex:2, background:saving?"rgba(16,185,129,.3)":"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:saving?"default":"pointer" }}>
+              {saving ? "⏳ Saving…" : "✓ Confirm & Save"}
             </button>
           </div>
         </div>
       ) : (
         <div>
-          {/* Camera button */}
           {!showManual && (
             <>
               <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display:"none" }} />
-              <button onClick={function(){ inputRef.current && inputRef.current.click(); }} disabled={scanning}
-                style={{ width:"100%", background:scanning?"rgba(0,212,255,.05)":"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:12, padding:"13px", color:scanning?"rgba(0,212,255,.4)":"#00D4FF", fontFamily:"Syne", fontSize:14, fontWeight:700, cursor:scanning?"default":"pointer", marginBottom:8 }}>
+              <button onClick={function(){ if(hasKey) inputRef.current && inputRef.current.click(); }} disabled={scanning || !hasKey}
+                style={{ width:"100%", background:scanning||!hasKey?"rgba(0,212,255,.05)":"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:12, padding:"13px", color:scanning||!hasKey?"rgba(0,212,255,.4)":"#00D4FF", fontFamily:"Syne", fontSize:14, fontWeight:700, cursor:scanning||!hasKey?"default":"pointer", marginBottom:8 }}>
                 {scanning ? "⏳ Reading Civil ID…" : "📷 Take Photo of Civil ID"}
               </button>
-              <button onClick={function(){ setShowManual(true); }}
+              <button onClick={function(){ setShowManual(true); setErr(""); }}
                 style={{ width:"100%", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"10px", color:"rgba(255,255,255,.4)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer", marginBottom:8 }}>
                 Enter Manually Instead
               </button>
             </>
           )}
 
-          {/* Manual entry */}
           {showManual && (
             <div>
               <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>CIVIL ID NUMBER (12 digits)</div>
               <input type="text" value={manualId} onChange={function(e){ setManualId(e.target.value); }} placeholder="000000000000" maxLength={12}
                 style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:14, outline:"none", marginBottom:10, letterSpacing:2 }} />
-              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>FULL NAME (English)</div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>FULL NAME (English only)</div>
               <input type="text" value={manualName} onChange={function(e){ setManualName(e.target.value); }} placeholder="e.g. Mohammed Ali Al-Mutairi"
                 style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:13, outline:"none", marginBottom:10 }} />
               <div style={{ display:"flex", gap:8 }}>
@@ -2930,7 +2982,7 @@ function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
                   style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>
                   ← Camera
                 </button>
-                <button onClick={function(){ setExtracted({ civilIdNumber: manualId, fullName: manualName }); setShowManual(false); }}
+                <button onClick={function(){ if(manualId.trim()&&manualName.trim()){ setExtracted({ civilIdNumber:manualId.trim(), fullName:manualName.trim() }); setShowManual(false); } else { setErr("Both fields required."); } }}
                   style={{ flex:2, background:"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:10, padding:"10px", color:"#00D4FF", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer" }}>
                   Review →
                 </button>
@@ -2942,7 +2994,6 @@ function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
         </div>
       )}
 
-      {/* Skip option */}
       {!saved && (
         <button onClick={onSkip}
           style={{ width:"100%", background:"none", border:"none", color:"rgba(255,255,255,.25)", fontFamily:"DM Sans", fontSize:11, cursor:"pointer", marginTop:10, textDecoration:"underline" }}>
