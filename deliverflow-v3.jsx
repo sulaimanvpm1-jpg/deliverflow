@@ -2581,6 +2581,8 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
   const [exp,      setExp]      = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [editingOO, setEditingOO] = useState(false);
+  const [ooVal,     setOoVal]     = useState(order.onlineOrderNo || "");
   const isActive    = order.scanned && order.status === "pending";
   const isCancelled = order.status === "cancelled";
   const isPostponed = order.status === "postponed";
@@ -2604,6 +2606,39 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
   else if (isPostponed) bgColor = "rgba(139,92,246,.03)";
   else if (isDelivered) bgColor = "rgba(16,185,129,.03)";
 
+  function renderOOSection() {
+    if (editingOO) {
+      return (
+        <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:3 }} onClick={function(e){ e.stopPropagation(); }}>
+          <input autoFocus type="text" value={ooVal} onChange={function(e){ setOoVal(e.target.value); }}
+            onKeyDown={function(e){
+              if (e.key==="Enter") { setEditingOO(false); if (ooVal.trim()&&onEditOrder) onEditOrder(order.id||order.invoiceNo,{onlineOrderNo:ooVal.trim()}); }
+              if (e.key==="Escape") { setEditingOO(false); setOoVal(order.onlineOrderNo||""); }
+            }}
+            placeholder="Enter Online Order No"
+            style={{ width:90, background:"rgba(0,212,255,.1)", border:"1px solid #00D4FF", borderRadius:6, padding:"2px 6px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, outline:"none" }} />
+          <button onClick={function(e){ e.stopPropagation(); setEditingOO(false); if(ooVal.trim()&&onEditOrder) onEditOrder(order.id||order.invoiceNo,{onlineOrderNo:ooVal.trim()}); }}
+            style={{ background:"#00D4FF", border:"none", borderRadius:4, padding:"2px 6px", color:"#000", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, fontWeight:700, cursor:"pointer" }}>✓</button>
+        </div>
+      );
+    }
+    if (order.onlineOrderNo) {
+      return (
+        <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:3 }}>
+          <span style={{ background:"rgba(0,212,255,.15)", borderRadius:6, padding:"1px 7px", border:"1px solid rgba(0,212,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:700 }}>
+            Online Order: {order.onlineOrderNo}
+          </span>
+        </div>
+      );
+    }
+    return (
+      <button onClick={function(e){ e.stopPropagation(); setEditingOO(true); }}
+        style={{ marginTop:3, background:"rgba(255,255,255,.06)", border:"1px dashed rgba(255,255,255,.2)", borderRadius:6, padding:"1px 8px", color:"rgba(255,255,255,.35)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, cursor:"pointer" }}>
+        + Online Order
+      </button>
+    );
+  }
+
   return (
     <div style={{ background:bgColor, border:"1px solid " + borderColor, borderRadius:14, marginBottom:10, overflow:"hidden" }}>
       <div onClick={function() { setExp(function(v) { return !v; }); }} style={{ padding:"13px 15px", cursor:"pointer" }}>
@@ -2613,43 +2648,7 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
             <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:1 }}>
               {"#" + order.invoiceNo + "   " + order.store}
             </div>
-            {(function(){
-              var [editingOO, setEditingOO] = React.useState(false);
-              var [ooVal, setOoVal] = React.useState(order.onlineOrderNo || "");
-              if (editingOO) {
-                return (
-                  <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:3 }} onClick={function(e){ e.stopPropagation(); }}>
-                    <input autoFocus type="text" value={ooVal} onChange={function(e){ setOoVal(e.target.value); }}
-                      onKeyDown={function(e){
-                        if (e.key==="Enter") {
-                          setEditingOO(false);
-                          if (ooVal.trim() && onSaveOO) onSaveOO(order.invoiceNo, ooVal.trim());
-                        }
-                        if (e.key==="Escape") { setEditingOO(false); setOoVal(order.onlineOrderNo||""); }
-                      }}
-                      placeholder="Enter Online Order No"
-                      style={{ width:90, background:"rgba(0,212,255,.1)", border:"1px solid #00D4FF", borderRadius:6, padding:"2px 6px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, outline:"none" }} />
-                    <button onClick={function(e){ e.stopPropagation(); setEditingOO(false); if(ooVal.trim()&&onSaveOO) onSaveOO(order.invoiceNo, ooVal.trim()); }}
-                      style={{ background:"#00D4FF", border:"none", borderRadius:4, padding:"2px 6px", color:"#000", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, fontWeight:700, cursor:"pointer" }}>✓</button>
-                  </div>
-                );
-              }
-              if (order.onlineOrderNo) {
-                return (
-                  <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:3 }}>
-                    <span style={{ background:"rgba(0,212,255,.15)", borderRadius:6, padding:"1px 7px", border:"1px solid rgba(0,212,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:700 }}>
-                      Online Order: {order.onlineOrderNo}
-                    </span>
-                  </div>
-                );
-              }
-              return (
-                <button onClick={function(e){ e.stopPropagation(); setEditingOO(true); }}
-                  style={{ marginTop:3, background:"rgba(255,255,255,.06)", border:"1px dashed rgba(255,255,255,.2)", borderRadius:6, padding:"1px 8px", color:"rgba(255,255,255,.35)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, cursor:"pointer" }}>
-                  + Online Order
-                </button>
-              );
-            })()}
+            {renderOOSection()}
           </div>
           <Badge status={isActive ? "collected" : order.status} />
         </div>
