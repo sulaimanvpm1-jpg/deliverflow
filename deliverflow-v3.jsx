@@ -2197,7 +2197,7 @@ function DriverManualOrderForm({ driverId, onAdd }) {
   );
 }
 
-function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onAddOrder, onEditOrder, selectedDate }) {
+function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onAddOrder, onEditOrder, selectedDate }) {
   const [statusModal, setStatusModal] = useState(null);
   const [filter,      setFilter]      = useState("collected");
   const [storeFilter, setStoreFilter] = useState("all");
@@ -2251,12 +2251,12 @@ function DriverDeliveryTab({ orders, driverId, onStatusUpdate, onOpenTransfer, o
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", minHeight:0, position:"relative" }}>
       {statusModal && (
-        <StatusUpdateModal order={statusModal} onUpdate={function(id, status, note, newPaymentType, newTotal, extraAmount) {
+        <StatusUpdateModal order={statusModal} driverName={driverName} onUpdate={function(id, status, note, newPaymentType, newTotal, extraAmount) {
           onStatusUpdate(id, status, note, newPaymentType, newTotal, extraAmount);
           const payMsg = newPaymentType ? "   Payment -> " + newPaymentType : "";
           const extraMsg = extraAmount > 0 ? "   +KD " + Number(extraAmount).toFixed(3) + " extra" : "";
           showToast((STATUS_CFG[status] ? STATUS_CFG[status].icon + " " : "") + status + payMsg + extraMsg);
-          setStatusModal(null);
+          if (status !== "delivered") setStatusModal(null); // for delivered, Civil ID step closes
         }} onClose={function() { setStatusModal(null); }} />
       )}
       <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
@@ -2765,7 +2765,195 @@ const LINK_OPTIONS = [
   { id:"WAMD",      label:"WAMD",        color:"#0EA5E9" },
 ];
 
-function StatusUpdateModal({ order, onUpdate, onClose }) {
+// ── Civil ID Scanner ──────────────────────────────────────────────────────────
+async function dbSaveCivilId(record) {
+  var sb = getSupabase();
+  if (!sb) return;
+  var { error } = await sb.from("civil_id_records").upsert({
+    invoice_no:      record.invoiceNo,
+    online_order_no: record.onlineOrderNo || "",
+    civil_id_number: record.civilIdNumber,
+    full_name:       record.fullName,
+    driver_name:     record.driverName,
+    delivered_date:  record.deliveredDate,
+  }, { onConflict: "invoice_no" });
+  if (error) { console.warn("Civil ID save error:", error.message); throw error; }
+}
+
+async function dbLoadCivilIds() {
+  var sb = getSupabase();
+  if (!sb) return [];
+  var { data, error } = await sb.from("civil_id_records").select("*").order("created_at", { ascending: false });
+  if (error) { console.warn("Civil ID load error:", error.message); return []; }
+  return data || [];
+}
+
+function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
+  const [scanning, setScanning]   = useState(false);
+  const [extracted, setExtracted] = useState(null); // { civilIdNumber, fullName }
+  const [saving, setSaving]       = useState(false);
+  const [saved, setSaved]         = useState(false);
+  const [err, setErr]             = useState("");
+  const [manualId, setManualId]   = useState("");
+  const [manualName, setManualName] = useState("");
+  const [showManual, setShowManual] = useState(false);
+  const inputRef = React.useRef(null);
+
+  function handlePhoto(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var apiKey = getApiKey();
+    if (!apiKey) { setErr("No API key set. Go to Admin → Vehicles → API Key Settings."); return; }
+    setScanning(true); setErr("");
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var base64 = ev.target.result.split(",")[1];
+      fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 200,
+          messages: [{ role: "user", content: [
+            { type: "image", source: { type: "base64", media_type: file.type || "image/jpeg", data: base64 } },
+            { type: "text", text: "This is a Kuwait Civil ID card. Extract ONLY:\n1. The Civil ID number (12-digit number shown as 'Civil ID No')\n2. The English full name (shown as 'Name' in English)\n\nReturn ONLY this JSON, nothing else:\n{\"civilIdNumber\":\"...\",\"fullName\":\"...\"}" }
+          ]}]
+        })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        setScanning(false);
+        var text = (data.content && data.content[0] && data.content[0].text) || "";
+        try {
+          var parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+          if (!parsed.civilIdNumber || !parsed.fullName) throw new Error("Missing fields");
+          setExtracted(parsed);
+          setManualId(parsed.civilIdNumber);
+          setManualName(parsed.fullName);
+        } catch(ex) {
+          setErr("Could not read Civil ID. Please enter manually.");
+          setShowManual(true);
+        }
+      })
+      .catch(function() { setScanning(false); setErr("Scan failed. Enter manually below."); setShowManual(true); });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  function handleSave() {
+    var idNum  = (extracted ? extracted.civilIdNumber : manualId).trim();
+    var name   = (extracted ? extracted.fullName : manualName).trim();
+    if (!idNum || !name) { setErr("Civil ID number and name are required."); return; }
+    setSaving(true);
+    var today = (function(){ var d = new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
+    dbSaveCivilId({
+      invoiceNo:     order.invoiceNo,
+      onlineOrderNo: order.onlineOrderNo || "",
+      civilIdNumber: idNum,
+      fullName:      name,
+      driverName:    driverName,
+      deliveredDate: today,
+    }).then(function() {
+      setSaving(false); setSaved(true);
+      setTimeout(function() { onSaved && onSaved({ civilIdNumber: idNum, fullName: name }); }, 1200);
+    }).catch(function() { setSaving(false); setErr("Failed to save. Please try again."); });
+  }
+
+  return (
+    <div style={{ background:"rgba(0,212,255,.06)", border:"1px solid rgba(0,212,255,.25)", borderRadius:16, padding:16, marginTop:14 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+        <span style={{ fontSize:22 }}>🪪</span>
+        <div>
+          <div style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:14, fontWeight:700 }}>Collect Customer Civil ID</div>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:11 }}>Required for delivered orders</div>
+        </div>
+      </div>
+
+      {saved ? (
+        <div style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:12, padding:"12px 14px", textAlign:"center" }}>
+          <div style={{ fontSize:24, marginBottom:4 }}>✅</div>
+          <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:13, fontWeight:700 }}>Civil ID Saved!</div>
+        </div>
+      ) : extracted && !showManual ? (
+        // Show extracted data for confirmation
+        <div>
+          <div style={{ background:"rgba(0,0,0,.2)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, letterSpacing:1 }}>EXTRACTED FROM PHOTO</div>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700, marginBottom:2 }}>{extracted.fullName}</div>
+            <div style={{ fontFamily:"DM Sans", color:"#00D4FF", fontSize:13 }}>Civil ID: {extracted.civilIdNumber}</div>
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={function(){ setExtracted(null); setShowManual(true); }}
+              style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>
+              Edit
+            </button>
+            <button onClick={handleSave} disabled={saving}
+              style={{ flex:2, background:"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+              {saving ? "Saving…" : "✓ Confirm & Save"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          {/* Camera button */}
+          {!showManual && (
+            <>
+              <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display:"none" }} />
+              <button onClick={function(){ inputRef.current && inputRef.current.click(); }} disabled={scanning}
+                style={{ width:"100%", background:scanning?"rgba(0,212,255,.05)":"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:12, padding:"13px", color:scanning?"rgba(0,212,255,.4)":"#00D4FF", fontFamily:"Syne", fontSize:14, fontWeight:700, cursor:scanning?"default":"pointer", marginBottom:8 }}>
+                {scanning ? "⏳ Reading Civil ID…" : "📷 Take Photo of Civil ID"}
+              </button>
+              <button onClick={function(){ setShowManual(true); }}
+                style={{ width:"100%", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"10px", color:"rgba(255,255,255,.4)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer", marginBottom:8 }}>
+                Enter Manually Instead
+              </button>
+            </>
+          )}
+
+          {/* Manual entry */}
+          {showManual && (
+            <div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>CIVIL ID NUMBER (12 digits)</div>
+              <input type="text" value={manualId} onChange={function(e){ setManualId(e.target.value); }} placeholder="000000000000" maxLength={12}
+                style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:14, outline:"none", marginBottom:10, letterSpacing:2 }} />
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>FULL NAME (English)</div>
+              <input type="text" value={manualName} onChange={function(e){ setManualName(e.target.value); }} placeholder="e.g. Mohammed Ali Al-Mutairi"
+                style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:13, outline:"none", marginBottom:10 }} />
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={function(){ setShowManual(false); setErr(""); }}
+                  style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>
+                  ← Camera
+                </button>
+                <button onClick={function(){ setExtracted({ civilIdNumber: manualId, fullName: manualName }); setShowManual(false); }}
+                  style={{ flex:2, background:"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:10, padding:"10px", color:"#00D4FF", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                  Review →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {err && <div style={{ fontFamily:"DM Sans", color:"#EF4444", fontSize:12, marginTop:8 }}>{err}</div>}
+        </div>
+      )}
+
+      {/* Skip option */}
+      {!saved && (
+        <button onClick={onSkip}
+          style={{ width:"100%", background:"none", border:"none", color:"rgba(255,255,255,.25)", fontFamily:"DM Sans", fontSize:11, cursor:"pointer", marginTop:10, textDecoration:"underline" }}>
+          Skip Civil ID collection
+        </button>
+      )}
+    </div>
+  );
+}
+
+function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
   const [status,       setStatus]      = useState("");
   const [note,         setNote]        = useState("");
   const [payMode,      setPayMode]     = useState("");
@@ -2777,7 +2965,7 @@ function StatusUpdateModal({ order, onUpdate, onClose }) {
   const [partialReason,setPartialReason] = useState("");
   const [otherReason,  setOtherReason]  = useState("");
   const [extraAmt,     setExtraAmt]    = useState("");
-
+  const [showCivilId,  setShowCivilId] = useState(false); // after delivery confirmed
   const isCOD   = (order.paymentType === "Cash" || order.paymentType === "COD") && !isExchange(order.paymentType);
   const total   = Number(order.total);
   const actualNum = parseFloat(actualAmt) || 0;
@@ -2807,6 +2995,10 @@ function StatusUpdateModal({ order, onUpdate, onClose }) {
       fullNote = (fullNote ? fullNote + " | " : "") + "Extra collected: KD " + extraNum.toFixed(3);
     }
     onUpdate(order.id||order.invoiceNo, status, fullNote, finalPayment || null, (partialMode && actualNum > 0 && actualNum < total) ? actualNum : null, extraNum > 0 ? extraNum : null);
+    // Show Civil ID collection step after delivery
+    if (status === "delivered") {
+      setShowCivilId(true);
+    }
   }
 
   return (
@@ -2976,10 +3168,19 @@ function StatusUpdateModal({ order, onUpdate, onClose }) {
 
         {/* Confirm button OUTSIDE scroll area — always visible on iOS */}
         <div style={{ flexShrink:0, background:"#0F1629", padding:"12px 20px", paddingBottom:"max(env(safe-area-inset-bottom, 0px) + 12px, 20px)", borderTop:"1px solid rgba(255,255,255,.06)" }}>
-          <button onClick={handleConfirm} disabled={!canConfirm}
-            style={{ width:"100%", background:canConfirm?"linear-gradient(135deg,#00D4FF,#7C3AED)":"rgba(255,255,255,.1)", border:"none", borderRadius:14, padding:15, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:15, cursor:canConfirm?"pointer":"default" }}>
-            {status ? "Confirm " + status.charAt(0).toUpperCase()+status.slice(1) : "Select a status above"}
-          </button>
+          {showCivilId ? (
+            <CivilIdScanner
+              order={order}
+              driverName={driverName || "Driver"}
+              onSaved={function(){ setTimeout(onClose, 1500); }}
+              onSkip={onClose}
+            />
+          ) : (
+            <button onClick={handleConfirm} disabled={!canConfirm}
+              style={{ width:"100%", background:canConfirm?"linear-gradient(135deg,#00D4FF,#7C3AED)":"rgba(255,255,255,.1)", border:"none", borderRadius:14, padding:15, color:"#fff", fontFamily:"Syne", fontWeight:700, fontSize:15, cursor:canConfirm?"pointer":"default" }}>
+              {status ? "Confirm " + status.charAt(0).toUpperCase()+status.slice(1) : "Select a status above"}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -4669,6 +4870,108 @@ function DateFilterBar({ orders, selectedDate, onSetSelectedDate }) {
   );
 }
 
+// ── Admin: Civil ID Records Tab ───────────────────────────────────────────────
+function AdminCivilIdTab() {
+  const [records, setRecords]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search,  setSearch]    = useState("");
+  const [copied,  setCopied]    = useState("");
+
+  useEffect(function() {
+    setLoading(true);
+    dbLoadCivilIds().then(function(rows) {
+      setRecords(rows);
+      setLoading(false);
+    });
+  }, []);
+
+  function copyText(text, key) {
+    try { navigator.clipboard.writeText(text); } catch(e) {}
+    setCopied(key);
+    setTimeout(function(){ setCopied(""); }, 1500);
+  }
+
+  var filtered = records.filter(function(r) {
+    var q = search.toLowerCase();
+    if (!q) return true;
+    return (r.invoice_no||"").toLowerCase().includes(q) ||
+           (r.full_name||"").toLowerCase().includes(q) ||
+           (r.civil_id_number||"").includes(q) ||
+           (r.driver_name||"").toLowerCase().includes(q) ||
+           (r.online_order_no||"").includes(q);
+  });
+
+  return (
+    <div style={{ padding:"0 16px 80px" }}>
+      <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}>🪪 Civil ID Records</div>
+      <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:14 }}>
+        Customer Civil IDs collected at delivery — {records.length} total
+      </div>
+
+      {/* Search */}
+      <input
+        type="text" value={search}
+        onChange={function(e){ setSearch(e.target.value); }}
+        placeholder="🔍 Search by name, Civil ID, invoice..."
+        style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"DM Sans", fontSize:13, outline:"none", marginBottom:14 }}
+      />
+
+      {loading ? (
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"DM Sans", padding:40 }}>Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"DM Sans", padding:40 }}>
+          {search ? "No records match your search" : "No Civil ID records yet"}
+        </div>
+      ) : filtered.map(function(r) {
+        var cardKey = r.invoice_no;
+        return (
+          <div key={cardKey} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(0,212,255,.15)", borderRadius:14, padding:14, marginBottom:10 }}>
+            {/* Header row */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+              <div>
+                <div style={{ fontFamily:"Syne", color:"#fff", fontSize:14, fontWeight:700 }}>{r.full_name}</div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>
+                  Driver: {r.driver_name}   ·   {r.delivered_date}
+                </div>
+              </div>
+              <div style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"3px 10px", fontFamily:"DM Sans", color:"#00D4FF", fontSize:11, fontWeight:600, flexShrink:0, marginLeft:8 }}>
+                🪪 Verified
+              </div>
+            </div>
+
+            {/* Civil ID number — tappable to copy */}
+            <div
+              onClick={function(){ copyText(r.civil_id_number, cardKey + "_cid"); }}
+              style={{ background:"rgba(0,0,0,.25)", borderRadius:10, padding:"10px 14px", marginBottom:8, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:2 }}>CIVIL ID NUMBER</div>
+                <div style={{ fontFamily:"DM Sans", color:"#00D4FF", fontSize:16, fontWeight:700, letterSpacing:2 }}>{r.civil_id_number}</div>
+              </div>
+              <div style={{ fontFamily:"DM Sans", color: copied===cardKey+"_cid" ? "#10B981" : "rgba(255,255,255,.3)", fontSize:11 }}>
+                {copied===cardKey+"_cid" ? "✓ Copied" : "Tap to copy"}
+              </div>
+            </div>
+
+            {/* Order info */}
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              <div style={{ background:"rgba(255,107,53,.08)", borderRadius:8, padding:"5px 10px" }}>
+                <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:9 }}>INVOICE</div>
+                <div style={{ fontFamily:"DM Sans", color:"#FF6B35", fontSize:12, fontWeight:600 }}>#{r.invoice_no}</div>
+              </div>
+              {r.online_order_no && (
+                <div style={{ background:"rgba(0,212,255,.08)", borderRadius:8, padding:"5px 10px" }}>
+                  <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:9 }}>ONLINE ORDER</div>
+                  <div style={{ fontFamily:"DM Sans", color:"#00D4FF", fontSize:12, fontWeight:600 }}>#{r.online_order_no}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onClearNotifs, expenses, onAddExpense, onOrdersAdd, onStatusUpdate, onApproveTransfer, onRejectTransfer, driverProfiles, onUpdateDriver, onAddDriver, onClearData, onClearCollected, onRemoveOrderAdmin, saveStatus, dbConnected, syncing, onlineDrivers, activeDrivers, clearConfirm, onConfirmClear, onCancelClear, history, passwords, onSetPassword, selectedDate, onSetSelectedDate, onLogout }) {
   const [tab, setTab] = useState("upload");
   const [toast, setToast] = useState(null);
@@ -4705,6 +5008,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
     { id:"upload",    icon:"📤", label:"Upload" },
     { id:"orders",    icon:"📦", label:"Orders" },
     { id:"notifs",    icon:"🔔", label:unreadHelp>0?"Alerts (SOS!)":"Alerts", badge: unreadNotifs },
+    { id:"civilids",  icon:"🪪", label:"Civil IDs" },
     { id:"vehicles",  icon:"🚗", label:"Vehicles" },
     { id:"history",   icon:"📅", label:"History" },
     { id:"transfers", icon:"🔄", label:"Transfers", badge: pendingTransfers.length },
@@ -4881,6 +5185,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
 
         {/*  Vehicles / Expenses Tab  */}
         {tab==="vehicles" && <AdminVehiclesTab orders={orders} expenses={expenses} driverProfiles={driverProfiles} onUpdateDriver={onUpdateDriver} onAddDriver={onAddDriver} passwords={passwords} onSetPassword={onSetPassword} onRemoveOrderAdmin={onRemoveOrderAdmin} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} />}
+        {tab==="civilids" && <AdminCivilIdTab />}
         {tab==="history"  && <AdminHistoryTab history={history} />}
 
         {tab==="transfers" && (
@@ -5037,7 +5342,7 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
         {allMyOrders.length > 0 && (
           <DateFilterBar orders={allMyOrders} selectedDate={selectedDate} onSetSelectedDate={onSetSelectedDate} />
         )}
-        {tab==="delivery" && <DriverDeliveryTab orders={orders} driverId={user.id}
+        {tab==="delivery" && <DriverDeliveryTab orders={orders} driverId={user.id} driverName={user.name}
           onStatusUpdate={(id,status,note,newPay,newTotal,extraAmount) => { onStatusUpdate(id,status,note,newPay,newTotal,extraAmount); showToast((STATUS_CFG[status].icon) + " " + (status),status==="delivered"?"success":"warn"); }}
           onOpenTransfer={setTransferOrder}
           onRequestHelp={function(order,key,label){ onRequestHelp && onRequestHelp(order,key,label,user); }}
