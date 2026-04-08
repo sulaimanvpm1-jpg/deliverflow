@@ -530,10 +530,7 @@ function parseSAPDeliveryText(rawText) {
     else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
     else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
     else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
-    // ReStore & GadgetPro: no real OO numbers — any 6-digit is a phone fragment
-    const noOOStore = /restore|gadgetpro/i.test(store || "");
-    if (noOOStore) return null;
-    // Other stores: reject 6-digit with no hint (phone fragment)
+    // Reject 6-digit with no hint = phone fragment (last 6 digits of mobile like 468710, 636836)
     if (ooNum.length === 6 && payHint === null) return null;
     return { num: ooNum, payHint };
   }
