@@ -543,12 +543,18 @@ function parseSAPDeliveryText(rawText) {
         if (invoiceRe.test(tok) && tok !== invoiceNo) break;
         if (/^Customer\s*:?\s*$/i.test(tok)) break;
         if (/^(?:ReStore|Trikart|Webstore)/i.test(tok)) break;
+        // Skip page footer / header tokens — don't let them pollute orderTokens
+        if (/^(?:Page|Printed|SAP|Business|One|▐|Bill wise)/.test(tok)) { i++; continue; }
+        if (/^(?:Printed by|Printed on|Printed by:)/i.test(tok)) { i++; continue; }
+        if (/^\d{1,2}:\d{2}/.test(tok)) { i++; continue; }  // timestamps like 9:54:31AM
+        if (/^\d+\/\d+$/.test(tok) && !/[a-z]/i.test(tok)) { i++; continue; }  // page numbers like 1/3
+        if (/^\x0c/.test(tok)) { i++; continue; }  // form feed / page break
         orderTokens.push(tok);
         i++;
       }
 
       // Now process the collected tokens in order
-      const SKIP_RE = /^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Building|Floor|Office|Kuwait|FA|JA|KU|AH|HA|Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date)$/i;
+      const SKIP_RE = /^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Building|Floor|Office|Kuwait|FA|JA|KU|AH|HA|Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date|▐)$/i;
 
       // The OO number is the LAST numeric token — after the payment term
       // Walk backwards from end to find it
@@ -565,15 +571,17 @@ function parseSAPDeliveryText(rawText) {
       }
 
       // Walk backwards specifically: last token before next invoice is OO if it's a number
-      // More reliable: the token immediately before we broke (i.e. last in orderTokens) 
-      // should be checked
-      const lastTok = orderTokens[orderTokens.length - 1] || "";
-      const lastM = lastTok.match(/^(\d{4,6})([/\w]*)?$/);
-      if (lastM && !dateRe.test(lastTok) && !amountRe.test(lastTok)) {
-        const ooNum  = lastM[1];
-        const ooRest = lastTok.slice(ooNum.length).toLowerCase();
+      // OO number is either the LAST token (normal case) or the SECOND token (page-break case).
+      // Page-break case: last order on page has footer tokens after address, so OO ends up second.
+      // Example page-break token order: invoice, OO, total, total, date, customer, address..., Page:, Printed...
+      // Normal order: invoice, date, total, total, date, customer, address..., payment, OO
+      function extractOO(tok) {
+        const m = tok && tok.match(/^(\d{4,6})([/\w]*)?$/);
+        if (!m || dateRe.test(tok) || amountRe.test(tok)) return null;
+        const ooNum  = m[1];
+        const ooRest = tok.slice(ooNum.length).toLowerCase();
         let payHint = null;
-        if (/\/tb\b|tabby/.test(ooRest))               payHint = "Tabby";
+        if (/\/tb\b|tabby/.test(ooRest))                payHint = "Tabby";
         else if (/\/dm\b|deema/.test(ooRest))           payHint = "Deema";
         else if (/\/ex\b/.test(ooRest))                 payHint = "Exchange";
         else if (/\/js\b/.test(ooRest))                 payHint = "Cash";
@@ -581,12 +589,22 @@ function parseSAPDeliveryText(rawText) {
         else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
         else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
         else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
-        // Reject 6-digit with no hint = phone fragment (e.g. 468710 from ReStore)
-        const isPhoneFrag = (ooNum.length === 6 && payHint === null);
-        if (!isPhoneFrag) {
-          onlineOrderNo = ooNum;
-          if (payHint) paymentType = payHint;
-          orderTokens.pop(); // remove OO token from address processing
+        if (ooNum.length === 6 && payHint === null) return null; // phone fragment
+        return { num: ooNum, payHint };
+      }
+      // Try last token first (normal case)
+      const lastOO = extractOO(orderTokens[orderTokens.length - 1] || "");
+      if (lastOO) {
+        onlineOrderNo = lastOO.num;
+        if (lastOO.payHint) paymentType = lastOO.payHint;
+        orderTokens.pop();
+      } else {
+        // Fallback: try second token right after invoice (page-break case)
+        const secondOO = extractOO(orderTokens[0] || "");
+        if (secondOO) {
+          onlineOrderNo = secondOO.num;
+          if (secondOO.payHint) paymentType = secondOO.payHint;
+          orderTokens.shift();
         }
       }
 
