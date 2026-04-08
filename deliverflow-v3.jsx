@@ -2769,34 +2769,42 @@ const LINK_OPTIONS = [
 async function dbSaveCivilId(record) {
   var sb = getSupabase();
   if (!sb) {
-    // Try loading the SDK first, then retry
     return new Promise(function(resolve, reject) {
       loadSupabaseSDK(function() {
         var sb2 = getSupabase();
         if (!sb2) { reject(new Error("Database not connected")); return; }
-        sb2.from("civil_id_records").upsert({
-          invoice_no:      record.invoiceNo,
-          online_order_no: record.onlineOrderNo || "",
-          civil_id_number: record.civilIdNumber,
-          full_name:       record.fullName,
-          driver_name:     record.driverName,
-          delivered_date:  record.deliveredDate,
-        }, { onConflict: "invoice_no" }).then(function(res) {
-          if (res.error) { console.warn("Civil ID save error:", res.error.message); reject(res.error); }
-          else resolve();
-        }).catch(reject);
+        _doSaveCivilId(sb2, record).then(resolve).catch(reject);
       });
     });
   }
-  var res = await sb.from("civil_id_records").upsert({
+  return _doSaveCivilId(sb, record);
+}
+
+async function _doSaveCivilId(sb, record) {
+  var row = {
     invoice_no:      record.invoiceNo,
     online_order_no: record.onlineOrderNo || "",
     civil_id_number: record.civilIdNumber,
     full_name:       record.fullName,
     driver_name:     record.driverName,
     delivered_date:  record.deliveredDate,
-  }, { onConflict: "invoice_no" });
-  if (res.error) { console.warn("Civil ID save error:", res.error.message); throw res.error; }
+  };
+  // Try insert first
+  var ins = await sb.from("civil_id_records").insert(row);
+  if (!ins.error) return; // inserted fine
+  // If duplicate key error, update instead
+  if (ins.error.code === "23505" || ins.error.message.includes("duplicate")) {
+    var upd = await sb.from("civil_id_records").update({
+      civil_id_number: row.civil_id_number,
+      full_name:       row.full_name,
+      driver_name:     row.driver_name,
+      delivered_date:  row.delivered_date,
+      online_order_no: row.online_order_no,
+    }).eq("invoice_no", row.invoice_no);
+    if (upd.error) throw upd.error;
+    return;
+  }
+  throw ins.error;
 }
 
 async function dbLoadCivilIds() {
