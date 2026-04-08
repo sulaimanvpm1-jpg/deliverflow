@@ -464,6 +464,10 @@ function parseSAPDeliveryText(rawText) {
   const amountRe  = /^\d+\.\d{2,3}$/;
   // OO detection handled inline in parser loop
 
+  // DEBUG: log all tokens to console
+  console.log("=== PARSER TOKENS (" + tokens.length + " total) ===");
+  tokens.slice(0, 80).forEach(function(t, i) { console.log("[" + i + "]", JSON.stringify(t)); });
+
   function detectPayment(s) {
     const l = (s || "").toLowerCase();
     if (l.includes("knet") || l.includes("k-net") || l.includes("k net") || l === "/knet") return "KNET";
@@ -693,9 +697,16 @@ function PDFUploadPanel({ onOrdersParsed }) {
       for (let p = 1; p <= pdf.numPages; p++) {
         const page = await pdf.getPage(p);
         const tc   = await page.getTextContent();
-        // Log first page items to see structure
-
-        fullText += tc.items.map(it => it.str).join("\n") + "\n";
+        // Join items with \n so each text element is its own line
+        const pageText = tc.items.map(it => it.str).join("\n");
+        fullText += pageText + "\n";
+        // DEBUG: log first page raw items to console
+        if (p === 1) {
+          console.log("=== PDF PAGE 1 RAW ITEMS ===");
+          tc.items.forEach(function(it, idx) {
+            if (it.str.trim()) console.log("[" + idx + "]", JSON.stringify(it.str), "x=" + Math.round(it.transform[4]) + " y=" + Math.round(it.transform[5]));
+          });
+        }
       }
 
       const lineCount = fullText.split("\n").filter(Boolean).length;
