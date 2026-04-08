@@ -460,17 +460,17 @@ function parseSAPDeliveryText(rawText) {
 
   function detectPayment(s) {
     const l = (s || "").toLowerCase();
-    if (l.includes("knet") || l.includes("k-net") || l.includes("k net")) return "KNET";
-    if (l.includes("tabby"))   return "Tabby";
-    if (l.includes("deema"))   return "Deema";
-    if (l.includes("tamara"))  return "Tamara";
-    if (l.includes("taly"))    return "Taly";
-    if (l.includes("visa") || l.includes("mastercard")) return "VISA/Mastercard";
-    if (l.includes("exchange") || l === "ex") return "Exchange";
-    if (l.includes("tap"))     return "Tap/KNET";
-    if (l.includes("wamd"))    return "WAMD";
+    if (l.includes("knet") || l.includes("k-net") || l.includes("k net") || l === "/knet") return "KNET";
+    if (l.includes("tabby") || l === "/tb")   return "Tabby";
+    if (l.includes("deema") || l === "/dm")   return "Deema";
+    if (l.includes("tamara"))                  return "Tamara";
+    if (l.includes("taly") || l === "/taly")  return "Taly";
+    if (l.includes("visa") || l.includes("mastercard") || l === "/vmc") return "VISA/Mastercard";
+    if (l.includes("exchange") || l === "ex" || l === "/ex") return "Exchange";
+    if (l.includes("tap"))                     return "Tap/KNET";
+    if (l.includes("wamd") || l === "/wamd")  return "WAMD";
     if (l.includes("gocollect") || l.includes("go collect")) return "GoCollect";
-    if (l.includes("cash") || l.includes("basic") || l.includes("cod")) return "Cash";
+    if (l.includes("cash") || l.includes("basic") || l.includes("cod") || l === "/js") return "Cash";
     return null;
   }
 
@@ -535,21 +535,25 @@ function parseSAPDeliveryText(rawText) {
         if (/^\d{7}$/.test(tok) && tok !== invoiceNo) break;
 
         // OO candidate: 4-12 digit number (with optional /suffix for payment hint)
-        // IMPORTANT: check this BEFORE detectPayment — tokens like "75911/vmc" or "75892/knet"
-        // start with digits and are OO numbers, not pure payment strings. If detectPayment ran
-        // first it would misfire on the /suffix and cause the order to be dropped (total=0).
+        // Handles formats: 76722, 27223/tb, 27217/583489/dm, 27220/tb, 27245/tb
+        // Take the FIRST numeric segment before any slash — that is the OO number
         var ooM = tok.match(/^(\d{4,12})/);
         if (ooM && ooM[1] !== invoiceNo) {
           var ooNum = ooM[1];
+          // Get everything after the OO number (may contain /suffix/payment hints)
           var ooRest = tok.slice(ooNum.length).toLowerCase();
           var ooPayHint = null;
-          if (/\bknet\b|kpay/.test(ooRest)) ooPayHint = "KNET";
-          else if (/tabby/.test(ooRest)) ooPayHint = "Tabby";
-          else if (/deema/.test(ooRest)) ooPayHint = "Deema";
-          else if (/visa|vmc|mastercard/.test(ooRest)) ooPayHint = "VISA/Mastercard";
-          else if (/\bex\b/.test(ooRest)) ooPayHint = "Exchange";
-          else if (/tap|link|collect/.test(ooRest)) ooPayHint = "Tap/KNET";
-          else if (/wamd/.test(ooRest)) ooPayHint = "WAMD";
+          // Handle shorthand suffixes: /tb=Tabby, /dm=Deema, /ex=Exchange,
+          // /js=Cash, /knet=KNET, /vmc=VISA, /wamd=WAMD, /link=Link
+          if (/\/tb\b|tabby/.test(ooRest))                   ooPayHint = "Tabby";
+          else if (/\/dm\b|deema/.test(ooRest))              ooPayHint = "Deema";
+          else if (/\/ex\b|\bex\b/.test(ooRest))             ooPayHint = "Exchange";
+          else if (/\/knet\b|\bknet\b|kpay/.test(ooRest))   ooPayHint = "KNET";
+          else if (/\/vmc\b|visa|mastercard/.test(ooRest))   ooPayHint = "VISA/Mastercard";
+          else if (/\/taly\b|taly/.test(ooRest))             ooPayHint = "Taly";
+          else if (/\/wamd\b|wamd/.test(ooRest))             ooPayHint = "WAMD";
+          else if (/\/js\b|\/cash\b/.test(ooRest))           ooPayHint = "Cash";
+          else if (/tap|link|collect/.test(ooRest))          ooPayHint = "Tap/KNET";
           ooCandidates.push({ num: ooNum, payHint: ooPayHint });
           i++; continue;
         }
@@ -589,16 +593,40 @@ function parseSAPDeliveryText(rawText) {
         i++;
       }
 
-      // Pick OO: last candidate works for both formats
-
       // Smart OO selection:
-      // Prefer 4-6 digit (Webstore 26xxx, Trikart 75xxx) over 7+ digit phone numbers
-      // Only use 7+ digit if no short candidate exists (ReStore 8-digit OOs)
+      // Trikart OOs: 5 digits starting with 7 (e.g. 76722, 75xxx)
+      // Webstore OOs: 5 digits starting with 2 (e.g. 27223, 26xxx)
+      // ReStore: NO online order numbers — 6-digit numbers like 468710 are phone fragments
+      // Rule: prefer candidates that came with a /suffix (has payHint or has slash context)
+      // or are exactly 5 digits. Exclude 6-digit numbers that look like phone fragments.
       if (ooCandidates.length > 0) {
+        // First try: candidates with a pay hint (came with /tb, /dm etc) — most reliable
+        var hintCands = ooCandidates.filter(function(c){ return c.payHint !== null; });
+        // Second try: 5-digit numbers (Trikart 7xxxx, Webstore 2xxxx/3xxxx)
+        var fiveDigit = ooCandidates.filter(function(c){ return c.num.length === 5; });
+        // Third try: 4-digit numbers
+        var fourDigit = ooCandidates.filter(function(c){ return c.num.length === 4; });
+        // Last resort: anything 4-6 digits
         var shortCands = ooCandidates.filter(function(c){ return c.num.length >= 4 && c.num.length <= 6; });
-        var chosen = shortCands.length > 0 ? shortCands[shortCands.length - 1] : ooCandidates[ooCandidates.length - 1];
-        onlineOrderNo = chosen.num;
-        if (chosen.payHint && paymentType === "Cash") paymentType = chosen.payHint;
+
+        var chosen = null;
+        if (hintCands.length > 0) {
+          chosen = hintCands[hintCands.length - 1];
+        } else if (fiveDigit.length > 0) {
+          chosen = fiveDigit[fiveDigit.length - 1];
+        } else if (fourDigit.length > 0) {
+          chosen = fourDigit[fourDigit.length - 1];
+        } else if (shortCands.length > 0) {
+          // Only use if not from ReStore (ReStore 6-digit = phone fragment)
+          if (!(currentStore || "").toLowerCase().includes("restore")) {
+            chosen = shortCands[shortCands.length - 1];
+          }
+        }
+
+        if (chosen) {
+          onlineOrderNo = chosen.num;
+          if (chosen.payHint && paymentType === "Cash") paymentType = chosen.payHint;
+        }
       }
 
       // Parse address tokens: first is customer name, then address parts, phone last
