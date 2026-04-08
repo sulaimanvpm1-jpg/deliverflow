@@ -2816,94 +2816,33 @@ async function dbLoadCivilIds() {
 }
 
 function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
-  const [scanning, setScanning]   = useState(false);
-  const [extracted, setExtracted] = useState(null);
-  const [saving, setSaving]       = useState(false);
-  const [saved, setSaved]         = useState(false);
-  const [err, setErr]             = useState("");
-  const [manualId, setManualId]   = useState("");
+  const [saving, setSaving]         = useState(false);
+  const [saved, setSaved]           = useState(false);
+  const [err, setErr]               = useState("");
+  const [manualId, setManualId]     = useState("");
   const [manualName, setManualName] = useState("");
-  const [showManual, setShowManual] = useState(false);
-  // API key setup — drivers need to enter key on their device once
-  const [keyInput, setKeyInput]   = useState("");
-  const [keySaved, setKeySaved]   = useState(false);
-  const [hasKey, setHasKey]       = useState(function(){ return !!getApiKey(); });
-  const inputRef = React.useRef(null);
+  const [confirmed, setConfirmed]   = useState(false); // review step
 
-  function handleSaveKey() {
-    if (!keyInput.trim()) return;
-    saveApiKey(keyInput.trim());
-    setHasKey(true); setKeySaved(true);
-  }
-
-  function handlePhoto(e) {
-    var file = e.target.files && e.target.files[0];
-    if (!file) return;
-    var apiKey = getApiKey();
-    if (!apiKey) { setHasKey(false); e.target.value = ""; return; }
-    setScanning(true); setErr("");
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      var base64 = ev.target.result.split(",")[1];
-      fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 200,
-          messages: [{ role: "user", content: [
-            { type: "image", source: { type: "base64", media_type: file.type || "image/jpeg", data: base64 } },
-            { type: "text", text: "This is a Kuwait Civil ID card. Extract ONLY:\n1. The Civil ID number (12-digit number shown as 'Civil ID No')\n2. The English full name (shown as 'Name' in English)\n\nReturn ONLY this JSON, nothing else:\n{\"civilIdNumber\":\"...\",\"fullName\":\"...\"}" }
-          ]}]
-        })
-      })
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        setScanning(false);
-        var text = (data.content && data.content[0] && data.content[0].text) || "";
-        try {
-          var parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-          if (!parsed.civilIdNumber || !parsed.fullName) throw new Error("Missing fields");
-          setExtracted(parsed);
-          setManualId(parsed.civilIdNumber);
-          setManualName(parsed.fullName);
-        } catch(ex) {
-          setErr("Could not read Civil ID. Please enter manually.");
-          setShowManual(true);
-        }
-      })
-      .catch(function(ex) {
-        setScanning(false);
-        setErr("Scan failed. Enter manually below.");
-        setShowManual(true);
-      });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+  function handleReview() {
+    if (!manualId.trim() || !manualName.trim()) { setErr("Both Civil ID number and full name are required."); return; }
+    if (!/^\d{12}$/.test(manualId.trim())) { setErr("Civil ID must be exactly 12 digits."); return; }
+    setErr(""); setConfirmed(true);
   }
 
   function handleSave() {
-    var idNum = (extracted ? extracted.civilIdNumber : manualId).trim();
-    var name  = (extracted ? extracted.fullName : manualName).trim();
-    if (!idNum || !name) { setErr("Civil ID number and name are required."); return; }
     setSaving(true); setErr("");
     var today = (function(){ var d = new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
     dbSaveCivilId({
       invoiceNo:     order.invoiceNo,
       onlineOrderNo: order.onlineOrderNo || "",
-      civilIdNumber: idNum,
-      fullName:      name,
+      civilIdNumber: manualId.trim(),
+      fullName:      manualName.trim(),
       driverName:    driverName,
       deliveredDate: today,
     }).then(function() {
       setSaving(false);
       setSaved(true);
-      setTimeout(function() { onSaved && onSaved({ civilIdNumber: idNum, fullName: name }); }, 1500);
+      setTimeout(function() { onSaved && onSaved({ civilIdNumber: manualId.trim(), fullName: manualName.trim() }); }, 1500);
     }).catch(function(e2) {
       setSaving(false);
       setErr("Save failed: " + (e2 && e2.message ? e2.message : "Please try again."));
@@ -2912,93 +2851,59 @@ function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
 
   return (
     <div style={{ background:"rgba(0,212,255,.06)", border:"1px solid rgba(0,212,255,.25)", borderRadius:16, padding:16, marginTop:14 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
         <span style={{ fontSize:22 }}>🪪</span>
         <div>
           <div style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:14, fontWeight:700 }}>Collect Customer Civil ID</div>
-          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:11 }}>Required for delivered orders</div>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:11 }}>Enter details from customer's Civil ID card</div>
         </div>
       </div>
 
-      {/* API Key setup — shown once if key not set on this device */}
-      {!hasKey && (
-        <div style={{ background:"rgba(245,158,11,.08)", border:"1px solid rgba(245,158,11,.3)", borderRadius:12, padding:"12px 14px", marginBottom:10 }}>
-          <div style={{ fontFamily:"Syne", color:"#F59E0B", fontSize:12, fontWeight:700, marginBottom:6 }}>🔑 One-time Setup Required</div>
-          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:8 }}>
-            Ask your admin for the Anthropic API key and enter it once below. It stays saved on your phone.
-          </div>
-          <input type="password" value={keyInput} onChange={function(e){ setKeyInput(e.target.value); }}
-            placeholder="sk-ant-api03-..."
-            style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(245,158,11,.4)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:12, outline:"none", marginBottom:8 }} />
-          <button onClick={handleSaveKey} disabled={!keyInput.trim()}
-            style={{ width:"100%", background:keySaved?"rgba(16,185,129,.2)":"rgba(245,158,11,.2)", border:"1px solid rgba(245,158,11,.4)", borderRadius:10, padding:"9px", color:keySaved?"#10B981":"#F59E0B", fontFamily:"Syne", fontSize:12, fontWeight:700, cursor:"pointer" }}>
-            {keySaved ? "✓ Key Saved — Tap Camera Below" : "Save API Key"}
-          </button>
-        </div>
-      )}
-
       {saved ? (
-        <div style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:12, padding:"12px 14px", textAlign:"center" }}>
-          <div style={{ fontSize:24, marginBottom:4 }}>✅</div>
-          <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:13, fontWeight:700 }}>Civil ID Saved!</div>
+        <div style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:12, padding:"14px", textAlign:"center" }}>
+          <div style={{ fontSize:28, marginBottom:6 }}>✅</div>
+          <div style={{ fontFamily:"Syne", color:"#10B981", fontSize:14, fontWeight:700 }}>Civil ID Saved Successfully!</div>
         </div>
-      ) : extracted && !showManual ? (
+
+      ) : confirmed ? (
+        // Review step before saving
         <div>
-          <div style={{ background:"rgba(0,0,0,.2)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
-            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, letterSpacing:1 }}>EXTRACTED FROM PHOTO — PLEASE VERIFY</div>
-            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700, marginBottom:2 }}>{extracted.fullName}</div>
-            <div style={{ fontFamily:"DM Sans", color:"#00D4FF", fontSize:13 }}>Civil ID: {extracted.civilIdNumber}</div>
+          <div style={{ background:"rgba(0,0,0,.25)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:8, letterSpacing:1 }}>PLEASE VERIFY BEFORE SAVING</div>
+            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}>{manualName}</div>
+            <div style={{ fontFamily:"DM Sans", color:"#00D4FF", fontSize:14, letterSpacing:2 }}>{manualId}</div>
           </div>
           {err && <div style={{ fontFamily:"DM Sans", color:"#EF4444", fontSize:12, marginBottom:8 }}>{err}</div>}
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={function(){ setExtracted(null); setShowManual(true); setErr(""); }}
-              style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>
-              Edit
+            <button onClick={function(){ setConfirmed(false); setErr(""); }}
+              style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"11px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>
+              ← Edit
             </button>
             <button onClick={handleSave} disabled={saving}
-              style={{ flex:2, background:saving?"rgba(16,185,129,.3)":"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:saving?"default":"pointer" }}>
+              style={{ flex:2, background:saving?"rgba(16,185,129,.2)":"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"11px", color:"#fff", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:saving?"default":"pointer" }}>
               {saving ? "⏳ Saving…" : "✓ Confirm & Save"}
             </button>
           </div>
         </div>
+
       ) : (
+        // Entry form
         <div>
-          {!showManual && (
-            <>
-              <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display:"none" }} />
-              <button onClick={function(){ if(hasKey) inputRef.current && inputRef.current.click(); }} disabled={scanning || !hasKey}
-                style={{ width:"100%", background:scanning||!hasKey?"rgba(0,212,255,.05)":"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:12, padding:"13px", color:scanning||!hasKey?"rgba(0,212,255,.4)":"#00D4FF", fontFamily:"Syne", fontSize:14, fontWeight:700, cursor:scanning||!hasKey?"default":"pointer", marginBottom:8 }}>
-                {scanning ? "⏳ Reading Civil ID…" : "📷 Take Photo of Civil ID"}
-              </button>
-              <button onClick={function(){ setShowManual(true); setErr(""); }}
-                style={{ width:"100%", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"10px", color:"rgba(255,255,255,.4)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer", marginBottom:8 }}>
-                Enter Manually Instead
-              </button>
-            </>
-          )}
-
-          {showManual && (
-            <div>
-              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>CIVIL ID NUMBER (12 digits)</div>
-              <input type="text" value={manualId} onChange={function(e){ setManualId(e.target.value); }} placeholder="000000000000" maxLength={12}
-                style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:14, outline:"none", marginBottom:10, letterSpacing:2 }} />
-              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>FULL NAME (English only)</div>
-              <input type="text" value={manualName} onChange={function(e){ setManualName(e.target.value); }} placeholder="e.g. Mohammed Ali Al-Mutairi"
-                style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:13, outline:"none", marginBottom:10 }} />
-              <div style={{ display:"flex", gap:8 }}>
-                <button onClick={function(){ setShowManual(false); setErr(""); }}
-                  style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>
-                  ← Camera
-                </button>
-                <button onClick={function(){ if(manualId.trim()&&manualName.trim()){ setExtracted({ civilIdNumber:manualId.trim(), fullName:manualName.trim() }); setShowManual(false); } else { setErr("Both fields required."); } }}
-                  style={{ flex:2, background:"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:10, padding:"10px", color:"#00D4FF", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer" }}>
-                  Review →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {err && <div style={{ fontFamily:"DM Sans", color:"#EF4444", fontSize:12, marginTop:8 }}>{err}</div>}
+          <div style={{ marginBottom:10 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>CIVIL ID NUMBER (12 digits)</div>
+            <input type="text" value={manualId} onChange={function(e){ setManualId(e.target.value.replace(/\D/g,"")); }} placeholder="000000000000" maxLength={12} inputMode="numeric"
+              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"11px 14px", color:"#00D4FF", fontFamily:"DM Sans", fontSize:16, fontWeight:700, outline:"none", letterSpacing:3 }} />
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>FULL NAME (English only)</div>
+            <input type="text" value={manualName} onChange={function(e){ setManualName(e.target.value); }} placeholder="e.g. Mohammed Ali Al-Mutairi"
+              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"11px 14px", color:"#fff", fontFamily:"DM Sans", fontSize:13, outline:"none" }} />
+          </div>
+          {err && <div style={{ fontFamily:"DM Sans", color:"#EF4444", fontSize:12, marginBottom:8 }}>{err}</div>}
+          <button onClick={handleReview}
+            style={{ width:"100%", background:"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:12, padding:"12px", color:"#00D4FF", fontFamily:"Syne", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+            Review →
+          </button>
         </div>
       )}
 
