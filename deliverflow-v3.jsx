@@ -439,17 +439,23 @@ function parseSAPDeliveryText(rawText) {
     }
   }
 
-  // Flatten all tokens by splitting every line on " --- " or " -- "
-  // This gives us a flat token stream to parse
+  // Flatten all tokens: split on --- or --, then also split compound SAP row tokens
+  // like '6/4/2026 1164441 12.90 12.90 6/4/2026 2' which pdf.js concatenates
+  // when multiple table cells share the same Y-coordinate line.
   const tokens = [];
   for (let i = 0; i < rawLines.length; i++) {
-    // Strip form-feed characters () from page breaks
-    const cleanLine = rawLines[i].replace(/\x0c/g, "").trim();
+    const cleanLine = rawLines[i].replace(/\x0c/g, '').trim();
     if (!cleanLine) continue;
     const parts = cleanLine.split(/\s+---+\s+|\s+--\s+/);
     for (let j = 0; j < parts.length; j++) {
       const t = parts[j].trim();
-      if (t) tokens.push(t);
+      if (!t) continue;
+      // Split compound SAP row tokens that contain an invoice no + date + amount on one line
+      if (/\b\d{7}\b/.test(t) && /\b\d+\.\d{2,3}\b/.test(t) && /\b\d{1,2}\/\d{1,2}\/\d{4}\b/.test(t)) {
+        t.split(/\s+/).forEach(function(piece){ if (piece) tokens.push(piece); });
+      } else {
+        tokens.push(t);
+      }
     }
   }
 
