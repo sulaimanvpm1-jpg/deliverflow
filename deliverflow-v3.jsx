@@ -508,131 +508,99 @@ function parseSAPDeliveryText(rawText) {
       continue;
     }
 
-    // Order start: invoice number (6-9 digits)
+    // Order start: invoice number (7 digits)
     if (invoiceRe.test(t)) {
       const invoiceNo = t;
       i++;
 
-      // Next token might be date or online order number
-      let date = "";
+      let date         = "";
       let onlineOrderNo = "";
-      let total = 0;
-      let paymentType = "Cash";
+      let total        = 0;
+      let paymentType  = "Cash";
       const addrTokens = [];
 
-      // ── UNIFIED ORDER TOKEN COLLECTION ──
-      var ooCandidates = [];
+      // ── STEP 1: Token immediately after invoice is the OO number ──
+      // Real PDF token order (each cell is its own line):
+      //   1164531  ← invoice
+      //   76722    ← OO number  (may be "27223/tb" or "27217/583489/dm")
+      //   12.90    ← total
+      //   12.90    ← open amount (skip)
+      //   6/4/2026 ← due date (skip)
+      //   2        ← overdue days (skip)
+      //   - Cash Basic -  ← payment term → then customer/address follow
+      if (i < tokens.length) {
+        const nxt = tokens[i].trim();
+        const ooM = nxt.match(/^(\d{4,6})([/\w]*)?$/);
+        if (ooM && !dateRe.test(nxt) && !amountRe.test(nxt) && !invoiceRe.test(nxt)) {
+          const ooNum  = ooM[1];
+          const ooRest = nxt.slice(ooNum.length).toLowerCase();
+          // Pay hint from suffix: /tb=Tabby, /dm=Deema, /ex=Exchange, /js=Cash, /knet=KNET
+          let payHint = null;
+          if (/\/tb\b|tabby/.test(ooRest))              payHint = "Tabby";
+          else if (/\/dm\b|deema/.test(ooRest))         payHint = "Deema";
+          else if (/\/ex\b/.test(ooRest))               payHint = "Exchange";
+          else if (/\/js\b/.test(ooRest))               payHint = "Cash";
+          else if (/\/knet\b|knet/.test(ooRest))        payHint = "KNET";
+          else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
+          else if (/\/taly\b|taly/.test(ooRest))        payHint = "Taly";
+          else if (/\/wamd\b|wamd/.test(ooRest))        payHint = "WAMD";
+          // Accept if: has pay hint, OR 5-digit (Trikart 7xxxx / Webstore 2xxxx)
+          // Reject if: 6-digit with no hint (ReStore phone fragment like 468710)
+          const isPhoneFrag = (ooNum.length === 6 && payHint === null);
+          if (!isPhoneFrag) {
+            onlineOrderNo = ooNum;
+            if (payHint) paymentType = payHint;
+            i++;
+          }
+        }
+      }
+
+      // ── STEP 2: Collect remaining order tokens ──
       let orderGuard = 0;
       while (i < tokens.length && orderGuard < 60) {
         orderGuard++;
         const tok = tokens[i];
 
         if (/^Customer\s*:?\s*$/i.test(tok)) break;
-        if (/^(?:ReStore|Trikart|Webstore|Re\s*Store)/i.test(tok)) break;
-        if (/^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Building|Floor|Block|Office|Kuwait)$/i.test(tok)) { i++; continue; }
+        if (/^(?:ReStore|Trikart|Webstore)/i.test(tok)) break;
+        if (invoiceRe.test(tok) && tok !== invoiceNo) break;
+        if (/^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Building|Floor|Office|Kuwait)$/i.test(tok)) { i++; continue; }
         if (/^(?:Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date)$/i.test(tok)) { i++; continue; }
         if (/^\d{1,2}:\d{2}/.test(tok)) { i++; continue; }
-        if (/^\d+\/\d+$/.test(tok)) { i++; continue; }
+        if (/^\d+\/\d+$/.test(tok) && !/[a-z]/i.test(tok)) { i++; continue; }
 
         if (dateRe.test(tok)) { if (!date) date = tok; i++; continue; }
         if (amountRe.test(tok)) { if (!total) total = parseFloat(tok); i++; continue; }
+        if (/^\d{1,3}$/.test(tok)) { i++; continue; }
 
-        // Next invoice = end of this order
-        if (/^\d{7}$/.test(tok) && tok !== invoiceNo) break;
-
-        // OO candidate: 4-12 digit number (with optional /suffix for payment hint)
-        // Handles formats: 76722, 27223/tb, 27217/583489/dm, 27220/tb, 27245/tb
-        // Take the FIRST numeric segment before any slash — that is the OO number
-        var ooM = tok.match(/^(\d{4,12})/);
-        if (ooM && ooM[1] !== invoiceNo) {
-          var ooNum = ooM[1];
-          // Get everything after the OO number (may contain /suffix/payment hints)
-          var ooRest = tok.slice(ooNum.length).toLowerCase();
-          var ooPayHint = null;
-          // Handle shorthand suffixes: /tb=Tabby, /dm=Deema, /ex=Exchange,
-          // /js=Cash, /knet=KNET, /vmc=VISA, /wamd=WAMD, /link=Link
-          if (/\/tb\b|tabby/.test(ooRest))                   ooPayHint = "Tabby";
-          else if (/\/dm\b|deema/.test(ooRest))              ooPayHint = "Deema";
-          else if (/\/ex\b|\bex\b/.test(ooRest))             ooPayHint = "Exchange";
-          else if (/\/knet\b|\bknet\b|kpay/.test(ooRest))   ooPayHint = "KNET";
-          else if (/\/vmc\b|visa|mastercard/.test(ooRest))   ooPayHint = "VISA/Mastercard";
-          else if (/\/taly\b|taly/.test(ooRest))             ooPayHint = "Taly";
-          else if (/\/wamd\b|wamd/.test(ooRest))             ooPayHint = "WAMD";
-          else if (/\/js\b|\/cash\b/.test(ooRest))           ooPayHint = "Cash";
-          else if (/tap|link|collect/.test(ooRest))          ooPayHint = "Tap/KNET";
-          ooCandidates.push({ num: ooNum, payHint: ooPayHint });
-          i++; continue;
-        }
-
-        // Payment detection — stop when found
-        var dp = detectPayment(tok);
+        // Payment line: "- Cash Basic -" / "- Tabby -" / "- Deema -"
+        const dp = detectPayment(tok);
         if (dp) {
-          paymentType = dp;
+          if (paymentType === "Cash") paymentType = dp;
           i++;
-          // Skip trailing Basic/Terms/Cash words
-          while (i < tokens.length && /^(?:Basic|Payment|Terms|Cash)$/i.test(tokens[i])) i++;
-          // Address comes AFTER payment in this SAP PDF format — read it now
-          var addrGuard = 0;
+          // Collect customer + address tokens AFTER payment line
+          let addrGuard = 0;
           while (i < tokens.length && addrGuard < 40) {
             addrGuard++;
-            var aTok = tokens[i];
-            if (/^Customer\s*:?\s*$/i.test(aTok)) break;
-            if (/^(?:ReStore|Trikart|Webstore)/i.test(aTok)) break;
-            if (/^\d{7}$/.test(aTok)) break;
-            if (/^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Building|Floor|Block|Office|Kuwait)$/i.test(aTok)) { i++; continue; }
-            if (/^(?:Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date)$/i.test(aTok)) { i++; continue; }
-            if (/^\d{1,2}:\d{2}/.test(aTok)) { i++; continue; }
-            if (/^\d+\/\d+$/.test(aTok)) { i++; continue; }
-            if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(aTok)) { i++; continue; }
-            if (/^(?:Page:|Printed\s|Printed by|Printed on)/i.test(aTok)) { i++; continue; }
-            addrTokens.push(aTok);
+            const at = tokens[i];
+            if (/^Customer\s*:?\s*$/i.test(at)) break;
+            if (/^(?:ReStore|Trikart|Webstore)/i.test(at)) break;
+            if (invoiceRe.test(at)) break;
+            if (/^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Building|Floor|Office|Kuwait|FA|JA|KU|AH|HA)$/i.test(at)) { i++; continue; }
+            if (/^(?:Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date)$/i.test(at)) { i++; continue; }
+            if (/^\d{1,2}:\d{2}/.test(at)) { i++; continue; }
+            if (/^\d+\/\d+$/.test(at) && !/[a-z]/i.test(at)) { i++; continue; }
+            if (dateRe.test(at)) { i++; continue; }
+            if (amountRe.test(at)) { i++; continue; }
+            if (/^\d{1,3}$/.test(at)) { i++; continue; }
+            addrTokens.push(at);
             i++;
           }
           break;
         }
 
-        // Skip small pure numbers (overdue days 0-999)
-        if (/^\d{1,3}$/.test(tok)) { i++; continue; }
-
-        // Everything else = address/customer
         addrTokens.push(tok);
         i++;
-      }
-
-      // Smart OO selection:
-      // Trikart OOs: 5 digits starting with 7 (e.g. 76722, 75xxx)
-      // Webstore OOs: 5 digits starting with 2 (e.g. 27223, 26xxx)
-      // ReStore: NO online order numbers — 6-digit numbers like 468710 are phone fragments
-      // Rule: prefer candidates that came with a /suffix (has payHint or has slash context)
-      // or are exactly 5 digits. Exclude 6-digit numbers that look like phone fragments.
-      if (ooCandidates.length > 0) {
-        // First try: candidates with a pay hint (came with /tb, /dm etc) — most reliable
-        var hintCands = ooCandidates.filter(function(c){ return c.payHint !== null; });
-        // Second try: 5-digit numbers (Trikart 7xxxx, Webstore 2xxxx/3xxxx)
-        var fiveDigit = ooCandidates.filter(function(c){ return c.num.length === 5; });
-        // Third try: 4-digit numbers
-        var fourDigit = ooCandidates.filter(function(c){ return c.num.length === 4; });
-        // Last resort: anything 4-6 digits
-        var shortCands = ooCandidates.filter(function(c){ return c.num.length >= 4 && c.num.length <= 6; });
-
-        var chosen = null;
-        if (hintCands.length > 0) {
-          chosen = hintCands[hintCands.length - 1];
-        } else if (fiveDigit.length > 0) {
-          chosen = fiveDigit[fiveDigit.length - 1];
-        } else if (fourDigit.length > 0) {
-          chosen = fourDigit[fourDigit.length - 1];
-        } else if (shortCands.length > 0) {
-          // Only use if not from ReStore (ReStore 6-digit = phone fragment)
-          if (!(currentStore || "").toLowerCase().includes("restore")) {
-            chosen = shortCands[shortCands.length - 1];
-          }
-        }
-
-        if (chosen) {
-          onlineOrderNo = chosen.num;
-          if (chosen.payHint && paymentType === "Cash") paymentType = chosen.payHint;
-        }
       }
 
       // Parse address tokens: first is customer name, then address parts, phone last
