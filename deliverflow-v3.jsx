@@ -1133,7 +1133,17 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
             <div style={{ marginTop:20 }}>
               <div style={{ fontFamily:"Syne", color:"#fff", fontSize:15, fontWeight:700, marginBottom:12 }}>Today&apos;s Assigned Orders</div>
               {DRIVERS.map(function(d) {
-                const dOrders   = allOrders.filter(function(o) { return o.driverId === d.id; });
+                var _todayStr = new Date().toDateString();
+                const dOrders = allOrders.filter(function(o) {
+                  if (o.driverId !== d.id) return false;
+                  var _d = o.assignedDate || o.date || "";
+                  var _p = _d.split("/");
+                  if (_p.length === 3) {
+                    var _dt = new Date(parseInt(_p[2]), parseInt(_p[1])-1, parseInt(_p[0]));
+                    return _dt.toDateString() === _todayStr;
+                  }
+                  return false;
+                });
                 const done      = dOrders.filter(function(o) { return o.status === "delivered"; }).length;
                 const collected = dOrders.filter(function(o) { return o.scanned; }).length;
                 const cancelled = dOrders.filter(function(o) { return o.status === "cancelled"; }).length;
@@ -4974,15 +4984,15 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
   const [filterDate, setFilterDate] = useState("all");
   const [alertStoreFilter, setAlertStoreFilter] = useState("all");
   // Filter orders by selected date
-  var filteredOrders = selectedDate ? orders.filter(function(o) {
+  var filteredOrders = orders.filter(function(o) {
     var od = o.assignedDate || o.date || "";
     var parts = od.split("/");
     if (parts.length === 3) {
       var oDate = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
-      return oDate.toDateString() === selectedDate;
+      return oDate.toDateString() === (selectedDate || new Date().toDateString());
     }
-    return true;
-  }) : orders;
+    return false;
+  });
 
   function showToast(msg) { setToast({ msg, ttype:"success" }); setTimeout(function() { setToast(null); }, 3000); }
 
