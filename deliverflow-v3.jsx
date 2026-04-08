@@ -533,6 +533,7 @@ function parseSAPDeliveryText(rawText) {
   }
 
   // Skip header tokens until we find "Customer :" which marks store sections
+  let pendingOO = ""; // OO that appeared between page header and next invoice
   while (i < tokens.length) {
     const t = tokens[i];
 
@@ -555,6 +556,18 @@ function parseSAPDeliveryText(rawText) {
       continue;
     }
 
+    // Orphaned OO token — appears between page header and the next invoice
+    // This is the OO for the PREVIOUS order (last order on the previous page)
+    const orphanOO = tryExtractOO(t);
+    if (orphanOO && orders.length > 0 && !orders[orders.length - 1].onlineOrderNo) {
+      orders[orders.length - 1].onlineOrderNo = orphanOO.num;
+      if (orphanOO.payHint && orders[orders.length - 1].paymentType === "Cash") {
+        orders[orders.length - 1].paymentType = orphanOO.payHint;
+      }
+      i++;
+      continue;
+    }
+
     // Order start: invoice number (7 digits)
     if (invoiceRe.test(t)) {
       const invoiceNo = t;
@@ -572,34 +585,52 @@ function parseSAPDeliveryText(rawText) {
       // OO is ALWAYS the token immediately after invoice (index 0 of orderTokens)
       // EXCEPT for ReStore orders which have no OO (phone fragment like "468710" in that slot)
 
-      // Collect all tokens until next invoice/store/footer
+      // Collect all tokens until next invoice/store
+      // Skip footer/header junk but DON'T stop — the OO for last-on-page orders
+      // appears AFTER the page header on the next page, before the next invoice
       var orderTokens = [];
       let orderGuard = 0;
-      while (i < tokens.length && orderGuard < 80) {
+      while (i < tokens.length && orderGuard < 120) {
         orderGuard++;
         const tok = tokens[i];
         if (invoiceRe.test(tok) && tok !== invoiceNo) break;
         if (/^Customer\s*:?\s*$/i.test(tok)) break;
         if (/^(?:ReStore|Trikart|Webstore)/i.test(tok)) break;
+        // Skip all footer and page-header junk
         if (/^(?:Page|Printed|SAP|Business|One|▐|Bill wise)/i.test(tok)) { i++; continue; }
         if (/^(?:Printed by|Printed on|Printed by:)/i.test(tok)) { i++; continue; }
         if (/^\x0c/.test(tok)) { i++; continue; }
-        if (/^\s*\d{1,2}:\d{2}/.test(tok)) { i++; continue; }
-        if (/^\d+\/\d+$/.test(tok) && !/[a-z]/i.test(tok)) { i++; continue; }
+        if (/^\s*\d{1,2}:\d{2}/.test(tok)) { i++; continue; }  // timestamps
+        if (/^(?:Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date)$/i.test(tok)) { i++; continue; }
+        if (/^\d+\/\d+$/.test(tok) && !/[a-z]/i.test(tok)) { i++; continue; }  // page numbers like 1/3
         orderTokens.push(tok);
         i++;
       }
 
       // Debug: log orderTokens for every order
       console.log("ORDER", invoiceNo, "tokens[0]=", JSON.stringify(orderTokens[0]), "tokens[-1]=", JSON.stringify(orderTokens[orderTokens.length-1]), "all=", JSON.stringify(orderTokens));
-      // Try LAST token first (normal), then FIRST token (page-break fallback)
-      const lastResult = tryExtractOO(orderTokens[orderTokens.length - 1]);
-      if (lastResult) {
-        onlineOrderNo = lastResult.num;
-        if (lastResult.payHint) paymentType = lastResult.payHint;
-        orderTokens.pop();
+      // Find OO by scanning BACKWARDS from end (skip dates/amounts/phone numbers)
+      // then fall back to checking first token (page-break case)
+      var ooFoundIdx = -1;
+      for (var bi = orderTokens.length - 1; bi >= 0; bi--) {
+        const bt = orderTokens[bi].trim();
+        // Skip: dates, amounts with decimals, large phone numbers (8+ digits), page numbers
+        if (dateRe.test(bt)) continue;
+        if (/^\d+\.\d+$/.test(bt)) continue;
+        if (/^\d{7,}$/.test(bt)) continue;        // 7+ digit = invoice or phone
+        if (/^\d{1,3}$/.test(bt)) continue;        // 1-3 digit = overdue days
+        if (/^\d+\/\d+$/.test(bt) && !/[a-z]/i.test(bt)) continue; // page numbers
+        // If it matches OO format, extract it
+        const r = tryExtractOO(bt);
+        if (r) { ooFoundIdx = bi; onlineOrderNo = r.num; if (r.payHint) paymentType = r.payHint; break; }
+        // If it's clearly address/name text, stop looking backwards
+        if (/[a-zA-Z]{3,}/.test(bt) && !/^[\d/]+$/.test(bt)) break;
+      }
+      if (ooFoundIdx >= 0) {
+        orderTokens.splice(ooFoundIdx, 1);
       } else {
-        // Try FIRST token (page-break case — OO comes before amounts, footer cut off the end)
+        // Backwards scan stopped at address text before reaching OO.
+        // For page-break orders, OO is always orderTokens[0] (right after invoice).
         const firstResult = tryExtractOO(orderTokens[0]);
         if (firstResult) {
           onlineOrderNo = firstResult.num;
