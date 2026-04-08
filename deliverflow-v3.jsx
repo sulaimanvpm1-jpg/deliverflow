@@ -569,31 +569,46 @@ function parseSAPDeliveryText(rawText) {
         i++;
       }
 
-      // OO is orderTokens[0] — the token right after invoice
-      // Reject if 6-digit with no /suffix (phone fragment like 468710, 636836, 958169)
-      if (orderTokens.length > 0) {
-        const candidate = orderTokens[0].trim();
-        const ooM = candidate.match(/^(\d{4,6})([/\w]*)?$/);
-        if (ooM) {
-          const ooNum  = ooM[1];
-          const ooRest = candidate.slice(ooNum.length).toLowerCase();
-          let payHint = null;
-          if (/\/tb\b|tabby/.test(ooRest))                payHint = "Tabby";
-          else if (/\/dm\b|deema/.test(ooRest))           payHint = "Deema";
-          else if (/\/ex\b/.test(ooRest))                 payHint = "Exchange";
-          else if (/\/js\b/.test(ooRest))                 payHint = "Cash";
-          else if (/\/knet\b|knet/.test(ooRest))          payHint = "KNET";
-          else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
-          else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
-          else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
-          // Accept: 5-digit (Trikart 7xxxx, Webstore 2xxxx/3xxxx) or has pay hint
-          // Reject: 6-digit with no hint = phone fragment
-          const isPhoneFrag = (ooNum.length === 6 && payHint === null);
-          if (!isPhoneFrag) {
-            onlineOrderNo = ooNum;
-            if (payHint) paymentType = payHint;
-            orderTokens.shift(); // remove OO from further processing
-          }
+      // OO number position depends on page layout:
+      // NORMAL orders: OO is the LAST token (after payment, before next invoice)
+      // PAGE-BREAK orders (last order on page): OO is the FIRST token (orderTokens[0])
+      //   because the footer interrupts between address and OO column
+      //
+      // Strategy: try last token first, fall back to first token
+      function tryExtractOO(candidate) {
+        if (!candidate) return null;
+        const s = candidate.trim();
+        const m = s.match(/^(\d{4,6})([/\w]*)?$/);
+        if (!m) return null;
+        const ooNum  = m[1];
+        const ooRest = s.slice(ooNum.length).toLowerCase();
+        let payHint = null;
+        if (/\/tb\b|tabby/.test(ooRest))                payHint = "Tabby";
+        else if (/\/dm\b|deema/.test(ooRest))           payHint = "Deema";
+        else if (/\/ex\b/.test(ooRest))                 payHint = "Exchange";
+        else if (/\/js\b/.test(ooRest))                 payHint = "Cash";
+        else if (/\/knet\b|knet/.test(ooRest))          payHint = "KNET";
+        else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
+        else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
+        else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
+        // Reject 6-digit with no hint = phone fragment (468710, 636836, 958169)
+        if (ooNum.length === 6 && payHint === null) return null;
+        return { num: ooNum, payHint };
+      }
+
+      // Try LAST token (normal case — OO comes after payment line)
+      const lastResult = tryExtractOO(orderTokens[orderTokens.length - 1]);
+      if (lastResult) {
+        onlineOrderNo = lastResult.num;
+        if (lastResult.payHint) paymentType = lastResult.payHint;
+        orderTokens.pop();
+      } else {
+        // Try FIRST token (page-break case — OO comes before amounts, footer cut off the end)
+        const firstResult = tryExtractOO(orderTokens[0]);
+        if (firstResult) {
+          onlineOrderNo = firstResult.num;
+          if (firstResult.payHint) paymentType = firstResult.payHint;
+          orderTokens.shift();
         }
       }
 
