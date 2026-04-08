@@ -1512,16 +1512,13 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
   const _today = new Date().toDateString();
   const _allMine = orders.filter(o => o.driverId === driverId);
   const myOrders = _allMine.filter(function(o) {
-    // Show all pending (unscanned or scanned-not-delivered) regardless of date
-    if (o.status === "pending") return true;
-    // Show non-pending only if assigned today
     const d = o.assignedDate || o.date || "";
     const p = d.split("/");
     if (p.length === 3) {
       const dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
       return dt.toDateString() === _today;
     }
-    return true;
+    return false;
   });
   const allOrders = orders; // to look up other drivers' orders
   const unscanned = myOrders.filter(o => !o.scanned && o.status === "pending");
@@ -2225,9 +2222,17 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
           const _dt = new Date(parseInt(_p[2]), parseInt(_p[1]) - 1, parseInt(_p[0]));
           return _dt.toDateString() === selectedDate;
         }
-        return true;
+        return false;
       })
-    : _allMine;
+    : _allMine.filter(function(o) {
+        const _d = o.assignedDate || o.date || "";
+        const _p = _d.split("/");
+        if (_p.length === 3) {
+          const _dt = new Date(parseInt(_p[2]), parseInt(_p[1]) - 1, parseInt(_p[0]));
+          return _dt.toDateString() === new Date().toDateString();
+        }
+        return false;
+      });
   const myStores   = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.store; }).filter(Boolean))));
   const myPayments = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.paymentType; }).filter(function(p) { return p && p !== "Exchange"; }))));
 
@@ -5225,15 +5230,15 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
   function showToast(msg) { setToast({ msg, ttype:"success" }); setTimeout(function() { setToast(null); }, 3000); }
 
   var allMyOrders = orders.filter(function(o){ return o.driverId === user.id; });
-  const myOrders = selectedDate ? allMyOrders.filter(function(o) {
+  const myOrders = allMyOrders.filter(function(o) {
     var d = o.assignedDate || o.date || "";
     var parts = d.split("/");
     if (parts.length === 3) {
       var dt = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
-      return dt.toDateString() === selectedDate;
+      return dt.toDateString() === (selectedDate || new Date().toDateString());
     }
-    return true;
-  }) : allMyOrders;
+    return false;
+  });
   const collected  = myOrders.filter(o => o.scanned && o.status === "pending").length;
   const pending    = myOrders.filter(o => !o.scanned && o.status === "pending").length;
   const myExpenses = (expenses||[]).filter(e => e.driverId === user.id);
