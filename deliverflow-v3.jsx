@@ -545,75 +545,69 @@ function parseSAPDeliveryText(rawText) {
       let paymentType   = "Cash";
       const addrTokens  = [];
 
-      // ── CONFIRMED TOKEN ORDER FROM PDF.JS DEBUG ──
-      // pdf.js emits SAP table cells sorted by X position, NOT by column order.
-      // Actual sequence after invoice:
-      //   date, overdue_days, due_date, total, open_amount  (table row cells)
-      //   customer_name, address lines...                   (address block below)
-      //   "- Cash Basic -" / "- Tabby -"                   (payment term column)
-      //   "76722" / "27223/tb" / "468710"                  (OO number column — LAST!)
-      //   next_invoice_no                                   (next row)
-      //
-      // Strategy: collect ALL tokens until next invoice, THEN extract OO from the end.
+      // ── CONFIRMED REAL TOKEN ORDER (from pdf.js debug) ──
+      // Each SAP table row: invoice, OO, amount, amount, date, overdue, payment, customer, address...
+      // Amounts have LEADING SPACES: " 12.90" not "12.90"
+      // OO is ALWAYS the token immediately after invoice (index 0 of orderTokens)
+      // EXCEPT for ReStore orders which have no OO (phone fragment like "468710" in that slot)
 
+      // Collect all tokens until next invoice/store/footer
       var orderTokens = [];
       let orderGuard = 0;
       while (i < tokens.length && orderGuard < 80) {
         orderGuard++;
         const tok = tokens[i];
-        // Stop at next invoice or next store section
         if (invoiceRe.test(tok) && tok !== invoiceNo) break;
         if (/^Customer\s*:?\s*$/i.test(tok)) break;
         if (/^(?:ReStore|Trikart|Webstore)/i.test(tok)) break;
-        // Skip page footer / header tokens — don't let them pollute orderTokens
-        if (/^(?:Page|Printed|SAP|Business|One|▐|Bill wise)/.test(tok)) { i++; continue; }
+        if (/^(?:Page|Printed|SAP|Business|One|▐|Bill wise)/i.test(tok)) { i++; continue; }
         if (/^(?:Printed by|Printed on|Printed by:)/i.test(tok)) { i++; continue; }
-        if (/^\d{1,2}:\d{2}/.test(tok)) { i++; continue; }  // timestamps like 9:54:31AM
-        if (/^\d+\/\d+$/.test(tok) && !/[a-z]/i.test(tok)) { i++; continue; }  // page numbers like 1/3
-        if (/^\x0c/.test(tok)) { i++; continue; }  // form feed / page break
+        if (/^\x0c/.test(tok)) { i++; continue; }
+        if (/^\s*\d{1,2}:\d{2}/.test(tok)) { i++; continue; }
+        if (/^\d+\/\d+$/.test(tok) && !/[a-z]/i.test(tok)) { i++; continue; }
         orderTokens.push(tok);
         i++;
       }
 
-      // Now process the collected tokens in order
-      const SKIP_RE = /^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Building|Floor|Office|Kuwait|FA|JA|KU|AH|HA|Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date|▐)$/i;
-
-      // OO extraction below — see extractOO function
-      // OO number is either the LAST token (normal case) or the SECOND token (page-break case).
-      // Page-break case: last order on page has footer tokens after address, so OO ends up second.
-      // Example page-break token order: invoice, OO, total, total, date, customer, address..., Page:, Printed...
-      // Normal order: invoice, date, total, total, date, customer, address..., payment, OO
-      // extractOO defined at parser scope below
-      // Debug: log orderTokens for the 3 known-failing invoices
-      if (["1164555","1164521","1164561"].includes(invoiceNo)) {
-        console.log("DEBUG", invoiceNo, "orderTokens:", JSON.stringify(orderTokens));
-      }
-      // Try last token first (normal case)
-      const lastOO = extractOO(orderTokens[orderTokens.length - 1] || "");
-      if (lastOO) {
-        onlineOrderNo = lastOO.num;
-        if (lastOO.payHint) paymentType = lastOO.payHint;
-        orderTokens.pop();
-      } else {
-        // Fallback: try second token right after invoice (page-break case)
-        const secondOO = extractOO(orderTokens[0] || "");
-        if (secondOO) {
-          onlineOrderNo = secondOO.num;
-          if (secondOO.payHint) paymentType = secondOO.payHint;
-          orderTokens.shift();
+      // OO is orderTokens[0] — the token right after invoice
+      // Reject if 6-digit with no /suffix (phone fragment like 468710, 636836, 958169)
+      if (orderTokens.length > 0) {
+        const candidate = orderTokens[0].trim();
+        const ooM = candidate.match(/^(\d{4,6})([/\w]*)?$/);
+        if (ooM) {
+          const ooNum  = ooM[1];
+          const ooRest = candidate.slice(ooNum.length).toLowerCase();
+          let payHint = null;
+          if (/\/tb\b|tabby/.test(ooRest))                payHint = "Tabby";
+          else if (/\/dm\b|deema/.test(ooRest))           payHint = "Deema";
+          else if (/\/ex\b/.test(ooRest))                 payHint = "Exchange";
+          else if (/\/js\b/.test(ooRest))                 payHint = "Cash";
+          else if (/\/knet\b|knet/.test(ooRest))          payHint = "KNET";
+          else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
+          else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
+          else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
+          // Accept: 5-digit (Trikart 7xxxx, Webstore 2xxxx/3xxxx) or has pay hint
+          // Reject: 6-digit with no hint = phone fragment
+          const isPhoneFrag = (ooNum.length === 6 && payHint === null);
+          if (!isPhoneFrag) {
+            onlineOrderNo = ooNum;
+            if (payHint) paymentType = payHint;
+            orderTokens.shift(); // remove OO from further processing
+          }
         }
       }
 
-      // Now process remaining tokens for date, total, payment, address
+      // Process remaining tokens — amounts have leading spaces so trim first
+      const SKIP_RE = /^(?:Page|Printed|SAP|Business|One|Fahaheel|AMTEL|TELECOM|GENEAL|TRADING|Grand|Hyper|Office|Kuwait|FA|JA|KU|AH|HA|Invoice No|Invoice Total|Online Order No|Open Amount|Due On|Overdue days|Payment Terms|Date|▐)$/i;
       for (let j = 0; j < orderTokens.length; j++) {
-        const tok = orderTokens[j];
-        if (!tok || !tok.trim()) continue;
+        const tok = orderTokens[j].trim(); // TRIM leading spaces (amounts have them)
+        if (!tok) continue;
         if (SKIP_RE.test(tok)) continue;
         if (/^\d{1,2}:\d{2}/.test(tok)) continue;
         if (/^\d+\/\d+$/.test(tok) && !/[a-z]/i.test(tok)) continue;
         if (dateRe.test(tok)) { if (!date) date = tok; continue; }
         if (amountRe.test(tok)) { if (!total) total = parseFloat(tok); continue; }
-        if (/^\d{1,3}$/.test(tok)) continue; // overdue days
+        if (/^\d{1,3}$/.test(tok)) continue;
         const dp = detectPayment(tok);
         if (dp) { if (paymentType === "Cash") paymentType = dp; continue; }
         addrTokens.push(tok);
