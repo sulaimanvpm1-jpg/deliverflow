@@ -28,6 +28,7 @@ const STORE_ADMINS = [
   { id:"trikart",  name:"Trikart Admin",  avatar:"TK", store:"Trikart Online",  password:"trikart123" },
   { id:"webstore", name:"Webstore Admin", avatar:"WS", store:"Webstore Online", password:"webstore123" },
   { id:"restore",  name:"ReStore Admin",  avatar:"RS", store:"ReStore Online",  password:"restore123" },
+  { id:"gadgetpro", name:"GadgetPro Admin", avatar:"GP", store:"GadgetPro Online", password:"gadgetpro123" },
 ];
 
 const AMTEL_VEHICLES = [
@@ -206,7 +207,7 @@ function playSound(sndType) {
 // Payment types that require NO cash collection from driver
 const NO_COLLECT_PAYMENTS = ["Exchange","Tabby","Taly","Deema","KNET","VISA/Mastercard","Tap/KNET"];
 const isExchange = p => p === "Exchange";
-const STORES = ["All Stores","ReStore Online","Trikart Online","Webstore Online"];
+const STORES = ["All Stores","ReStore Online","Trikart Online","Webstore Online","GadgetPro Online"];
 const KUWAIT_AREAS = [
   ["south abdullah mubarak","Abdullah Al-Mubarak"],
   ["north west sulaibikhat","North West Sulaibikhat"],
@@ -511,8 +512,9 @@ function parseSAPDeliveryText(rawText) {
   }
 
 
-  // Try-extract OO — checks last then first token of orderTokens
-  function tryExtractOO(candidate) {
+  // Try-extract OO — returns {num, payHint} or null
+  // ReStore and GadgetPro have NO real OO numbers — 6-digit there = phone fragment
+  function tryExtractOO(candidate, store) {
     if (!candidate) return null;
     const s = candidate.trim();
     const m = s.match(/^(\d{4,6})([/\w]*)?$/);
@@ -528,6 +530,10 @@ function parseSAPDeliveryText(rawText) {
     else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
     else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
     else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
+    // ReStore & GadgetPro: no real OO numbers — any 6-digit is a phone fragment
+    const noOOStore = /restore|gadgetpro/i.test(store || "");
+    if (noOOStore) return null;
+    // Other stores: reject 6-digit with no hint (phone fragment)
     if (ooNum.length === 6 && payHint === null) return null;
     return { num: ooNum, payHint };
   }
@@ -538,7 +544,7 @@ function parseSAPDeliveryText(rawText) {
     const t = tokens[i];
 
     // Store header: "ReStore Online" followed by "Customer :" or just detect known store names
-    if (/^(?:ReStore|Trikart|Webstore|Re\s*Store)/i.test(t)) {
+    if (/^(?:ReStore|Trikart|Webstore|GadgetPro|Re\s*Store)/i.test(t)) {
       currentStore = t;
       i++;
       continue;
@@ -558,7 +564,7 @@ function parseSAPDeliveryText(rawText) {
 
     // Orphaned OO token — appears between page header and the next invoice
     // This is the OO for the PREVIOUS order (last order on the previous page)
-    const orphanOO = tryExtractOO(t);
+    const orphanOO = tryExtractOO(t, currentStore);
     if (orphanOO && orders.length > 0 && !orders[orders.length - 1].onlineOrderNo) {
       orders[orders.length - 1].onlineOrderNo = orphanOO.num;
       if (orphanOO.payHint && orders[orders.length - 1].paymentType === "Cash") {
@@ -595,7 +601,7 @@ function parseSAPDeliveryText(rawText) {
         const tok = tokens[i];
         if (invoiceRe.test(tok) && tok !== invoiceNo) break;
         if (/^Customer\s*:?\s*$/i.test(tok)) break;
-        if (/^(?:ReStore|Trikart|Webstore)/i.test(tok)) break;
+        if (/^(?:ReStore|Trikart|Webstore|GadgetPro)/i.test(tok)) break;
         // Skip all footer and page-header junk
         if (/^(?:Page|Printed|SAP|Business|One|▐|Bill wise)/i.test(tok)) { i++; continue; }
         if (/^(?:Printed by|Printed on|Printed by:)/i.test(tok)) { i++; continue; }
@@ -621,7 +627,7 @@ function parseSAPDeliveryText(rawText) {
         if (/^\d{1,3}$/.test(bt)) continue;        // 1-3 digit = overdue days
         if (/^\d+\/\d+$/.test(bt) && !/[a-z]/i.test(bt)) continue; // page numbers
         // If it matches OO format, extract it
-        const r = tryExtractOO(bt);
+        const r = tryExtractOO(bt, currentStore);
         if (r) { ooFoundIdx = bi; onlineOrderNo = r.num; if (r.payHint) paymentType = r.payHint; break; }
         // If it's clearly address/name text, stop looking backwards
         if (/[a-zA-Z]{3,}/.test(bt) && !/^[\d/]+$/.test(bt)) break;
@@ -631,7 +637,7 @@ function parseSAPDeliveryText(rawText) {
       } else {
         // Backwards scan stopped at address text before reaching OO.
         // For page-break orders, OO is always orderTokens[0] (right after invoice).
-        const firstResult = tryExtractOO(orderTokens[0]);
+        const firstResult = tryExtractOO(orderTokens[0], currentStore);
         if (firstResult) {
           onlineOrderNo = firstResult.num;
           if (firstResult.payHint) paymentType = firstResult.payHint;
@@ -879,7 +885,7 @@ function LabelScanner({ onExtracted, onError }) {
             role: "user",
             content: [
               { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-              { type: "text", text: "Extract order details from this delivery label image. Return ONLY a JSON object with these exact keys (use empty string if not found):\n{\n  \"store\": \"\",\n  \"invoiceNo\": \"\",\n  \"onlineOrderNo\": \"\",\n  \"customer\": \"\",\n  \"address\": \"\",\n  \"phone\": \"\",\n  \"total\": \"\",\n  \"paymentType\": \"\"\n}\nFor store: match to one of 'Trikart Online', 'Webstore Online', 'ReStore Online', or use the label's store name.\nFor paymentType: map 'Cash Basic' or 'Cash' to 'Cash', 'KNET' to 'KNET', etc.\nFor total: extract the numeric amount only (e.g. '19.900').\nFor invoiceNo: the barcode number printed below the barcode on the label.\nReturn only the raw JSON, no markdown, no explanation." }
+              { type: "text", text: "Extract order details from this delivery label image. Return ONLY a JSON object with these exact keys (use empty string if not found):\n{\n  \"store\": \"\",\n  \"invoiceNo\": \"\",\n  \"onlineOrderNo\": \"\",\n  \"customer\": \"\",\n  \"address\": \"\",\n  \"phone\": \"\",\n  \"total\": \"\",\n  \"paymentType\": \"\"\n}\nFor store: match to one of 'Trikart Online', 'Webstore Online', 'ReStore Online', 'GadgetPro Online', or use the label's store name.\nFor paymentType: map 'Cash Basic' or 'Cash' to 'Cash', 'KNET' to 'KNET', etc.\nFor total: extract the numeric amount only (e.g. '19.900').\nFor invoiceNo: the barcode number printed below the barcode on the label.\nReturn only the raw JSON, no markdown, no explanation." }
             ]
           }]
         })
