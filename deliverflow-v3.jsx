@@ -394,7 +394,7 @@ const Badge = ({ status }) => {
   return <span style={{ background:c.bg, color:c.color, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600, fontFamily:"DM Sans", whiteSpace:"nowrap" }}>{c.icon} {c.label}</span>;
 };
 const Pill = ({ label, active, onClick, count }) => (
-  <button onClick={onClick} style={{ background:active?"#00D4FF":"rgba(255,255,255,.07)", color:active?"#0A0F1E":"rgba(255,255,255,.6)", border:"none", borderRadius:20, padding:"6px 14px", fontSize:12, fontFamily:"DM Sans", fontWeight:active?600:400, cursor:"pointer", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:5 }}>
+  <button onClick={onClick} style={{ background:active?"#00D4FF":"rgba(255,255,255,.07)", color:active?"#0D0D0D":"rgba(255,255,255,.6)", border:"none", borderRadius:20, padding:"6px 14px", fontSize:12, fontFamily:"DM Sans", fontWeight:active?600:400, cursor:"pointer", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:5 }}>
     {label}{count!==undefined&&<span style={{background:active?"rgba(0,0,0,.15)":"rgba(255,255,255,.15)",borderRadius:10,padding:"1px 6px",fontSize:10}}>{count}</span>}
   </button>
 );
@@ -1444,7 +1444,7 @@ function TransferModal({ order, fromDriverId, onRequestTransfer, onClose }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:300, display:"flex", alignItems:"flex-end" }}>
-      <div style={{ width:"100%", background:"#0F1629", borderRadius:"24px 24px 0 0", padding:24 }}>
+      <div style={{ width:"100%", background:"#161616", borderRadius:"24px 24px 0 0", padding:24 }}>
         {sent ? (
           <div style={{ textAlign:"center", padding:"20px 0" }}>
             <div style={{ fontSize:48, marginBottom:12 }}></div>
@@ -1687,7 +1687,7 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
               onKeyDown={function(e) { if (e.key === "Enter") { doScan(scanInput); } }}
               placeholder="Invoice# — or use a barcode scanner"
               style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"DM Sans", fontSize:14, outline:"none" }} />
-            <button onClick={function() { doScan(scanInput); }} style={{ background:"#00D4FF", border:"none", borderRadius:12, padding:"0 16px", color:"#0A0F1E", fontFamily:"Syne", fontWeight:700, cursor:"pointer" }}>Go</button>
+            <button onClick={function() { doScan(scanInput); }} style={{ background:"#00D4FF", border:"none", borderRadius:12, padding:"0 16px", color:"#0D0D0D", fontFamily:"Syne", fontWeight:700, cursor:"pointer" }}>Go</button>
           </div>
           <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.25)", fontSize:11, marginBottom:14, textAlign:"center" }}>
             Physical barcode scanner? Just scan — it types directly into the box above
@@ -1839,7 +1839,7 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
                         setBulkSelected(new Set(unscanned.map(o => o.id||o.invoiceNo)));
                       }
                     }}
-                    style={{ width:22, height:22, borderRadius:6, background: unscanned.every(o=>bulkSelected.has(o.id||o.invoiceNo))?"#00D4FF":"rgba(255,255,255,.1)", border:"1.5px solid rgba(0,212,255,.5)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:13, color:"#0A0F1E" }}>
+                    style={{ width:22, height:22, borderRadius:6, background: unscanned.every(o=>bulkSelected.has(o.id||o.invoiceNo))?"#00D4FF":"rgba(255,255,255,.1)", border:"1.5px solid rgba(0,212,255,.5)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:13, color:"#0D0D0D" }}>
                     {unscanned.every(o=>bulkSelected.has(o.id||o.invoiceNo)) ? "v" : ""}
                   </button>
                   <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.6)", fontSize:13, flex:1 }}>
@@ -1945,7 +1945,7 @@ function DriverOrderRow({ order, onTransfer, selected, onToggleSelect }) {
       <div style={{ padding:"11px 14px", display:"flex", alignItems:"center", gap:10 }}>
         {!order.scanned ? (
           <button onClick={function(e) { e.stopPropagation(); if (onToggleSelect) onToggleSelect(); }}
-            style={{ width:22, height:22, borderRadius:6, background:selected?"#00D4FF":"rgba(255,255,255,.08)", border:"1.5px solid " + (selected?"#00D4FF":"rgba(255,255,255,.2)"), display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:12, color:"#0A0F1E" }}>
+            style={{ width:22, height:22, borderRadius:6, background:selected?"#00D4FF":"rgba(255,255,255,.08)", border:"1.5px solid " + (selected?"#00D4FF":"rgba(255,255,255,.2)"), display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:12, color:"#0D0D0D" }}>
             {selected ? "v" : ""}
           </button>
         ) : (
@@ -2536,7 +2536,7 @@ function EditOrderModal({ order, onSave, onClose }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:9100, display:"flex", alignItems:"flex-end" }}>
-      <div style={{ width:"100%", background:"#0F1629", borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"85dvh", overflowY:"auto" }}>
+      <div style={{ width:"100%", background:"#161616", borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"85dvh", overflowY:"auto" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
           <div style={{ fontFamily:"Syne", color:"#fff", fontSize:17, fontWeight:700 }}>✏️ Edit Order Details</div>
           <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,.6)", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>✕</button>
@@ -2985,7 +2985,7 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
 
   return (
     <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,.88)", zIndex:9000, display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
-      <div style={{ width:"100%", background:"#0F1629", borderRadius:"24px 24px 0 0", maxHeight:"92dvh", display:"flex", flexDirection:"column", WebkitOverflowScrolling:"touch" }}>
+      <div style={{ width:"100%", background:"#161616", borderRadius:"24px 24px 0 0", maxHeight:"92dvh", display:"flex", flexDirection:"column", WebkitOverflowScrolling:"touch" }}>
         {/* Scrollable content - flex:1 so button is always visible below */}
         <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch", padding:"24px 20px 16px" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
@@ -3173,7 +3173,7 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
         </div>
 
         {/* Confirm button OUTSIDE scroll area — always visible on iOS */}
-        <div style={{ flexShrink:0, background:"#0F1629", padding:"12px 20px", paddingBottom:"max(env(safe-area-inset-bottom, 0px) + 12px, 20px)", borderTop:"1px solid rgba(255,255,255,.06)" }}>
+        <div style={{ flexShrink:0, background:"#161616", padding:"12px 20px", paddingBottom:"max(env(safe-area-inset-bottom, 0px) + 12px, 20px)", borderTop:"1px solid rgba(255,255,255,.06)" }}>
           {showCivilId ? (
             <CivilIdScanner
               order={order}
@@ -3588,7 +3588,7 @@ function ReportPreview({ data, onClose }) {
   return (
     <div style={{ position:"absolute", inset:0, zIndex:999, background:"#f8fafc", display:"flex", flexDirection:"column", overflowY:"auto" }}>
       {/* Sticky action bar */}
-      <div style={{ position:"sticky", top:0, zIndex:10, background:"#0A0F1E", padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
+      <div style={{ position:"sticky", top:0, zIndex:10, background:"#0D0D0D", padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
         <div style={{ fontFamily:"Syne", color:"#fff", fontSize:13, fontWeight:700 }}>Daily Report - {drvName}</div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           <button onClick={function() {
@@ -3665,7 +3665,7 @@ function ReportPreview({ data, onClose }) {
         {/* Collection Summary */}
         <div style={{ fontFamily:"Syne", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10, marginTop:16 }}>Collection Summary</div>
         <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0", marginBottom:6 }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", background:"#0A0F1E", padding:"7px 12px" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", background:"#0D0D0D", padding:"7px 12px" }}>
             <span style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase" }}>Payment Method</span>
             <span style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:100, textAlign:"right" }}>Amount (KD)</span>
             <span style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:70, textAlign:"right" }}>Orders</span>
@@ -3677,7 +3677,7 @@ function ReportPreview({ data, onClose }) {
               <span style={{ color:"#64748B", fontSize:12, minWidth:70, textAlign:"right" }}>{nonExDel.filter(o=>{const p=o.originalPaymentType||o.paymentType; return r.label==="Cash in Hand (COD)"?(p==="Cash"||p==="COD")&&!o.originalPaymentType:r.label==="Split (Cash+Link)"?p?.startsWith("Split"):r.label==="GoCollect (Link)"?p?.includes("GoCollect"):r.label==="Trikart Link"?p?.includes("Trikart Link"):r.label==="WAMD (Link)"?p?.includes("WAMD"):p===r.label}).length}</span>
             </div>
           ))}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", padding:"9px 12px", background:"#0A0F1E", borderTop:"2px solid #334155" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", padding:"9px 12px", background:"#0D0D0D", borderTop:"2px solid #334155" }}>
             <span style={{ fontFamily:"Syne", color:"#fff", fontWeight:700, fontSize:13 }}>TOTAL COLLECTED</span>
             <span style={{ fontFamily:"Syne", color:"#00D4FF", fontWeight:800, fontSize:15, minWidth:100, textAlign:"right" }}>KD {grandTotal.toFixed(3)}</span>
             <span style={{ color:"rgba(255,255,255,.5)", fontSize:12, minWidth:70, textAlign:"right" }}>{nonExDel.length} orders</span>
@@ -3709,7 +3709,7 @@ function ReportPreview({ data, onClose }) {
         {/* Bill-wise Details - Per Store */}
         <div style={{ pageBreakBefore:"auto", marginTop:16 }}>
         <div style={{ fontFamily:"Syne", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Bill-wise Details</div>
-        <div style={{ display:"flex", gap:8, background:"#0A0F1E", padding:"7px 10px", borderRadius:"10px 10px 0 0", marginBottom:2 }}>
+        <div style={{ display:"flex", gap:8, background:"#0D0D0D", padding:"7px 10px", borderRadius:"10px 10px 0 0", marginBottom:2 }}>
           {["Date","Invoice No","Customer","OO No.","Total","Extra","Payment","Status","Note"].map(h=>(
             <span key={h} style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:10, fontWeight:600, textTransform:"uppercase", flex:h==="Customer"||h==="Note"?2:1, minWidth:0 }}>{h}</span>
           ))}
@@ -3801,7 +3801,7 @@ function ReportPreview({ data, onClose }) {
         </div>
         {myExpenses.length > 0 && (
           <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", background:"#0A0F1E", padding:"7px 12px" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", background:"#0D0D0D", padding:"7px 12px" }}>
               {["Type","Amount","Note","Time"].map(h=><span key={h} style={{ fontFamily:"Syne", color:"#00D4FF", fontSize:10, fontWeight:600 }}>{h}</span>)}
             </div>
             {myExpenses.map((e,i)=>(
@@ -4231,50 +4231,97 @@ function LoginScreen({ onLogin }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [err,  setErr]  = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function doLogin() {
+    setLoading(true);
+    setTimeout(function() {
+      performLogin(user, pass, function(e) { setErr(e); setLoading(false); }, onLogin);
+    }, 300);
+  }
+
   return (
-    <div style={{ minHeight:"100vh", background:"#0A0F1E", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24 }}>
-      <div style={{ marginBottom:32, textAlign:"center" }}>
-        {/* Logo mark */}
-        <div style={{ width:80, height:80, margin:"0 auto 16px", position:"relative" }}>
-          <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" style={{ width:80, height:80 }}>
+    <div style={{ minHeight:"100vh", background:"#0D0D0D", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px", position:"relative", overflow:"hidden" }}>
+
+      {/* Background glow */}
+      <div style={{ position:"absolute", top:"-20%", left:"50%", transform:"translateX(-50%)", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, rgba(255,107,53,.12) 0%, transparent 70%)", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", bottom:"-10%", right:"-10%", width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle, rgba(255,61,0,.06) 0%, transparent 70%)", pointerEvents:"none" }} />
+
+      {/* Logo block */}
+      <div style={{ textAlign:"center", marginBottom:44 }}>
+        {/* New logo — exact match to uploaded SVG */}
+        <div style={{ display:"inline-flex", marginBottom:20 }}>
+          <svg viewBox="0 0 200 200" width={80} height={80} xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#FF6B35"/>
-                <stop offset="100%" stopColor="#FF3D71"/>
-              </linearGradient>
-              <linearGradient id="lg2" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#00D4FF"/>
-                <stop offset="100%" stopColor="#7C3AED"/>
+              <linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FF7A45"/>
+                <stop offset="100%" stopColor="#FF3D00"/>
               </linearGradient>
             </defs>
-            <rect width="80" height="80" rx="20" fill="url(#lg1)"/>
-            <rect x="14" y="28" width="36" height="6" rx="3" fill="white" opacity="0.95"/>
-            <rect x="14" y="40" width="28" height="6" rx="3" fill="white" opacity="0.7"/>
-            <rect x="14" y="52" width="20" height="6" rx="3" fill="white" opacity="0.45"/>
-            <circle cx="60" cy="54" r="12" fill="url(#lg2)"/>
-            <path d="M54 54 L58 58 L66 50" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            <rect width="200" height="200" rx="44" fill="url(#og)"/>
+            {/* Isometric box — top face */}
+            <polygon points="100,42 154,73 100,104 46,73" fill="white"/>
+            {/* Left face */}
+            <polygon points="46,73 100,104 100,162 46,131" fill="rgba(255,255,255,0.55)"/>
+            {/* Right face */}
+            <polygon points="154,73 100,104 100,162 154,131" fill="rgba(255,255,255,0.32)"/>
+            {/* Tape stripe */}
+            <polygon points="100,42 106,46 106,100 100,104 94,100 94,46" fill="rgba(255,255,255,0.22)"/>
           </svg>
         </div>
-        <div style={{ fontFamily:"Syne", fontSize:28, fontWeight:800, color:"#fff", letterSpacing:-1 }}>Deliver<span style={{ color:"#00D4FF" }}>Flow</span></div>
-        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:4 }}>AMTEL TELECOM &nbsp; Warehouse System</div>
+
+        <div style={{ fontFamily:"Syne", fontWeight:900, fontSize:30, letterSpacing:"-0.5px", lineHeight:1, marginBottom:6 }}>
+          <span style={{ color:"#FF6B35" }}>DELIVER</span><span style={{ color:"#fff" }}>FLOW</span>
+        </div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.3)", fontSize:11, letterSpacing:"3px", textTransform:"uppercase" }}>
+          AMTEL TELECOM
+        </div>
       </div>
-      <div style={{ width:"100%", maxWidth:360, background:"rgba(255,255,255,.05)", borderRadius:20, padding:28, border:"1px solid rgba(255,255,255,.08)" }}>
-        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:18, fontWeight:700, marginBottom:20 }}>Sign In</div>
-        <input type="text" placeholder="Username" value={user}
-          onChange={function(e) { setUser(e.target.value); }}
-          onKeyDown={function(e) { if (e.key === "Enter") performLogin(user, pass, setErr, onLogin); }}
-          style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"12px 16px", color:"#fff", fontFamily:"DM Sans", fontSize:15, marginBottom:12, boxSizing:"border-box", outline:"none" }} />
-        <input type="password" placeholder="Password" value={pass}
-          onChange={function(e) { setPass(e.target.value); }}
-          onKeyDown={function(e) { if (e.key === "Enter") performLogin(user, pass, setErr, onLogin); }}
-          style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"12px 16px", color:"#fff", fontFamily:"DM Sans", fontSize:15, marginBottom:12, boxSizing:"border-box", outline:"none" }} />
-        {err && <div style={{ color:"#EF4444", fontFamily:"DM Sans", fontSize:13, marginBottom:10 }}>{err}</div>}
-        <button onClick={function() { performLogin(user, pass, setErr, onLogin); }}
-          style={{ width:"100%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"Syne", fontSize:16, fontWeight:700, cursor:"pointer" }}>
-          Sign In
+
+      {/* Card */}
+      <div style={{ width:"100%", maxWidth:360, background:"#161616", borderRadius:24, padding:"32px 28px", border:"1px solid rgba(255,255,255,.07)", boxShadow:"0 32px 64px rgba(0,0,0,.5)" }}>
+        <div style={{ fontFamily:"Syne", color:"#fff", fontSize:22, fontWeight:800, marginBottom:6 }}>Welcome back</div>
+        <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.35)", fontSize:13, marginBottom:28 }}>Sign in to your workspace</div>
+
+        {/* Username */}
+        <div style={{ marginBottom:14 }}>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Username</div>
+          <input type="text" value={user}
+            onChange={function(e){ setUser(e.target.value); setErr(""); }}
+            onKeyDown={function(e){ if(e.key==="Enter") doLogin(); }}
+            placeholder="Enter username"
+            style={{ width:"100%", background:"#1F1F1F", border:"1.5px solid rgba(255,255,255,.08)", borderRadius:14, padding:"14px 16px", color:"#fff", fontFamily:"DM Sans", fontSize:15, outline:"none", boxSizing:"border-box", transition:"border-color .2s" }}
+            onFocus={function(e){ e.target.style.borderColor="rgba(255,107,53,.6)"; }}
+            onBlur={function(e){ e.target.style.borderColor="rgba(255,255,255,.08)"; }}
+          />
+        </div>
+
+        {/* Password */}
+        <div style={{ marginBottom:err?14:24 }}>
+          <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:11, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Password</div>
+          <input type="password" value={pass}
+            onChange={function(e){ setPass(e.target.value); setErr(""); }}
+            onKeyDown={function(e){ if(e.key==="Enter") doLogin(); }}
+            placeholder="Enter password"
+            style={{ width:"100%", background:"#1F1F1F", border:"1.5px solid rgba(255,255,255,.08)", borderRadius:14, padding:"14px 16px", color:"#fff", fontFamily:"DM Sans", fontSize:15, outline:"none", boxSizing:"border-box", transition:"border-color .2s" }}
+            onFocus={function(e){ e.target.style.borderColor="rgba(255,107,53,.6)"; }}
+            onBlur={function(e){ e.target.style.borderColor="rgba(255,255,255,.08)"; }}
+          />
+        </div>
+
+        {err && (
+          <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.2)", borderRadius:10, padding:"10px 14px", marginBottom:18, fontFamily:"DM Sans", color:"#EF4444", fontSize:13 }}>
+            {err}
+          </div>
+        )}
+
+        <button onClick={doLogin} disabled={loading}
+          style={{ width:"100%", background:loading?"rgba(255,107,53,.5)":"linear-gradient(135deg,#FF7A45 0%,#FF3D00 100%)", border:"none", borderRadius:14, padding:"15px", color:"#fff", fontFamily:"Syne", fontSize:16, fontWeight:700, cursor:loading?"default":"pointer", letterSpacing:"0.3px", boxShadow:loading?"none":"0 8px 24px rgba(255,107,53,.35)", transition:"all .2s" }}>
+          {loading ? "Signing in…" : "Sign In →"}
         </button>
-        <div style={{ textAlign:"center", marginTop:20, fontFamily:"DM Sans", color:"rgba(255,255,255,.2)", fontSize:11 }}>
-          Developed by <span style={{ color:"rgba(255,255,255,.45)", fontWeight:600 }}>Sulaiman</span>
+
+        <div style={{ textAlign:"center", marginTop:24, fontFamily:"DM Sans", color:"rgba(255,255,255,.15)", fontSize:11 }}>
+          DeliverFlow v3 · Built by <span style={{ color:"rgba(255,107,53,.5)" }}>Sulaiman</span>
         </div>
       </div>
     </div>
@@ -4578,7 +4625,7 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
       {/* Add Driver Modal */}
       {showAdd && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:300, display:"flex", alignItems:"flex-end" }}>
-          <div style={{ width:"100%", background:"#0F1629", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
+          <div style={{ width:"100%", background:"#161616", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
             <div style={{ fontFamily:"Syne", color:"#fff", fontSize:16, fontWeight:700, marginBottom:16 }}>Add New Driver</div>
             {[["id","Driver ID (login username)"],["name","Full Name"],["avatar","Avatar (2 letters, e.g. AS)"],["phone","Phone Number"],["nationality","Nationality"],["vehicleType","Vehicle Type (Car/Van/Bike)"],["vehicleNo","Vehicle Number"],["licenseNo","License No"],["joinDate","Join Date (YYYY-MM-DD)"],["daftarExpiry","Daftar Expiry (YYYY-MM-DD)"]].map(function(f){
               return (
@@ -4606,7 +4653,7 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
       {/* Edit Driver Modal */}
       {editDriver && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:300, display:"flex", alignItems:"flex-end" }}>
-          <div style={{ width:"100%", background:"#0F1629", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
+          <div style={{ width:"100%", background:"#161616", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
             <div style={{ fontFamily:"Syne", color:"#fff", fontSize:16, fontWeight:700, marginBottom:16 }}>Edit: {editDriver.name}</div>
             {/* Password change */}
             <div style={{ marginBottom:14, background:"rgba(0,212,255,.06)", border:"1px solid rgba(0,212,255,.15)", borderRadius:12, padding:"12px 14px" }}>
@@ -4658,9 +4705,9 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
                         setEditDriver(function(p){ return Object.assign({},p,{_vUpdated:Date.now()}); });
                       }}
                       style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"DM Sans", fontSize:13, outline:"none", cursor:"pointer" }}>
-                      <option value="" style={{ background:"#0F1629", color:"#fff" }}>— No vehicle assigned —</option>
+                      <option value="" style={{ background:"#161616", color:"#fff" }}>— No vehicle assigned —</option>
                       {AMTEL_VEHICLES.map(function(v) {
-                        return <option key={v.plate} value={v.plate} style={{ background:"#0F1629", color:"#fff" }}>{v.brand} {v.model} · {v.color} · Plate {v.plate}</option>;
+                        return <option key={v.plate} value={v.plate} style={{ background:"#161616", color:"#fff" }}>{v.brand} {v.model} · {v.color} · Plate {v.plate}</option>;
                       })}
                     </select>
                   </div>
@@ -5021,14 +5068,14 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
   ];
 
   return (
-    <div style={{ maxWidth:430, margin:"0 auto", background:"#070C1A", height:"100dvh", display:"flex", flexDirection:"column", position:"relative", width:"100%" }}>
+    <div style={{ maxWidth:430, margin:"0 auto", background:"#0D0D0D", height:"100dvh", display:"flex", flexDirection:"column", position:"relative", width:"100%" }}>
 
       {/* Clear Day Confirm Modal */}
       {clearConfirm && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
-          <div style={{ background:"#0F1629", borderRadius:20, padding:28, maxWidth:320, width:"100%", border:"1px solid rgba(239,68,68,.3)" }}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.92)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+          <div style={{ background:"#161616", borderRadius:24, padding:28, maxWidth:320, width:"100%", border:"1px solid rgba(239,68,68,.2)" }}>
             <div style={{ fontFamily:"Syne", color:"#fff", fontSize:18, fontWeight:800, marginBottom:8 }}>Clear Day?</div>
-            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.5)", fontSize:14, marginBottom:24, lineHeight:1.6 }}>
+            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.45)", fontSize:14, marginBottom:24, lineHeight:1.6 }}>
               This will delete ALL orders, expenses and transfers. Driver profiles will be kept.
             </div>
             <div style={{ display:"flex", gap:12 }}>
@@ -5039,47 +5086,72 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
         </div>
       )}
       {toast && <Toast msg={toast.msg} toastKind={toast.ttype} />}
-      <div style={{ padding:"16px 20px 12px", background:"#070C1A", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
+
+      {/* ── Admin Header ── */}
+      <div style={{ padding:"12px 18px 10px", background:"#0D0D0D", borderBottom:"1px solid rgba(255,255,255,.05)", flexShrink:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div>
-            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:19, fontWeight:800 }}>Admin <span style={{ color:"#FF6B35" }}>Panel</span></div>
-            <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>AMTEL TELECOM   {new Date().toLocaleDateString("en-KW")}</div>
-          {syncing && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"#F59E0B", marginLeft:8 }}>Syncing...</span>}
-          {!syncing && dbConnected && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"#10B981", marginLeft:8 }}>DB Connected</span>}
-          {!syncing && !dbConnected && <span style={{ fontFamily:"DM Sans", fontSize:11, color:"rgba(255,255,255,.2)", marginLeft:8 }}>Local only</span>}
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <svg viewBox="0 0 200 200" width={30} height={30} xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="ahog" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FF7A45"/><stop offset="100%" stopColor="#FF3D00"/></linearGradient></defs>
+              <rect width="200" height="200" rx="44" fill="url(#ahog)"/>
+              <polygon points="100,42 154,73 100,104 46,73" fill="white"/>
+              <polygon points="46,73 100,104 100,162 46,131" fill="rgba(255,255,255,0.55)"/>
+              <polygon points="154,73 100,104 100,162 154,131" fill="rgba(255,255,255,0.32)"/>
+              <polygon points="100,42 106,46 106,100 100,104 94,100 94,46" fill="rgba(255,255,255,0.22)"/>
+            </svg>
+            <div>
+              <div style={{ fontFamily:"Syne", fontWeight:800, fontSize:15, letterSpacing:"-0.3px", lineHeight:1.1 }}>
+                <span style={{ color:"#FF6B35" }}>DELIVER</span><span style={{ color:"#fff" }}>FLOW</span>
+              </div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.3)", fontSize:10, letterSpacing:"1.2px" }}>
+                ADMIN · {new Date().toLocaleDateString("en-KW",{day:"numeric",month:"short",year:"numeric"})}
+                {syncing && <span style={{ color:"#F59E0B" }}> · Syncing…</span>}
+                {!syncing && dbConnected && <span style={{ color:"#10B981" }}> · Live</span>}
+              </div>
+            </div>
           </div>
-          <button onClick={function(){ if(window.confirm("Clear all COLLECTED orders from driver dashboards? Pending and delivered orders kept.")) onClearCollected(); }}
-            style={{ background:"rgba(245,158,11,.12)", border:"1px solid rgba(245,158,11,.25)", borderRadius:8, padding:"5px 10px", color:"#F59E0B", fontFamily:"DM Sans", fontSize:11, cursor:"pointer" }}>
-            Clear Collected
-          </button>
-          <button onClick={onLogout} style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:10, padding:"6px 12px", color:"#EF4444", fontFamily:"DM Sans", fontSize:12, cursor:"pointer" }}>Sign Out</button>
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={function(){ if(window.confirm("Clear all COLLECTED orders from driver dashboards?")) onClearCollected(); }}
+              style={{ background:"rgba(245,158,11,.1)", border:"1px solid rgba(245,158,11,.15)", borderRadius:8, padding:"5px 9px", color:"#F59E0B", fontFamily:"DM Sans", fontSize:10, fontWeight:600, cursor:"pointer" }}>
+              Clear
+            </button>
+            <button onClick={onLogout}
+              style={{ background:"rgba(255,107,53,.1)", border:"1px solid rgba(255,107,53,.2)", borderRadius:8, padding:"5px 11px", color:"#FF6B35", fontFamily:"DM Sans", fontSize:10, fontWeight:600, cursor:"pointer" }}>
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Driver online status + upcoming count strip */}
-      <div style={{ display:"flex", gap:10, padding:"6px 16px", background:"rgba(0,0,0,.3)", borderBottom:"1px solid rgba(255,255,255,.04)", overflowX:"auto", flexShrink:0, alignItems:"center" }}>
+      {/* ── Driver presence strip ── */}
+      <div style={{ display:"flex", gap:6, padding:"7px 16px", background:"#111111", borderBottom:"1px solid rgba(255,255,255,.04)", overflowX:"auto", flexShrink:0, alignItems:"center" }}>
         {DRIVERS.filter(function(d){ return d.status !== "inactive"; }).map(function(d) {
           var isOnline = onlineDrivers && onlineDrivers[d.id];
           var isActive = activeDrivers && activeDrivers[d.id];
           return (
-            <div key={d.id} style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0, background:"rgba(255,255,255,.04)", borderRadius:20, padding:"3px 10px 3px 6px", border:"1px solid rgba(255,255,255,.06)" }}>
-              <div style={{ width:8, height:8, borderRadius:"50%", background:isOnline?"#10B981":"#374151",
-                boxShadow: isOnline ? "0 0 6px #10B981" : "none",
-                animation: (isOnline && isActive) ? "pulse 1.2s ease-in-out infinite" : "none" }} />
-              <span style={{ fontFamily:"DM Sans", color:isOnline?"#10B981":"rgba(255,255,255,.3)", fontSize:11, fontWeight:600 }}>{d.name}</span>
-
+            <div key={d.id} style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0, background:isOnline?"rgba(16,185,129,.07)":"rgba(255,255,255,.03)", borderRadius:20, padding:"4px 10px 4px 7px", border:"1px solid "+(isOnline?"rgba(16,185,129,.18)":"rgba(255,255,255,.05)") }}>
+              <div style={{ width:6, height:6, borderRadius:"50%", background:isOnline?"#10B981":"#333",
+                boxShadow:isOnline?"0 0 5px #10B981":"none",
+                animation:(isOnline&&isActive)?"pulse 1.2s ease-in-out infinite":"none" }} />
+              <span style={{ fontFamily:"DM Sans", color:isOnline?"#10B981":"rgba(255,255,255,.2)", fontSize:10, fontWeight:600 }}>{d.name}</span>
             </div>
           );
         })}
       </div>
 
-      <div style={{ display:"flex", background:"#0A1020", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0, position:"sticky", top:0, zIndex:10 }}>
+      {/* ── Tab bar ── */}
+      <div style={{ display:"flex", background:"#111111", borderBottom:"1px solid rgba(255,255,255,.05)", flexShrink:0, overflowX:"auto" }}>
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, background:"none", border:"none", padding:"12px 0 8px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, position:"relative" }}>
-            <span style={{ fontSize:16 }}>{t.icon}</span>
-            <span style={{ fontFamily:"DM Sans", fontSize:10, fontWeight:tab===t.id?600:400, color:tab===t.id?"#FF6B35":"rgba(255,255,255,.35)" }}>{t.label}</span>
-            {tab===t.id && <div style={{ width:4, height:4, borderRadius:"50%", background:"#FF6B35" }} />}
-            {t.badge > 0 && <div style={{ position:"absolute", top:4, right:"50%", transform:"translateX(100%)", background:"#EF4444", borderRadius:10, padding:"1px 5px", fontSize:9, color:"#fff", fontFamily:"DM Sans", fontWeight:700 }}>{t.badge}</div>}
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{ flex:1, minWidth:0, background:"none", border:"none", borderBottom: tab===t.id?"2.5px solid #FF6B35":"2.5px solid transparent",
+              padding:"9px 4px 7px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, position:"relative" }}>
+            <div style={{ position:"relative" }}>
+              <span style={{ fontSize:14, lineHeight:1, opacity:tab===t.id?1:0.4 }}>{t.icon}</span>
+              {t.badge > 0 && (
+                <div style={{ position:"absolute", top:-4, right:-7, background:"#FF6B35", borderRadius:10, minWidth:14, height:14, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"DM Sans", fontSize:8, fontWeight:700, color:"#fff", padding:"0 3px" }}>{t.badge}</div>
+              )}
+            </div>
+            <span style={{ fontFamily:"DM Sans", fontSize:9, fontWeight:tab===t.id?700:400, color:tab===t.id?"#FF6B35":"rgba(255,255,255,.28)", whiteSpace:"nowrap" }}>{t.label}</span>
           </button>
         ))}
       </div>
@@ -5296,47 +5368,60 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
   ];
 
   return (
-    <div style={{ maxWidth:430, margin:"0 auto", background:"#0A0F1E", height:"100dvh", display:"flex", flexDirection:"column", position:"relative", width:"100%" }}>
+    <div style={{ maxWidth:430, margin:"0 auto", background:"#0D0D0D", height:"100dvh", display:"flex", flexDirection:"column", position:"relative", width:"100%" }}>
       {toast && <Toast msg={toast.msg} toastKind={toast.ttype} />}
 
-      {/* Report preview - renders on top, covers full app */}
       {tab==="preview" && reportData && <ReportPreview data={reportData} onClose={() => setTab("report")} />}
 
-      {/* Global Transfer Modal - accessible from any tab */}
       {transferOrder && (
-        <TransferModal
-          order={transferOrder}
-          fromDriverId={user.id}
-          onRequestTransfer={handleTransferRequest}
-          onClose={() => setTransferOrder(null)}
-        />
+        <TransferModal order={transferOrder} fromDriverId={user.id} onRequestTransfer={handleTransferRequest} onClose={() => setTransferOrder(null)} />
       )}
 
-      {/* Header */}
-      <div style={{ padding:"16px 20px 12px", background:"#0A0F1E", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
+      {/* ── Driver Header ── */}
+      <div style={{ padding:"12px 18px 10px", background:"#0D0D0D", borderBottom:"1px solid rgba(255,255,255,.05)", flexShrink:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div>
-            <div style={{ fontFamily:"Syne", color:"#fff", fontSize:18, fontWeight:800 }}>DeliverFlow</div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:2, flexWrap:"wrap" }}>
-              <span style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.4)", fontSize:12 }}>Hi, {user.name}   {myOrders.length} orders today</span>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <svg viewBox="0 0 200 200" width={30} height={30} xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="dhog" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FF7A45"/><stop offset="100%" stopColor="#FF3D00"/></linearGradient></defs>
+              <rect width="200" height="200" rx="44" fill="url(#dhog)"/>
+              <polygon points="100,42 154,73 100,104 46,73" fill="white"/>
+              <polygon points="46,73 100,104 100,162 46,131" fill="rgba(255,255,255,0.55)"/>
+              <polygon points="154,73 100,104 100,162 154,131" fill="rgba(255,255,255,0.32)"/>
+              <polygon points="100,42 106,46 106,100 100,104 94,100 94,46" fill="rgba(255,255,255,0.22)"/>
+            </svg>
+            <div>
+              <div style={{ fontFamily:"Syne", fontWeight:800, fontSize:15, letterSpacing:"-0.3px", lineHeight:1.1 }}>
+                <span style={{ color:"#FF6B35" }}>DELIVER</span><span style={{ color:"#fff" }}>FLOW</span>
+              </div>
+              <div style={{ fontFamily:"DM Sans", color:"rgba(255,255,255,.3)", fontSize:10, letterSpacing:"0.5px" }}>
+                Hi, <span style={{ color:"rgba(255,255,255,.6)", fontWeight:600 }}>{user.name}</span>
+                {myOrders.length > 0 && <span style={{ color:"rgba(255,107,53,.7)", marginLeft:6 }}>· {myOrders.length} orders today</span>}
+              </div>
             </div>
           </div>
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            {pending > 0 && <span style={{ background:"rgba(245,158,11,.2)", color:"#F59E0B", borderRadius:20, padding:"3px 10px", fontFamily:"DM Sans", fontSize:12, fontWeight:600 }}> {pending} to collect</span>}
-            <button onClick={onLogout} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:8, padding:"5px 10px", color:"rgba(255,255,255,.5)", fontFamily:"DM Sans", fontSize:11, cursor:"pointer" }}>Sign Out</button>
+          <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+            {pending > 0 && (
+              <span style={{ background:"rgba(245,158,11,.12)", border:"1px solid rgba(245,158,11,.2)", color:"#F59E0B", borderRadius:20, padding:"4px 10px", fontFamily:"DM Sans", fontSize:10, fontWeight:700 }}>
+                {pending} to collect
+              </span>
+            )}
+            <button onClick={onLogout}
+              style={{ background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", borderRadius:8, padding:"5px 11px", color:"rgba(255,255,255,.4)", fontFamily:"DM Sans", fontSize:10, fontWeight:600, cursor:"pointer" }}>
+              Sign Out
+            </button>
           </div>
         </div>
       </div>
 
-      {/* No orders state */}
+      {/* No orders banner */}
       {myOrders.length === 0 && (
-        <div style={{ background:"rgba(245,158,11,.08)", border:"1px solid rgba(245,158,11,.2)", borderRadius:0, padding:"12px 20px", display:"flex", gap:10, alignItems:"center" }}>
-          <span style={{ fontSize:18 }}></span>
-          <span style={{ fontFamily:"DM Sans", color:"#F59E0B", fontSize:13 }}>Waiting for admin to assign orders... Check back soon.</span>
+        <div style={{ background:"rgba(255,107,53,.06)", borderBottom:"1px solid rgba(255,107,53,.12)", padding:"10px 18px", display:"flex", gap:10, alignItems:"center" }}>
+          <span style={{ fontSize:16 }}>⏳</span>
+          <span style={{ fontFamily:"DM Sans", color:"rgba(255,107,53,.8)", fontSize:12 }}>Waiting for admin to assign orders…</span>
         </div>
       )}
 
-      {/* Content */}
+      {/* ── Content ── */}
       <div style={{ flex:1, overflowY:"auto", paddingTop:12, display:"flex", flexDirection:"column", WebkitOverflowScrolling:"touch" }}>
         {tab==="warehouse" && <DriverWarehouseTab orders={orders} driverId={user.id}
           onScan={(id) => { onScan(id); showToast("📦 Order collected!", "success"); }}
@@ -5364,14 +5449,17 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
         {tab==="profile"   && <DriverProfileTab   user={user} orders={myOrders} expenses={myExpenses} />}
       </div>
 
-      {/* Bottom Nav */}
-      <div style={{ display:"flex", background:"#0D1326", borderTop:"1px solid rgba(255,255,255,.06)", flexShrink:0, paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
+      {/* ── Bottom Nav ── */}
+      <div style={{ display:"flex", background:"#111111", borderTop:"1px solid rgba(255,255,255,.05)", flexShrink:0, paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, background:"none", border:"none", padding:"12px 0 8px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, position:"relative" }}>
-            <span style={{ fontSize:18 }}>{t.icon}</span>
-            <span style={{ fontFamily:"DM Sans", fontSize:11, fontWeight:tab===t.id?600:400, color:tab===t.id?"#00D4FF":"rgba(255,255,255,.3)" }}>{t.label}</span>
-            {tab===t.id && <div style={{ width:4, height:4, borderRadius:"50%", background:"#00D4FF" }} />}
-            {t.badge > 0 && <div style={{ position:"absolute", top:6, right:"50%", transform:"translateX(100%)", background:"#10B981", borderRadius:10, padding:"1px 5px", fontSize:9, color:"#fff", fontFamily:"DM Sans", fontWeight:700 }}>{t.badge}</div>}
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{ flex:1, background:"none", border:"none", borderTop: tab===t.id?"2.5px solid #FF6B35":"2.5px solid transparent",
+              padding:"10px 0 7px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, position:"relative" }}>
+            <span style={{ fontSize:17, lineHeight:1, opacity:tab===t.id?1:0.38 }}>{t.icon}</span>
+            <span style={{ fontFamily:"DM Sans", fontSize:9, fontWeight:tab===t.id?700:400, color:tab===t.id?"#FF6B35":"rgba(255,255,255,.28)" }}>{t.label}</span>
+            {t.badge > 0 && (
+              <div style={{ position:"absolute", top:6, right:"50%", transform:"translateX(120%)", background:"#FF6B35", borderRadius:10, minWidth:14, height:14, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"DM Sans", fontSize:8, fontWeight:700, color:"#fff", padding:"0 3px" }}>{t.badge}</div>
+            )}
           </button>
         ))}
       </div>
@@ -5606,9 +5694,9 @@ function StoreAdminApp({ user, orders, adminNotifs, onMarkNotifRead, onClearNoti
   const unread = myNotifs.filter(function(n){ return !n.read; }).length;
 
   return (
-    <div style={{ height:"100dvh", background:"#0A0F1E", display:"flex", flexDirection:"column", maxWidth:480, margin:"0 auto", width:"100%", position:"relative" }}>
+    <div style={{ height:"100dvh", background:"#0D0D0D", display:"flex", flexDirection:"column", maxWidth:480, margin:"0 auto", width:"100%", position:"relative" }}>
       {/* Header */}
-      <div style={{ padding:"16px 20px 12px", background:"#0A0F1E", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
+      <div style={{ padding:"16px 20px 12px", background:"#0D0D0D", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             <div style={{ fontFamily:"Syne", color:"#fff", fontSize:18, fontWeight:800 }}>DeliverFlow</div>
