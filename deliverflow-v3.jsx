@@ -511,6 +511,27 @@ function parseSAPDeliveryText(rawText) {
   }
 
 
+  // Try-extract OO — checks last then first token of orderTokens
+  function tryExtractOO(candidate) {
+    if (!candidate) return null;
+    const s = candidate.trim();
+    const m = s.match(/^(\d{4,6})([/\w]*)?$/);
+    if (!m) return null;
+    const ooNum  = m[1];
+    const ooRest = s.slice(ooNum.length).toLowerCase();
+    let payHint = null;
+    if (/\/tb\b|tabby/.test(ooRest))                payHint = "Tabby";
+    else if (/\/dm\b|deema/.test(ooRest))           payHint = "Deema";
+    else if (/\/ex\b/.test(ooRest))                 payHint = "Exchange";
+    else if (/\/js\b/.test(ooRest))                 payHint = "Cash";
+    else if (/\/knet\b|knet/.test(ooRest))          payHint = "KNET";
+    else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
+    else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
+    else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
+    if (ooNum.length === 6 && payHint === null) return null;
+    return { num: ooNum, payHint };
+  }
+
   // Skip header tokens until we find "Customer :" which marks store sections
   while (i < tokens.length) {
     const t = tokens[i];
@@ -569,34 +590,9 @@ function parseSAPDeliveryText(rawText) {
         i++;
       }
 
-      // OO number position depends on page layout:
-      // NORMAL orders: OO is the LAST token (after payment, before next invoice)
-      // PAGE-BREAK orders (last order on page): OO is the FIRST token (orderTokens[0])
-      //   because the footer interrupts between address and OO column
-      //
-      // Strategy: try last token first, fall back to first token
-      function tryExtractOO(candidate) {
-        if (!candidate) return null;
-        const s = candidate.trim();
-        const m = s.match(/^(\d{4,6})([/\w]*)?$/);
-        if (!m) return null;
-        const ooNum  = m[1];
-        const ooRest = s.slice(ooNum.length).toLowerCase();
-        let payHint = null;
-        if (/\/tb\b|tabby/.test(ooRest))                payHint = "Tabby";
-        else if (/\/dm\b|deema/.test(ooRest))           payHint = "Deema";
-        else if (/\/ex\b/.test(ooRest))                 payHint = "Exchange";
-        else if (/\/js\b/.test(ooRest))                 payHint = "Cash";
-        else if (/\/knet\b|knet/.test(ooRest))          payHint = "KNET";
-        else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
-        else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
-        else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
-        // Reject 6-digit with no hint = phone fragment (468710, 636836, 958169)
-        if (ooNum.length === 6 && payHint === null) return null;
-        return { num: ooNum, payHint };
-      }
-
-      // Try LAST token (normal case — OO comes after payment line)
+      // Debug: log orderTokens for every order
+      console.log("ORDER", invoiceNo, "tokens[0]=", JSON.stringify(orderTokens[0]), "tokens[-1]=", JSON.stringify(orderTokens[orderTokens.length-1]), "all=", JSON.stringify(orderTokens));
+      // Try LAST token first (normal), then FIRST token (page-break fallback)
       const lastResult = tryExtractOO(orderTokens[orderTokens.length - 1]);
       if (lastResult) {
         onlineOrderNo = lastResult.num;
