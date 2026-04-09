@@ -24,10 +24,10 @@ const DRIVERS = [
 
 
 const STORE_ADMINS = [
-  { id:"trikart",  name:"Trikart Admin",  avatar:"TK", store:"Trikart Online",  password:"trikart123"  },
-  { id:"webstore", name:"Webstore Admin", avatar:"WS", store:"Webstore Online", password:"webstore123" },
-  { id:"restore",  name:"ReStore Admin",  avatar:"RS", store:"ReStore Online",  password:"restore123" },
-  { id:"gadgetpro", name:"GadgetPro Admin", avatar:"GP", store:"GadgetPro Online", password:"gadgetpro123" },
+  { id:"trikart",  name:"Trikart Admin",  avatar:"TK", store:"Trikart Online",  password:"" },
+  { id:"webstore", name:"Webstore Admin", avatar:"WS", store:"Webstore Online", password:"" },
+  { id:"restore",  name:"ReStore Admin",  avatar:"RS", store:"ReStore Online",  password:"" },
+  { id:"gadgetpro", name:"GadgetPro Admin", avatar:"GP", store:"GadgetPro Online", password:"" },
 ];
 
 const AMTEL_VEHICLES = [
@@ -2719,13 +2719,13 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
   const otpKey = "df_otp_" + (order.invoiceNo || order.id);
   function getOrCreateOTP() {
     var stored = null;
-    try { stored = localStorage.getItem(otpKey); } catch(e){}
+    try { stored = sessionStorage.getItem(otpKey); } catch(e){}
     if (stored) return stored;
     var code = String(Math.floor(1000 + Math.random() * 9000));
-    try { localStorage.setItem(otpKey, code); } catch(e){}
+    try { sessionStorage.setItem(otpKey, code); } catch(e){}
     return code;
   }
-  function clearOTP() { try { localStorage.removeItem(otpKey); } catch(e){} }
+  function clearOTP() { try { sessionStorage.removeItem(otpKey); } catch(e){} }
 
   const isActive    = order.scanned && order.status === "pending";
   const isCancelled = order.status === "cancelled";
@@ -4504,7 +4504,7 @@ function performLogin(u_raw, p_raw, setErr, onLogin) {
   for (var si = 0; si < STORE_ADMINS.length; si++) {
     var sa = STORE_ADMINS[si];
     if (sa.id === u || sa.name.toLowerCase() === u) {
-      var saPwd = (pwds && pwds[sa.id]) || sa.password;
+      var saPwd = (pwds && pwds[sa.id]) || (sa.id + "123");
       if (p !== saPwd) { failLogin("Incorrect username or password"); return; }
       doLogin({ name:sa.name, id:sa.id, avatar:sa.avatar, role:"storeadmin", store:sa.store });
       return;
@@ -4901,14 +4901,14 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
           <div style={{ background:"rgba(255,90,31,.08)", borderRadius:10, padding:"8px 10px" }}>
             <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:2 }}>ADMIN</div>
             <div style={{ fontFamily:"monospace", color:"#FF5A1F", fontSize:12 }}>admin</div>
-            <div style={{ fontFamily:"monospace", color:"rgba(255,255,255,.5)", fontSize:11 }}>{(passwords && passwords["admin"]) || "admin123"}</div>
+            <div style={{ fontFamily:"monospace", color:"rgba(255,255,255,.5)", fontSize:11 }}>{"●".repeat(((passwords && passwords["admin"]) || "admin123").length)}</div>
           </div>
           {allDrivers.slice(0,3).map(function(d) {
             return (
               <div key={d.id} style={{ background:"rgba(0,212,255,.06)", borderRadius:10, padding:"8px 10px" }}>
                 <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:2 }}>{d.name.toUpperCase()}</div>
                 <div style={{ fontFamily:"monospace", color:"#00D4FF", fontSize:12 }}>{d.id}</div>
-                <div style={{ fontFamily:"monospace", color:"rgba(255,255,255,.5)", fontSize:11 }}>{(passwords && passwords[d.id]) || (d.id + "123")}</div>
+                <div style={{ fontFamily:"monospace", color:"rgba(255,255,255,.5)", fontSize:11 }}>{"●".repeat(((passwords && passwords[d.id]) || (d.id + "123")).length)}</div>
               </div>
             );
           })}
@@ -4953,7 +4953,7 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
             <div style={{ marginBottom:14, background:"rgba(0,212,255,.06)", border:"1px solid rgba(0,212,255,.15)", borderRadius:12, padding:"12px 14px" }}>
               <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:13, fontWeight:700, marginBottom:8 }}>Change Password</div>
               <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>
-                Current: <span style={{ color:"rgba(255,255,255,.6)", fontFamily:"monospace" }}>{(passwords && passwords[editDriver.id]) || (editDriver.id + "123")}</span>
+                Current: <span style={{ color:"rgba(255,255,255,.6)", fontFamily:"monospace" }}>{"●".repeat(((passwords && passwords[editDriver.id]) || (editDriver.id + "123")).length)} (hidden)</span>
               </div>
               <input placeholder="New password" id={"pwd-"+editDriver.id}
                 style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, boxSizing:"border-box" }} />
@@ -6535,6 +6535,14 @@ window.App = function App() {
   }
 
   function doClearAllData() {
+    // Guard: only execute if current user is admin
+    var sess = lsGet(LS_KEYS.session, null);
+    var validSess = validateSession(sess);
+    if (!validSess || validSess.role !== "admin") {
+      console.warn("Unauthorized clear attempt blocked");
+      setClearConfirm(false);
+      return;
+    }
     setClearConfirm(false);
     saveHistorySnapshot(orders, expenses);
     // PERMANENT DATA POLICY: Only delete from Supabase explicitly
@@ -6796,12 +6804,17 @@ setOrders(function(prev) {
   }
 
   function removeOrder(idOrInvoice) {
+    // Sanitize input — only allow alphanumeric, dash, underscore
+    var safe = String(idOrInvoice).replace(/[^a-zA-Z0-9\-_]/g, "");
+    if (!safe) return;
     setOrders(function(prev) {
       const updated = prev.filter(function(o) { return o.id !== idOrInvoice && o.invoiceNo !== idOrInvoice; });
       lsSet(LS_KEYS.orders, updated);
-      // Also remove from Supabase
       var sb = getSupabase();
-      if (sb) { sb.from("orders").delete().or("id.eq." + idOrInvoice + ",invoice_no.eq." + idOrInvoice).then(function(){}); }
+      if (sb) {
+        sb.from("orders").delete().eq("id", safe).then(function(){});
+        sb.from("orders").delete().eq("invoice_no", safe).then(function(){});
+      }
       return updated;
     });
   }
