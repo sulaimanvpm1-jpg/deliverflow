@@ -3725,18 +3725,11 @@ function ReportPreview({ data, onClose }) {
     @page{size:A4 portrait;margin:10mm 12mm}
     *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:9.5px;color:#1e293b;margin:0;padding:0;background:#fff}
-    .rpt-header{background:#090B10;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-radius:10px;margin-bottom:14px}
-    .rpt-logo-box{width:36px;height:36px;background:linear-gradient(135deg,#FF7A45,#FF3D00);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px}
-    .rpt-section-title{font-size:10px;font-weight:700;color:#64748B;letter-spacing:1px;text-transform:uppercase;border-bottom:2px solid #FF5A1F;padding-bottom:3px;margin-bottom:10px;margin-top:14px}
-    .rpt-store-header{background:#090B10;padding:7px 10px;display:flex;justify-content:space-between;align-items:center}
-    .rpt-stat-card{border-radius:8px;padding:9px 12px;flex:1;min-width:90px;border-left:3px solid}
-    .rpt-collection-row{display:flex;justify-content:space-between;padding:5px 10px;font-size:10px}
-    .rpt-order-row-even{background:#fff} .rpt-order-row-odd{background:#F8FAFC}
     .no-break{page-break-inside:avoid}
     section{page-break-inside:avoid;margin-bottom:10px}
   `;
 
-  function doprint(autoprint) {
+  function openPrint() {
     var pri = document.getElementById("report-print-area");
     if (!pri) return;
     var now = new Date();
@@ -3744,38 +3737,30 @@ function ReportPreview({ data, onClose }) {
     var mm = String(now.getMonth()+1).padStart(2,"0");
     var yy = String(now.getFullYear()).slice(2);
     var fileName = "Report " + drvName + " " + dd + "-" + mm + "-" + yy;
-    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fileName+'</title><style>'+printCSS+'</style></head><body>' + pri.innerHTML + (autoprint?'<script>window.onload=function(){window.print();}<\/script>':'') + '</body></html>';
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fileName+'</title><style>'+printCSS+'</style></head><body style="padding:8px">' + pri.innerHTML + '<script>window.onload=function(){document.title="'+fileName+'";window.print();}<\/script></body></html>';
     var blob = new Blob([html],{type:"text/html;charset=utf-8"});
     var url = URL.createObjectURL(blob);
-    if (autoprint) {
-      var ifr = document.createElement("iframe");
-      ifr.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:21cm;height:29.7cm;border:none";
-      document.body.appendChild(ifr);
-      ifr.onload = function(){ try{ifr.contentWindow.focus();ifr.contentWindow.print();}catch(e){} setTimeout(function(){document.body.removeChild(ifr);URL.revokeObjectURL(url);},2000); };
-      ifr.src = url;
-    } else {
-      // Direct download — no popup blocker, triggers Save dialog immediately
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = fileName + ".html";
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
-    }
+    var ifr = document.createElement("iframe");
+    ifr.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:21cm;height:29.7cm;border:none";
+    document.body.appendChild(ifr);
+    ifr.onload = function(){
+      try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch(e){}
+      setTimeout(function(){ document.body.removeChild(ifr); URL.revokeObjectURL(url); }, 3000);
+    };
+    ifr.src = url;
   }
 
   return (
     <div style={{ position:"absolute", inset:0, zIndex:999, background:"#F1F5F9", display:"flex", flexDirection:"column", overflowY:"auto" }}>
 
       {/* Action bar */}
-      <div style={{ position:"sticky", top:0, zIndex:10, background:"#090B10", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8, borderBottom:"1px solid rgba(255,90,31,.3)" }}>
+      <div style={{ position:"sticky", top:0, zIndex:10, background:"#1E293B", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8, borderBottom:"1px solid rgba(255,90,31,.3)" }}>
         <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>
           <span style={{ color:"#FF5A1F" }}>DELIVER</span>FLOW · Daily Report · {drvName}
         </div>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={function(){ doprint(true); }} style={{ background:"rgba(255,90,31,.15)", border:"1px solid rgba(255,90,31,.4)", borderRadius:8, padding:"6px 14px", color:"#FF5A1F", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>🖨 Print A4</button>
-          <button onClick={function(){ doprint(false); }} style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.4)", borderRadius:8, padding:"6px 14px", color:"#10B981", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>⬇ Download</button>
+          <button onClick={openPrint} style={{ background:"rgba(255,90,31,.15)", border:"1px solid rgba(255,90,31,.4)", borderRadius:8, padding:"6px 14px", color:"#FF5A1F", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>🖨 Print A4</button>
+          <button onClick={openPrint} style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.4)", borderRadius:8, padding:"6px 14px", color:"#10B981", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>⬇ Save as PDF</button>
           <button onClick={onClose} style={{ background:"rgba(239,68,68,.15)", border:"1px solid rgba(239,68,68,.3)", borderRadius:8, padding:"6px 14px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>✕ Close</button>
         </div>
       </div>
@@ -3784,7 +3769,7 @@ function ReportPreview({ data, onClose }) {
       <div id="report-print-area" style={{ padding:"16px 16px 48px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#1e293b", maxWidth:820, margin:"0 auto", width:"100%" }}>
 
         {/* ── HEADER with logo ── */}
-        <div style={{ background:"#090B10", borderRadius:12, padding:"16px 20px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
+        <div style={{ background:"#1E293B", borderRadius:12, padding:"16px 20px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
           {/* Logo + brand */}
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:44, height:44, background:"linear-gradient(135deg,#FF7A45,#FF3D00)", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -3833,7 +3818,7 @@ function ReportPreview({ data, onClose }) {
             );
           })}
           {collectionRows.length > 0 && (
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", background:"#090B10" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", background:"#1E293B" }}>
               <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, color:"#fff" }}>TOTAL COLLECTED</span>
               <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:15, fontWeight:800, color:"#FF5A1F" }}>KD {grandTotal.toFixed(3)}</span>
             </div>
@@ -3845,7 +3830,7 @@ function ReportPreview({ data, onClose }) {
             if (cashOnly === 0 && totalExpAmt === 0) return null;
             return (
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 14px", background:"#FFF7ED", borderTop:"2px solid #FF5A1F" }}>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, color:"#FF5A1F" }}>NET CASH TO RETURN</span>
+                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, color:"#fff" }}>NET CASH TO RETURN</span>
                 <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:14, fontWeight:800, color:cashAfterExp>=0?"#059669":"#DC2626" }}>KD {cashAfterExp.toFixed(3)}</span>
               </div>
             );
@@ -3861,7 +3846,7 @@ function ReportPreview({ data, onClose }) {
         <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:10, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #FF5A1F", paddingBottom:3, marginBottom:10, marginTop:16 }}>Bill-wise Details</div>
 
         {/* Table header */}
-        <div style={{ display:"flex", gap:6, padding:"7px 10px", background:"#090B10", borderRadius:"8px 8px 0 0", marginBottom:2 }}>
+        <div style={{ display:"flex", gap:6, padding:"7px 10px", background:"#1E293B", borderRadius:"8px 8px 0 0", marginBottom:2 }}>
           {[["Date",52],["Invoice",68],["Customer","2fr"],["OO No.",56],["Total KD",70],["Payment",72],["Status",80],["Note","1fr"]].map(function(h){
             return <span key={h[0]} style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF5A1F", fontSize:9.5, fontWeight:700, textTransform:"uppercase", minWidth:typeof h[1]==="number"?h[1]:undefined, flex:typeof h[1]==="string"?h[1]:undefined, flexShrink:0 }}>{h[0]}</span>;
           })}
@@ -3886,7 +3871,7 @@ function ReportPreview({ data, onClose }) {
           var sTotal = sCash+sKnet+sDeema+sTabby+sTaly+sVisa+sLink;
           return (
             <div key={store} style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:8, overflow:"hidden", marginBottom:10, pageBreakInside:"avoid" }}>
-              <div style={{ background:"#090B10", padding:"8px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div style={{ background:"#1E293B", padding:"8px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF5A1F", fontWeight:700, fontSize:12 }}>{store}</span>
                 <span style={{ color:"rgba(255,255,255,.45)", fontSize:10 }}>
                   {sDelOrds.length} delivered{sCancOrds.length>0?" · "+sCancOrds.length+" cancelled":""}{sPostOrds.length>0?" · "+sPostOrds.length+" postponed":""}{sPendOrds.length>0?" · "+sPendOrds.length+" pending":""}{sExOrds.length>0?" · "+sExOrds.length+" exchange":""}
@@ -3927,7 +3912,7 @@ function ReportPreview({ data, onClose }) {
 
         {myExpenses.length > 0 && (
           <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0", marginBottom:12 }}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", background:"#090B10", padding:"7px 14px" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", background:"#1E293B", padding:"7px 14px" }}>
               {["Type","Amount","Note","Time"].map(function(h){ return <span key={h} style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF5A1F", fontSize:9.5, fontWeight:700, textTransform:"uppercase" }}>{h}</span>; })}
             </div>
             {myExpenses.map(function(e,i){
@@ -3944,7 +3929,7 @@ function ReportPreview({ data, onClose }) {
         )}
 
         {/* ── FOOTER ── */}
-        <div style={{ marginTop:24, paddingTop:12, borderTop:"2px solid #090B10", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ marginTop:24, paddingTop:12, borderTop:"2px solid #FF5A1F", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <div style={{ width:24, height:24, background:"linear-gradient(135deg,#FF7A45,#FF3D00)", borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center" }}>
               <svg viewBox="0 0 200 200" width={14} height={14}>
