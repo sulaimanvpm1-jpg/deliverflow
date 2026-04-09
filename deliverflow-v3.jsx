@@ -6313,30 +6313,42 @@ setOrders(function(prev) {
       const merged = prev.map(function(o) {
         const match = newOrders.find(function(n) { return n.invoiceNo === o.invoiceNo; });
         if (match) {
-          // Use the new assignedDate from the upload (today's date)
-          var newAssignedDate = match.assignedDate || (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
+          // For orders that were postponed/cancelled, keep their existing assignedDate
+          // so they don't reappear on today's dashboard as fresh orders.
+          // Only update assignedDate for truly pending (not yet acted on) orders.
+          var keepDate = (o.status === "postponed" || o.status === "cancelled" || o.status === "delivered");
+          var newAssignedDate = keepDate
+            ? (o.assignedDate || match.assignedDate)
+            : (match.assignedDate || (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })());
+          // For postponed orders re-uploaded on a new day: reset to pending + unscanned
+          // so driver must re-collect from warehouse before delivering again.
+          var isReupload = (o.status === "postponed") &&
+            (newAssignedDate !== o.assignedDate);
           var updated = {
-            ...o,  // keeps existing id, status, scanned
+            ...o,  // keeps existing id
             onlineOrderNo: match.onlineOrderNo || o.onlineOrderNo || "",
             assignedDate: newAssignedDate,
-            driverId: match.driverId || o.driverId,  // use new assignment
+            driverId: match.driverId || o.driverId,
             customer: (match.customer && match.customer !== "Unknown") ? match.customer : o.customer,
             address: match.address || o.address || "",
             phone: match.phone || o.phone || "",
+            // Reset postponed orders so they start fresh on the new day
+            status:  isReupload ? "pending" : o.status,
+            scanned: isReupload ? false     : o.scanned,
           };
           // Direct DB update - split into core fields and optional fields
           var sb = getSupabase && getSupabase();
           if (sb && updated.id) {
-            // Core update: always-existing columns
             sb.from("orders").update({
               online_order_no: updated.onlineOrderNo || "",
               driver_id: updated.driverId || null,
               customer: updated.customer || "",
               address: updated.address || "",
               phone: updated.phone || "",
+              status: updated.status,
+              scanned: updated.scanned,
               updated_at: new Date().toISOString(),
             }).eq("id", updated.id).then(function(){}, function(e){ console.warn("OO update err:", e); });
-            // Optional: assigned_date (column may not exist on older DBs)
             sb.from("orders").update({ assigned_date: newAssignedDate })
               .eq("id", updated.id).then(function(){}, function(){});
           }
