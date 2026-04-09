@@ -3666,9 +3666,9 @@ function DriverExpensesTab({ driverId, driverName, expenses, orders, onAddExpens
 /*  Report Preview - native React (no iframe, no popup)  */
 function SCard({ label, value, color, bg }) {
   return (
-    <div style={{ background:bg, borderRadius:9, padding:"10px 12px", flex:1, minWidth:100 }}>
+    <div style={{ background:bg, borderRadius:10, padding:"10px 14px", flex:1, minWidth:100, borderLeft:"3px solid "+color }}>
       <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:color, fontSize:20, fontWeight:800 }}>{value}</div>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#475569", fontSize:11, marginTop:2 }}>{label}</div>
+      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#64748B", fontSize:11, marginTop:2 }}>{label}</div>
     </div>
   );
 }
@@ -3677,20 +3677,20 @@ function OrderRow({ o, i, statusBg, statusColor }) {
   const isEx = isExchange(o.paymentType)||isExchange(o.originalPaymentType);
   const st   = isEx?"exchange":o.status;
   return (
-    <div style={{ display:"flex", gap:8, padding:"8px 0", borderBottom:"1px solid #F1F5F9", fontSize:11, color:"#334155", flexWrap:"wrap" }}>
-      <span style={{ color:"#94A3B8", minWidth:56 }}>{o.date||""}</span>
-      <span style={{ fontWeight:700, minWidth:70, color:"#0F172A" }}>{"#"+o.invoiceNo}</span>
-      <span style={{ flex:2, minWidth:100 }}>{o.customer}</span>
-      <span style={{ minWidth:60, fontWeight:o.onlineOrderNo?700:400, color:o.onlineOrderNo?"#0F172A":"#94A3B8" }}>{o.onlineOrderNo||"-"}</span>
-      <span style={{ fontWeight:700, minWidth:72, color:"#0F172A" }}>{"KD "+Number(o.total).toFixed(3)}</span>
-      {(o.extraAmount > 0) && <span style={{ fontWeight:700, minWidth:60, color:"#EA580C" }}>{"+KD "+Number(o.extraAmount).toFixed(3)}</span>}
-      <span style={{ minWidth:80, color:"#475569" }}>{o.paymentType}</span>
-      <span style={{ background:statusBg[st], color:statusColor[st], borderRadius:20, padding:"1px 8px", fontWeight:600, whiteSpace:"nowrap" }}>
+    <div style={{ display:"flex", gap:6, padding:"7px 10px", background:i%2===0?"#fff":"#F8FAFC", fontSize:10.5, color:"#334155", alignItems:"center" }}>
+      <span style={{ color:"#94A3B8", minWidth:52, flexShrink:0 }}>{o.date||""}</span>
+      <span style={{ fontWeight:700, minWidth:68, flexShrink:0, color:"#090B10" }}>{"#"+o.invoiceNo}</span>
+      <span style={{ flex:2, minWidth:90, color:"#1e293b" }}>{o.customer}</span>
+      <span style={{ minWidth:56, flexShrink:0, fontWeight:o.onlineOrderNo?700:400, color:o.onlineOrderNo?"#FF5A1F":"#94A3B8" }}>{o.onlineOrderNo||"—"}</span>
+      <span style={{ fontWeight:700, minWidth:70, flexShrink:0, color:"#090B10" }}>{"KD "+Number(o.total).toFixed(3)}</span>
+      {(o.extraAmount > 0) && <span style={{ fontWeight:700, minWidth:56, flexShrink:0, color:"#EA580C" }}>{"+"+Number(o.extraAmount).toFixed(3)}</span>}
+      <span style={{ minWidth:72, flexShrink:0, color:"#475569", fontSize:10 }}>{o.paymentType}</span>
+      <span style={{ background:statusBg[st], color:statusColor[st], borderRadius:20, padding:"2px 8px", fontWeight:700, fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>
         {isEx?"Exchange":o.status.charAt(0).toUpperCase()+o.status.slice(1)}
       </span>
       {(o.note || o.extraAmount > 0) && (
-        <span style={{ color:"#94A3B8", fontStyle:"italic", flex:1 }}>
-          {o.extraAmount > 0 ? "⚡ Extra: KD "+Number(o.extraAmount).toFixed(3)+(o.note?" | "+o.note:"") : o.note}
+        <span style={{ color:"#94A3B8", fontStyle:"italic", flex:1, fontSize:10 }}>
+          {o.extraAmount > 0 ? "⚡ KD "+Number(o.extraAmount).toFixed(3)+(o.note?" | "+o.note:"") : o.note}
         </span>
       )}
     </div>
@@ -3715,249 +3715,242 @@ function ReportPreview({ data, onClose }) {
           exchangeOrds, nonExDel, orderedStores, collectionRows, comm,
           myExpenses, totalExpAmt, successRate } = data;
   const date = new Date().toLocaleDateString("en-KW", { day:"numeric", month:"long", year:"numeric" });
-  const grandTotal = collectionRows.reduce((a,r)=>a+r.amt,0); // already excludes cancelled (collectionRows built from nonExDel)
+  const grandTotal = collectionRows.reduce((a,r)=>a+r.amt,0);
 
   const statusColor = { delivered:"#059669", cancelled:"#DC2626", postponed:"#7C3AED", pending:"#D97706", exchange:"#6B7280" };
-  const statusBg    = { delivered:"#ECFDF5", cancelled:"#FEF2F2", postponed:"#F5F3FF", pending:"#FFFBEB", exchange:"#F3F4F6" };
+  const statusBg    = { delivered:"#DCFCE7", cancelled:"#FEE2E2", postponed:"#EDE9FE", pending:"#FEF3C7", exchange:"#F1F5F9" };
 
+  // Shared print CSS
+  const printCSS = `
+    @page{size:A4 portrait;margin:10mm 12mm}
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:9.5px;color:#1e293b;margin:0;padding:0;background:#fff}
+    .rpt-header{background:#090B10;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-radius:10px;margin-bottom:14px}
+    .rpt-logo-box{width:36px;height:36px;background:linear-gradient(135deg,#FF7A45,#FF3D00);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px}
+    .rpt-section-title{font-size:10px;font-weight:700;color:#64748B;letter-spacing:1px;text-transform:uppercase;border-bottom:2px solid #FF5A1F;padding-bottom:3px;margin-bottom:10px;margin-top:14px}
+    .rpt-store-header{background:#090B10;padding:7px 10px;display:flex;justify-content:space-between;align-items:center}
+    .rpt-stat-card{border-radius:8px;padding:9px 12px;flex:1;min-width:90px;border-left:3px solid}
+    .rpt-collection-row{display:flex;justify-content:space-between;padding:5px 10px;font-size:10px}
+    .rpt-order-row-even{background:#fff} .rpt-order-row-odd{background:#F8FAFC}
+    .no-break{page-break-inside:avoid}
+    section{page-break-inside:avoid;margin-bottom:10px}
+  `;
 
-
-
+  function doprint(autoprint) {
+    var pri = document.getElementById("report-print-area");
+    if (!pri) return;
+    var today = new Date().toLocaleDateString("en-KW",{day:"2-digit",month:"2-digit",year:"numeric"}).replace(/\//g,"-");
+    var fileName = "DeliverFlow-Report-" + drvName.replace(/\s+/g,"-") + "-" + today;
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fileName+'</title><style>'+printCSS+'</style></head><body>' + pri.innerHTML + (autoprint?'<script>window.onload=function(){window.print();}<\/script>':'') + '</body></html>';
+    var blob = new Blob([html],{type:"text/html;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    if (autoprint) {
+      var ifr = document.createElement("iframe");
+      ifr.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:21cm;height:29.7cm;border:none";
+      document.body.appendChild(ifr);
+      ifr.onload = function(){ try{ifr.contentWindow.focus();ifr.contentWindow.print();}catch(e){} setTimeout(function(){document.body.removeChild(ifr);URL.revokeObjectURL(url);},2000); };
+      ifr.src = url;
+    } else {
+      var w = window.open(url,"_blank");
+      if (!w) { var a=document.createElement("a");a.href=url;a.download=fileName+".html";document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},500); }
+      else { setTimeout(function(){URL.revokeObjectURL(url);},5000); }
+    }
+  }
 
   return (
-    <div style={{ position:"absolute", inset:0, zIndex:999, background:"#f8fafc", display:"flex", flexDirection:"column", overflowY:"auto" }}>
-      {/* Sticky action bar */}
-      <div style={{ position:"sticky", top:0, zIndex:10, background:"#090B10", padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>Daily Report - {drvName}</div>
-        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-          <button onClick={function() {
-            var pri = document.getElementById("report-print-area");
-            if (!pri) { return; }
-            var css = "@page{size:A4 portrait;margin:10mm 12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{font-family:Arial,sans-serif;font-size:9.5px;color:#111;margin:0;padding:0;background:#fff}div{max-width:100%}table{border-collapse:collapse;width:100%;font-size:9px}th,td{padding:3px 5px;border:1px solid #d1d5db}h1,h2{margin:4px 0}.no-break{page-break-inside:avoid}section{page-break-inside:avoid;margin-bottom:8px}";
-            var html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Report-" + drvName + "</title><style>" + css + "</style></head><body>" + pri.innerHTML + "</body></html>";
-            var blob = new Blob([html],{type:"text/html;charset=utf-8"});
-            var url = URL.createObjectURL(blob);
-            var ifr = document.createElement("iframe");
-            ifr.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:21cm;height:29.7cm;border:none";
-            document.body.appendChild(ifr);
-            ifr.onload = function(){
-              try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch(e){}
-              setTimeout(function(){ document.body.removeChild(ifr); URL.revokeObjectURL(url); },2000);
-            };
-            ifr.src = url;
-          }} style={{ background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.4)", borderRadius:8, padding:"6px 12px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>
-            Print A4
-          </button>
-          <button onClick={function() {
-            var pri = document.getElementById("report-print-area");
-            if (!pri) { return; }
-            var css = "@page{size:A4 portrait;margin:10mm 12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{font-family:Arial,sans-serif;font-size:9.5px;color:#111;margin:0;padding:0;background:#fff}div{max-width:100%}table{border-collapse:collapse;width:100%;font-size:9px}th,td{padding:3px 5px;border:1px solid #d1d5db}h1,h2{margin:4px 0}.no-break{page-break-inside:avoid}section{page-break-inside:avoid;margin-bottom:8px}";
-            var today = new Date().toLocaleDateString("en-KW",{day:"2-digit",month:"2-digit",year:"numeric"}).replace(/\//g,"-");
-            var fileName = "Report-" + drvName.replace(/\s+/g,"-") + "-" + today;
-            var html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" + fileName + "</title><style>@page{size:A4 portrait;margin:12mm}body{font-family:Arial,sans-serif;font-size:10px;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}" + css + "</style></head><body>" + pri.innerHTML + "<script>window.onload=function(){window.print();}<\/script></body></html>";
-            var blob = new Blob([html],{type:"text/html;charset=utf-8"});
-            var url = URL.createObjectURL(blob);
-            var w = window.open(url,"_blank");
-            if (!w) {
-              var a = document.createElement("a");
-              a.href = url; a.download = fileName + ".html";
-              document.body.appendChild(a); a.click();
-              setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },500);
-            } else {
-              setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-            }
-          }} style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.4)", borderRadius:8, padding:"6px 12px", color:"#10B981", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>
-            Download
-          </button>
-          <button onClick={onClose} style={{ background:"rgba(239,68,68,.2)", border:"1px solid rgba(239,68,68,.4)", borderRadius:8, padding:"6px 14px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>x Close</button>
+    <div style={{ position:"absolute", inset:0, zIndex:999, background:"#F1F5F9", display:"flex", flexDirection:"column", overflowY:"auto" }}>
+
+      {/* Action bar */}
+      <div style={{ position:"sticky", top:0, zIndex:10, background:"#090B10", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8, borderBottom:"1px solid rgba(255,90,31,.3)" }}>
+        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>
+          <span style={{ color:"#FF5A1F" }}>DELIVER</span>FLOW · Daily Report · {drvName}
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={function(){ doprint(true); }} style={{ background:"rgba(255,90,31,.15)", border:"1px solid rgba(255,90,31,.4)", borderRadius:8, padding:"6px 14px", color:"#FF5A1F", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>🖨 Print A4</button>
+          <button onClick={function(){ doprint(false); }} style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.4)", borderRadius:8, padding:"6px 14px", color:"#10B981", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>⬇ Download</button>
+          <button onClick={onClose} style={{ background:"rgba(239,68,68,.15)", border:"1px solid rgba(239,68,68,.3)", borderRadius:8, padding:"6px 14px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>✕ Close</button>
         </div>
       </div>
 
-      <div id="report-print-area" style={{ padding:"12px 14px 40px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#111", maxWidth:"100%", margin:"0 auto", width:"100%" }}>
+      {/* Printable area */}
+      <div id="report-print-area" style={{ padding:"16px 16px 48px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#1e293b", maxWidth:820, margin:"0 auto", width:"100%" }}>
 
-        {/* Header */}
-        <div style={{ background:"linear-gradient(135deg,#0A0F1E,#1a2340)", color:"#fff", borderRadius:12, padding:"16px 18px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
-          <div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:18, fontWeight:800, letterSpacing:-1 }}>Deliver<span style={{ color:"#00D4FF" }}>Flow</span></div>
-            <div style={{ fontSize:11, opacity:.5, marginTop:2 }}>Daily Delivery Report   AMTEL TELECOM FOR GENERAL TRADING CO.</div>
-          </div>
-          <div style={{ textAlign:"right", fontSize:12, opacity:.75, lineHeight:1.8 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>Delivery Boy: {drvName}</div>
-            <div>Date: {date}</div>
-            <div>Generated: {new Date().toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</div>
-            <div>Total Orders: {myOrders.length}</div>
-          </div>
-        </div>
-
-        {/* Order Summary */}
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Order Summary</div>
-        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:8 }}>
-          <SCard label="Total"      value={myOrders.length}       color="#1D4ED8" bg="#EFF6FF" />
-          <SCard label="Delivered"  value={deliveredOrds.length}  color="#059669" bg="#ECFDF5" />
-          <SCard label="Cancelled"  value={cancelledOrds.length}  color="#DC2626" bg="#FEF2F2" />
-          <SCard label="Postponed"  value={postponedOrds.length}  color="#7C3AED" bg="#F5F3FF" />
-          <SCard label="Pending"    value={pendingOrds.length}    color="#D97706" bg="#FFFBEB" />
-          <SCard label="Exchange"   value={exchangeOrds.length}   color="#6B7280" bg="#F3F4F6" />
-          <SCard label="Success"    value={(successRate) + "%"}     color="#1D4ED8" bg="#EFF6FF" />
-        </div>
-
-        {/* Collection Summary */}
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10, marginTop:16 }}>Collection Summary</div>
-        <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0", marginBottom:6 }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", background:"#090B10", padding:"7px 12px" }}>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase" }}>Payment Method</span>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:100, textAlign:"right" }}>Amount (KD)</span>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:70, textAlign:"right" }}>Orders</span>
-          </div>
-          {collectionRows.map((r,i) => (
-            <div key={r.label} style={{ display:"grid", gridTemplateColumns:"1fr auto auto", padding:"8px 12px", background:i%2===0?"#fff":"#F8FAFC", borderTop:"1px solid #F1F5F9" }}>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#111", fontWeight:600, fontSize:13 }}>{r.label}</span>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#111", fontWeight:700, fontSize:13, minWidth:100, textAlign:"right" }}>KD {r.amt.toFixed(3)}</span>
-              <span style={{ color:"#64748B", fontSize:12, minWidth:70, textAlign:"right" }}>{nonExDel.filter(o=>{const p=o.originalPaymentType||o.paymentType; return r.label==="Cash in Hand (COD)"?(p==="Cash"||p==="COD")&&!o.originalPaymentType:r.label==="Split (Cash+Link)"?p?.startsWith("Split"):r.label==="GoCollect (Link)"?p?.includes("GoCollect"):r.label==="Trikart Link"?p?.includes("Trikart Link"):r.label==="WAMD (Link)"?p?.includes("WAMD"):p===r.label}).length}</span>
+        {/* ── HEADER with logo ── */}
+        <div style={{ background:"#090B10", borderRadius:12, padding:"16px 20px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
+          {/* Logo + brand */}
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:44, height:44, background:"linear-gradient(135deg,#FF7A45,#FF3D00)", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg viewBox="0 0 200 200" width={28} height={28}>
+                <polygon points="100,42 154,73 100,104 46,73" fill="white"/>
+                <polygon points="46,73 100,104 100,162 46,131" fill="rgba(255,255,255,0.55)"/>
+                <polygon points="154,73 100,104 100,162 154,131" fill="rgba(255,255,255,0.32)"/>
+                <polygon points="100,42 106,46 106,100 100,104 94,100 94,46" fill="rgba(255,255,255,0.22)"/>
+              </svg>
             </div>
-          ))}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", padding:"9px 12px", background:"#090B10", borderTop:"2px solid #334155" }}>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontWeight:700, fontSize:13 }}>TOTAL COLLECTED</span>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontWeight:800, fontSize:15, minWidth:100, textAlign:"right" }}>KD {grandTotal.toFixed(3)}</span>
-            <span style={{ color:"rgba(255,255,255,.5)", fontSize:12, minWidth:70, textAlign:"right" }}>{nonExDel.length} orders</span>
+            <div>
+              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:20, fontWeight:800, letterSpacing:-0.5, lineHeight:1 }}>
+                <span style={{ color:"#FF5A1F" }}>DELIVER</span><span style={{ color:"#fff" }}>FLOW</span>
+              </div>
+              <div style={{ color:"rgba(255,255,255,.45)", fontSize:10, marginTop:3, letterSpacing:0.5 }}>AMTEL TELECOM FOR GENERAL TRADING CO.</div>
+            </div>
           </div>
-          {totalExpAmt > 0 && (function(){
-            var cashRow = collectionRows.find(function(r){ return r.label === "Cash in Hand (COD)"; });
-            var cashAmt = cashRow ? cashRow.amt : 0;
-            var cashAfterExp = cashAmt - totalExpAmt;
+          {/* Report info */}
+          <div style={{ textAlign:"right", lineHeight:1.7 }}>
+            <div style={{ color:"#FF5A1F", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Daily Delivery Report</div>
+            <div style={{ color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:14, fontWeight:700 }}>{drvName}</div>
+            <div style={{ color:"rgba(255,255,255,.5)", fontSize:10 }}>{date}</div>
+            <div style={{ color:"rgba(255,255,255,.4)", fontSize:10 }}>Generated: {new Date().toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</div>
+          </div>
+        </div>
+
+        {/* ── SUMMARY CARDS ── */}
+        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:10, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #FF5A1F", paddingBottom:3, marginBottom:10 }}>Order Summary</div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          <SCard label="Total Orders"  value={myOrders.length}        color="#0F172A" bg="#F1F5F9" />
+          <SCard label="Delivered"     value={deliveredOrds.length}   color="#059669" bg="#DCFCE7" />
+          <SCard label="Cancelled"     value={cancelledOrds.length}   color="#DC2626" bg="#FEE2E2" />
+          <SCard label="Postponed"     value={postponedOrds.length}   color="#7C3AED" bg="#EDE9FE" />
+          <SCard label="Success Rate"  value={successRate+"%"}        color="#FF5A1F" bg="#FFF7ED" />
+        </div>
+
+        {/* ── COLLECTION SUMMARY ── */}
+        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:10, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #FF5A1F", paddingBottom:3, marginBottom:10 }}>Collection Summary</div>
+        <div style={{ background:"#fff", borderRadius:10, border:"1px solid #E2E8F0", overflow:"hidden", marginBottom:14, pageBreakInside:"avoid" }}>
+          {collectionRows.map(function(r,i){
             return (
-              <div style={{ padding:"9px 12px", background:"#1e3a5f", borderTop:"1px solid #334155" }}>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr auto", marginBottom:4 }}>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.7)", fontSize:12 }}>Cash in Hand (COD)</span>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontWeight:700, fontSize:13 }}>KD {cashAmt.toFixed(3)}</span>
-                </div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr auto", marginBottom:4 }}>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.7)", fontSize:12 }}>Less: Vehicle Expenses</span>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontWeight:700, fontSize:13 }}>- KD {totalExpAmt.toFixed(3)}</span>
-                </div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr auto", borderTop:"1px solid rgba(255,255,255,.2)", paddingTop:6 }}>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontWeight:700, fontSize:13 }}>NET CASH TO RETURN</span>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:cashAfterExp>=0?"#10B981":"#EF4444", fontWeight:800, fontSize:15 }}>KD {cashAfterExp.toFixed(3)}</span>
-                </div>
+              <div key={r.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 14px", background:i%2===0?"#fff":"#F8FAFC", borderBottom:"1px solid #F1F5F9" }}>
+                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, color:"#475569" }}>{r.label}</span>
+                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:13, fontWeight:700, color:"#0F172A" }}>KD {r.amt.toFixed(3)}</span>
+              </div>
+            );
+          })}
+          {collectionRows.length > 0 && (
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", background:"#090B10" }}>
+              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, color:"#fff" }}>TOTAL COLLECTED</span>
+              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:15, fontWeight:800, color:"#FF5A1F" }}>KD {grandTotal.toFixed(3)}</span>
+            </div>
+          )}
+          {(function(){
+            var cashAmt = collectionRows.find(function(r){ return r.label && r.label.toLowerCase().includes("cash"); });
+            var cashOnly = cashAmt ? cashAmt.amt : 0;
+            var cashAfterExp = cashOnly - totalExpAmt;
+            if (cashOnly === 0 && totalExpAmt === 0) return null;
+            return (
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 14px", background:"#FFF7ED", borderTop:"2px solid #FF5A1F" }}>
+                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, color:"#FF5A1F" }}>NET CASH TO RETURN</span>
+                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:14, fontWeight:800, color:cashAfterExp>=0?"#059669":"#DC2626" }}>KD {cashAfterExp.toFixed(3)}</span>
               </div>
             );
           })()}
         </div>
-        {exchangeOrds.length > 0 && <div style={{ background:"#F3F4F6", borderRadius:8, padding:"7px 12px", fontSize:11, color:"#6B7280", marginBottom:4 }}> <strong>{exchangeOrds.length} Exchange order(s)</strong> - No cash collection required</div>}
+        {exchangeOrds.length > 0 && (
+          <div style={{ background:"#F1F5F9", borderRadius:8, padding:"7px 12px", fontSize:11, color:"#6B7280", marginBottom:10 }}>
+            🔄 <strong>{exchangeOrds.length} Exchange order(s)</strong> — No cash collection required
+          </div>
+        )}
 
-        {/* Bill-wise Details - Per Store */}
-        <div style={{ pageBreakBefore:"auto", marginTop:16 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Bill-wise Details</div>
-        <div style={{ display:"flex", gap:8, background:"#090B10", padding:"7px 10px", borderRadius:"10px 10px 0 0", marginBottom:2 }}>
-          {["Date","Invoice No","Customer","OO No.","Total","Extra","Payment","Status","Note"].map(h=>(
-            <span key={h} style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:600, textTransform:"uppercase", flex:h==="Customer"||h==="Note"?2:1, minWidth:0 }}>{h}</span>
-          ))}
+        {/* ── BILL-WISE DETAILS ── */}
+        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:10, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #FF5A1F", paddingBottom:3, marginBottom:10, marginTop:16 }}>Bill-wise Details</div>
+
+        {/* Table header */}
+        <div style={{ display:"flex", gap:6, padding:"7px 10px", background:"#090B10", borderRadius:"8px 8px 0 0", marginBottom:2 }}>
+          {[["Date",52],["Invoice",68],["Customer","2fr"],["OO No.",56],["Total KD",70],["Payment",72],["Status",80],["Note","1fr"]].map(function(h){
+            return <span key={h[0]} style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF5A1F", fontSize:9.5, fontWeight:700, textTransform:"uppercase", minWidth:typeof h[1]==="number"?h[1]:undefined, flex:typeof h[1]==="string"?h[1]:undefined, flexShrink:0 }}>{h[0]}</span>;
+          })}
         </div>
+
         {orderedStores.map(function(store) {
-          const allStoreOrds = myOrders.filter(o=>o.store===store);
+          var allStoreOrds = myOrders.filter(function(o){ return o.store===store; });
           if (!allStoreOrds.length) return null;
-          const sDelOrds  = allStoreOrds.filter(o=>o.status==="delivered" && !isExchange(o.paymentType) && !isExchange(o.originalPaymentType));
-          const sExOrds   = allStoreOrds.filter(o=>isExchange(o.paymentType)||isExchange(o.originalPaymentType));
-          const sCancOrds = allStoreOrds.filter(o=>o.status==="cancelled");
-          const sPostOrds = allStoreOrds.filter(o=>o.status==="postponed");
-          // Only delivered non-exchange orders count toward cash totals
-          const sCash  = sDelOrds.filter(o=>o.paymentType==="Cash"||o.paymentType==="COD").reduce((a,o)=>a+Number(o.total),0);
-          const sKnet  = sDelOrds.filter(o=>o.paymentType==="KNET"||o.paymentType==="Tap/KNET").reduce((a,o)=>a+Number(o.total),0);
-          const sDeema = sDelOrds.filter(o=>o.paymentType==="Deema").reduce((a,o)=>a+Number(o.total),0);
-          const sTabby = sDelOrds.filter(o=>o.paymentType==="Tabby").reduce((a,o)=>a+Number(o.total),0);
-          const sVisa  = sDelOrds.filter(o=>o.paymentType==="VISA/Mastercard").reduce((a,o)=>a+Number(o.total),0);
-          const sLink  = sDelOrds.filter(o=>o.paymentType==="GoCollect"||o.paymentType?.includes("Link")||o.paymentType?.includes("WAMD")||o.paymentType?.includes("Trikart Link")).reduce((a,o)=>a+Number(o.total),0);
-          const sSplit = sDelOrds.filter(o=>o.paymentType?.startsWith("Split")).reduce((a,o)=>a+Number(o.total),0);
-          const sExtra = allStoreOrds.filter(o=>o.extraAmount>0).reduce((a,o)=>a+Number(o.extraAmount||0),0);
-          const sTotal = sCash+sKnet+sDeema+sTabby+sVisa+sLink+sSplit;
-          const sTotalWithExtra = sTotal + sExtra;
+          var sDelOrds  = allStoreOrds.filter(function(o){ return o.status==="delivered" && !isExchange(o.paymentType) && !isExchange(o.originalPaymentType); });
+          var sExOrds   = allStoreOrds.filter(function(o){ return isExchange(o.paymentType)||isExchange(o.originalPaymentType); });
+          var sCancOrds = allStoreOrds.filter(function(o){ return o.status==="cancelled"; });
+          var sPostOrds = allStoreOrds.filter(function(o){ return o.status==="postponed"; });
+          var sCash  = sDelOrds.filter(function(o){ return o.paymentType==="Cash"||o.paymentType==="COD"; }).reduce(function(a,o){ return a+Number(o.total); },0);
+          var sKnet  = sDelOrds.filter(function(o){ return o.paymentType==="KNET"||o.paymentType==="Tap/KNET"; }).reduce(function(a,o){ return a+Number(o.total); },0);
+          var sDeema = sDelOrds.filter(function(o){ return o.paymentType==="Deema"; }).reduce(function(a,o){ return a+Number(o.total); },0);
+          var sTabby = sDelOrds.filter(function(o){ return o.paymentType==="Tabby"; }).reduce(function(a,o){ return a+Number(o.total); },0);
+          var sTaly  = sDelOrds.filter(function(o){ return o.paymentType==="Taly"; }).reduce(function(a,o){ return a+Number(o.total); },0);
+          var sVisa  = sDelOrds.filter(function(o){ return o.paymentType==="VISA/Mastercard"; }).reduce(function(a,o){ return a+Number(o.total); },0);
+          var sLink  = sDelOrds.filter(function(o){ return o.paymentType==="GoCollect"||o.paymentType?.includes("Link")||o.paymentType?.includes("WAMD"); }).reduce(function(a,o){ return a+Number(o.total); },0);
+          var sExtra = allStoreOrds.filter(function(o){ return o.extraAmount>0; }).reduce(function(a,o){ return a+Number(o.extraAmount||0); },0);
+          var sTotal = sCash+sKnet+sDeema+sTabby+sTaly+sVisa+sLink;
           return (
-            <div key={store} style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:10, overflow:"hidden", marginBottom:10, pageBreakInside:"avoid" }}>
-              {/* Store header */}
-              <div style={{ background:"#1e293b", padding:"8px 10px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontWeight:700, fontSize:13 }}>{store}</span>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11 }}>
-                  {sDelOrds.length} delivered  {sCancOrds.length > 0 ? "  "+sCancOrds.length+" cancelled" : ""}  {sPostOrds.length > 0 ? "  "+sPostOrds.length+" postponed" : ""}  {sExOrds.length > 0 ? "  "+sExOrds.length+" exchange" : ""}
+            <div key={store} style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:8, overflow:"hidden", marginBottom:10, pageBreakInside:"avoid" }}>
+              <div style={{ background:"#090B10", padding:"8px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF5A1F", fontWeight:700, fontSize:12 }}>{store}</span>
+                <span style={{ color:"rgba(255,255,255,.45)", fontSize:10 }}>
+                  {sDelOrds.length} delivered{sCancOrds.length>0?" · "+sCancOrds.length+" cancelled":""}{sPostOrds.length>0?" · "+sPostOrds.length+" postponed":""}{sExOrds.length>0?" · "+sExOrds.length+" exchange":""}
                 </span>
               </div>
-              {/* Delivered orders */}
-              {sDelOrds.length > 0 && (
-                <div>
-                  <div style={{ background:"#ECFDF5", padding:"4px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#059669", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Delivered</div>
-                  {sDelOrds.map((o,idx) => <OrderRow key={o.invoiceNo} o={o} i={idx} statusBg={statusBg} statusColor={statusColor} />)}
+              {sDelOrds.length>0 && (<div><div style={{ background:"#DCFCE7", padding:"3px 10px", color:"#059669", fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Delivered</div>{sDelOrds.map(function(o,i){ return <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />; })}</div>)}
+              {sExOrds.length>0 && (<div><div style={{ background:"#F1F5F9", padding:"3px 10px", color:"#6B7280", fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Exchange</div>{sExOrds.map(function(o,i){ return <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />; })}</div>)}
+              {sCancOrds.length>0 && (<div><div style={{ background:"#FEE2E2", padding:"3px 10px", color:"#DC2626", fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Cancelled</div>{sCancOrds.map(function(o,i){ return <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />; })}</div>)}
+              {sPostOrds.length>0 && (<div><div style={{ background:"#EDE9FE", padding:"3px 10px", color:"#7C3AED", fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Postponed</div>{sPostOrds.map(function(o,i){ return <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />; })}</div>)}
+              {/* Store payment breakdown */}
+              <div style={{ background:"#F8FAFC", padding:"8px 12px", borderTop:"1px solid #E2E8F0", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 14px" }}>
+                  {sCash>0  && <span style={{ fontSize:10, color:"#059669" }}>Cash <strong>KD {sCash.toFixed(3)}</strong></span>}
+                  {sKnet>0  && <span style={{ fontSize:10, color:"#1B3A8C" }}>KNET <strong>KD {sKnet.toFixed(3)}</strong></span>}
+                  {sDeema>0 && <span style={{ fontSize:10, color:"#C0596A" }}>Deema <strong>KD {sDeema.toFixed(3)}</strong></span>}
+                  {sTabby>0 && <span style={{ fontSize:10, color:"#059669" }}>Tabby <strong>KD {sTabby.toFixed(3)}</strong></span>}
+                  {sTaly>0  && <span style={{ fontSize:10, color:"#2D6FD4" }}>Taly <strong>KD {sTaly.toFixed(3)}</strong></span>}
+                  {sVisa>0  && <span style={{ fontSize:10, color:"#1E2D6B" }}>VISA/MC <strong>KD {sVisa.toFixed(3)}</strong></span>}
+                  {sLink>0  && <span style={{ fontSize:10, color:"#7C3AED" }}>Link <strong>KD {sLink.toFixed(3)}</strong></span>}
+                  {sExtra>0 && <span style={{ fontSize:10, color:"#EA580C" }}>⚡ Extra <strong>KD {sExtra.toFixed(3)}</strong></span>}
                 </div>
-              )}
-              {/* Exchange orders */}
-              {sExOrds.length > 0 && (
-                <div>
-                  <div style={{ background:"#F3F4F6", padding:"4px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#6B7280", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Exchange (No Cash)</div>
-                  {sExOrds.map((o,idx) => <OrderRow key={o.invoiceNo} o={o} i={idx} statusBg={statusBg} statusColor={statusColor} />)}
-                </div>
-              )}
-              {/* Cancelled orders */}
-              {sCancOrds.length > 0 && (
-                <div>
-                  <div style={{ background:"#FEF2F2", padding:"4px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#DC2626", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Cancelled</div>
-                  {sCancOrds.map((o,idx) => <OrderRow key={o.invoiceNo} o={o} i={idx} statusBg={statusBg} statusColor={statusColor} />)}
-                </div>
-              )}
-              {/* Postponed orders */}
-              {sPostOrds.length > 0 && (
-                <div>
-                  <div style={{ background:"#F5F3FF", padding:"4px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#7C3AED", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Postponed</div>
-                  {sPostOrds.map((o,idx) => <OrderRow key={o.invoiceNo} o={o} i={idx} statusBg={statusBg} statusColor={statusColor} />)}
-                </div>
-              )}
-              {/* Payment breakdown - only delivered non-exchange */}
-              <div style={{ background:"#F8FAFC", padding:"8px 10px", borderTop:"1px solid #E2E8F0" }}>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 16px", marginBottom:4 }}>
-                  {sCash>0  && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#059669" }}>Cash: <strong>KD {sCash.toFixed(3)}</strong></span>}
-                  {sKnet>0  && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#0284C7" }}>KNET: <strong>KD {sKnet.toFixed(3)}</strong></span>}
-                  {sDeema>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#7C3AED" }}>Deema: <strong>KD {sDeema.toFixed(3)}</strong></span>}
-                  {sTabby>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#D97706" }}>Tabby: <strong>KD {sTabby.toFixed(3)}</strong></span>}
-                  {sVisa>0  && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#DC2626" }}>VISA/MC: <strong>KD {sVisa.toFixed(3)}</strong></span>}
-                  {sLink>0  && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#0891B2" }}>Link: <strong>KD {sLink.toFixed(3)}</strong></span>}
-                  {sSplit>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#6B7280" }}>Split: <strong>KD {sSplit.toFixed(3)}</strong></span>}
-                  {sExtra>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#EA580C" }}>⚡ Extra: <strong>KD {sExtra.toFixed(3)}</strong></span>}
-                </div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, color:"#0F172A", textAlign:"right" }}>
-                  Store Total (Delivered): KD {sTotalWithExtra.toFixed(3)}
-                  {sExtra>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, color:"#EA580C", marginLeft:6, fontWeight:400 }}>(incl. KD {sExtra.toFixed(3)} extra)</span>}
+                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, color:"#0F172A" }}>
+                  Store Total: KD {(sTotal+sExtra).toFixed(3)}
                 </div>
               </div>
             </div>
           );
         })}
 
-        </div>{/* end bill-wise section */}
-
-        {/* Commission & Expenses */}
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10, marginTop:16 }}>Commission &amp; Expenses</div>
+        {/* ── COMMISSION & EXPENSES ── */}
+        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:10, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #FF5A1F", paddingBottom:3, marginBottom:10, marginTop:16 }}>Commission &amp; Expenses</div>
         <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
-          <SCard label={comm.earned?"Commission (" + (comm.eligible) + " orders x KD 0.250)":"Commission (not yet earned)"} value={comm.earned?"KD " + (comm.amount.toFixed(3)):"-"} color={comm.earned?"#059669":"#D97706"} bg={comm.earned?"#ECFDF5":"#FFFBEB"} />
-          <SCard label="Vehicle Expenses" value={totalExpAmt>0?"- KD " + (totalExpAmt.toFixed(3)):"None"} color="#DC2626" bg="#FEF2F2" />
-          <SCard label="Net (Collected + Comm - Exp)" value={"KD " + ((grandTotal+(comm.earned?comm.amount:0)-totalExpAmt).toFixed(3))} color="#1D4ED8" bg="#EFF6FF" />
+          <SCard label={comm.earned?"Commission ("+comm.eligible+" orders × KD 0.250)":"Commission (not yet earned)"} value={comm.earned?"KD "+comm.amount.toFixed(3):"-"} color={comm.earned?"#059669":"#D97706"} bg={comm.earned?"#DCFCE7":"#FEF3C7"} />
+          <SCard label="Vehicle Expenses" value={totalExpAmt>0?"- KD "+totalExpAmt.toFixed(3):"None"} color="#DC2626" bg="#FEE2E2" />
+          <SCard label="Net Total (Collected + Comm − Exp)" value={"KD "+(grandTotal+(comm.earned?comm.amount:0)-totalExpAmt).toFixed(3)} color="#FF5A1F" bg="#FFF7ED" />
         </div>
+
         {myExpenses.length > 0 && (
-          <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", background:"#090B10", padding:"7px 12px" }}>
-              {["Type","Amount","Note","Time"].map(h=><span key={h} style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:600 }}>{h}</span>)}
+          <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0", marginBottom:12 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", background:"#090B10", padding:"7px 14px" }}>
+              {["Type","Amount","Note","Time"].map(function(h){ return <span key={h} style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF5A1F", fontSize:9.5, fontWeight:700, textTransform:"uppercase" }}>{h}</span>; })}
             </div>
-            {myExpenses.map((e,i)=>(
-              <div key={e.id||i} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", padding:"7px 12px", background:i%2===0?"#fff":"#F8FAFC", borderTop:"1px solid #F1F5F9", fontSize:12 }}>
-                <span style={{ fontWeight:600, color:"#DC2626" }}>{e.type}</span>
-                <span style={{ fontWeight:700, color:"#DC2626" }}>- KD {Number(e.amount).toFixed(3)}</span>
-                <span style={{ color:"#64748B" }}>{e.note||"-"}</span>
-                <span style={{ color:"#94A3B8", fontSize:11 }}>{new Date(e.createdAt).toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</span>
-              </div>
-            ))}
+            {myExpenses.map(function(e,i){
+              return (
+                <div key={e.id||i} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", padding:"7px 14px", background:i%2===0?"#fff":"#F8FAFC", borderTop:"1px solid #F1F5F9", fontSize:11 }}>
+                  <span style={{ fontWeight:600, color:"#DC2626" }}>{e.type}</span>
+                  <span style={{ fontWeight:700, color:"#DC2626" }}>- KD {Number(e.amount).toFixed(3)}</span>
+                  <span style={{ color:"#64748B" }}>{e.note||"-"}</span>
+                  <span style={{ color:"#94A3B8", fontSize:10 }}>{new Date(e.createdAt).toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</span>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {/* Footer */}
-        <div style={{ marginTop:24, paddingTop:10, borderTop:"1px solid #E2E8F0", textAlign:"center", fontSize:11, color:"#94A3B8" }}>
-          DeliverFlow   AMTEL TELECOM FOR GENERAL TRADING CO.   {myOrders.length} orders   {date}
+        {/* ── FOOTER ── */}
+        <div style={{ marginTop:24, paddingTop:12, borderTop:"2px solid #090B10", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:24, height:24, background:"linear-gradient(135deg,#FF7A45,#FF3D00)", borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg viewBox="0 0 200 200" width={14} height={14}>
+                <polygon points="100,42 154,73 100,104 46,73" fill="white"/>
+                <polygon points="46,73 100,104 100,162 46,131" fill="rgba(255,255,255,0.6)"/>
+                <polygon points="154,73 100,104 100,162 154,131" fill="rgba(255,255,255,0.35)"/>
+              </svg>
+            </div>
+            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700 }}>
+              <span style={{ color:"#FF5A1F" }}>DELIVER</span>FLOW
+            </span>
+            <span style={{ fontSize:10, color:"#94A3B8" }}>· AMTEL TELECOM FOR GENERAL TRADING CO.</span>
+          </div>
+          <span style={{ fontSize:10, color:"#94A3B8" }}>{myOrders.length} orders · {date}</span>
         </div>
+
       </div>
     </div>
   );
