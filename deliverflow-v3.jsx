@@ -1010,6 +1010,7 @@ function ManualOrderForm({ onAdd, driverList }) {
 
   function submit() {
     if (!invoiceNo.trim()) { setErr("Invoice number required"); return; }
+    if (!ooNo.trim()) { setErr("Online Order No is required"); return; }
     if (!total || isNaN(total) || Number(total) <= 0) { setErr("Valid amount required"); return; }
     if (!driver) { setErr("Select a driver"); return; }
     setErr("");
@@ -1096,7 +1097,7 @@ function ManualOrderForm({ onAdd, driverList }) {
       {/* Fields */}
       {[
         ["Invoice No *", invoiceNo, setInv, "text", "e.g. 1163999"],
-        ["Online Order No", ooNo, setOoNo, "text", "e.g. 26999 or 75999"],
+        ["Online Order No *", ooNo, setOoNo, "text", "e.g. 26999 or 75999"],
         ["Customer Name", customer, setCust, "text", "Customer name"],
         ["Address", address, setAddr, "text", "Delivery address"],
       ].map(function(f){
@@ -2153,6 +2154,7 @@ function DriverManualOrderForm({ driverId, onAdd }) {
 
   function submit() {
     if (!invoiceNo.trim()) { setErr("Invoice number required"); return; }
+    if (!ooNo.trim()) { setErr("Online Order No is required"); return; }
     if (!total || isNaN(total) || Number(total) <= 0) { setErr("Valid amount required"); return; }
     setErr("");
     var finalStore = store === "Other" ? (customStoreName.trim() || "Other Store") : store;
@@ -2228,7 +2230,7 @@ function DriverManualOrderForm({ driverId, onAdd }) {
       {/* Fields */}
       {[
         ["Invoice No *", invoiceNo, setInv, "text", "e.g. 1163999"],
-        ["OO No.", ooNo, setOoNo, "text", "Online Order No"],
+        ["OO No. *", ooNo, setOoNo, "text", "Online Order No"],
         ["Customer", customer, setCust, "text", "Customer name"],
         ["Address", address, setAddr, "text", "Delivery address"],
       ].map(function(f){
