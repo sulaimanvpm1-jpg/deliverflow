@@ -542,7 +542,8 @@ function parseSAPDeliveryText(rawText) {
 
 
   // Try-extract OO — returns {num, payHint} or null
-  // ReStore and GadgetPro have NO real OO numbers — 6-digit there = phone fragment
+  // For ReStore/GadgetPro: OO IS the last 6 digits of the mobile number (6-digit, no suffix)
+  // For other stores: reject 6-digit with no suffix (= phone fragment leaked into OO column)
   function tryExtractOO(candidate, store) {
     if (!candidate) return null;
     const s = candidate.trim();
@@ -559,7 +560,12 @@ function parseSAPDeliveryText(rawText) {
     else if (/\/vmc\b|visa|mastercard/.test(ooRest)) payHint = "VISA/Mastercard";
     else if (/\/taly\b|taly/.test(ooRest))          payHint = "Taly";
     else if (/\/wamd\b|wamd/.test(ooRest))          payHint = "WAMD";
-    // Reject 6-digit with no hint = phone fragment (last 6 digits of mobile like 468710, 636836)
+    // ReStore & GadgetPro: their OO numbers ARE 6-digit (last 6 of mobile) — accept them
+    const isRestoreOrGadget = /restore|gadgetpro/i.test(store || "");
+    if (isRestoreOrGadget && ooNum.length === 6 && payHint === null) {
+      return { num: ooNum, payHint: null };
+    }
+    // Other stores: reject bare 6-digit = phone fragment (468710, 636836 etc.)
     if (ooNum.length === 6 && payHint === null) return null;
     return { num: ooNum, payHint };
   }
