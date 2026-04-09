@@ -26,13 +26,13 @@
       --warn:    #FBBF24;
       --danger:  #EF4444;
     }
-    html,body {
+    html,body,#root {
       height:100%; background:var(--bg); overflow:hidden;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
     }
     #root{height:100%;width:100%;display:flex;justify-content:center}
     #loading{
-      position:fixed;inset:0;background:var(--bg);
+      position:fixed;inset:0;background:var(--bg);min-height:100dvh;
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       color:#fff;z-index:9999;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
