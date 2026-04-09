@@ -3739,8 +3739,11 @@ function ReportPreview({ data, onClose }) {
   function doprint(autoprint) {
     var pri = document.getElementById("report-print-area");
     if (!pri) return;
-    var today = new Date().toLocaleDateString("en-KW",{day:"2-digit",month:"2-digit",year:"numeric"}).replace(/\//g,"-");
-    var fileName = "Report - " + drvName + " - " + today;
+    var now = new Date();
+    var dd = String(now.getDate()).padStart(2,"0");
+    var mm = String(now.getMonth()+1).padStart(2,"0");
+    var yy = String(now.getFullYear()).slice(2);
+    var fileName = "Report " + drvName + " " + dd + "-" + mm + "-" + yy;
     var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fileName+'</title><style>'+printCSS+'</style></head><body>' + pri.innerHTML + (autoprint?'<script>window.onload=function(){window.print();}<\/script>':'') + '</body></html>';
     var blob = new Blob([html],{type:"text/html;charset=utf-8"});
     var url = URL.createObjectURL(blob);
@@ -3751,9 +3754,14 @@ function ReportPreview({ data, onClose }) {
       ifr.onload = function(){ try{ifr.contentWindow.focus();ifr.contentWindow.print();}catch(e){} setTimeout(function(){document.body.removeChild(ifr);URL.revokeObjectURL(url);},2000); };
       ifr.src = url;
     } else {
-      var w = window.open(url,"_blank");
-      if (!w) { var a=document.createElement("a");a.href=url;a.download=fileName+".html";document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},500); }
-      else { setTimeout(function(){URL.revokeObjectURL(url);},5000); }
+      // Direct download — no popup blocker, triggers Save dialog immediately
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = fileName + ".html";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
     }
   }
 
