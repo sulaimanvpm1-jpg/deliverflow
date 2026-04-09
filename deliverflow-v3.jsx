@@ -8,11 +8,34 @@ import { useState, useEffect, useRef, useCallback } from "react";
  */
 
 const PULSE_CSS = `@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0.7} }`;
-// System fonts — SF Pro on iOS/Mac, Google Sans on Android, Segoe UI on Windows
-// Zero loading time, clean modern look on every device
+// DeliverFlow v4 Typography System (from design PDF)
+// Clash Display  → headings, brand wordmark, large numbers
+// Plus Jakarta Sans → body text, labels, UI copy
+// Geist Mono → invoice nos, KD amounts, codes, order data
 const FONT = `
-  :root { font-synthesis: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-  * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }
+  @import url('https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap');
+  :root {
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    --font-display: 'Clash Display', system-ui, sans-serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'Geist Mono', 'SF Mono', monospace;
+    --bg:      #090B10;
+    --s1:      #0F1218;
+    --s2:      #161B24;
+    --orange:  #FF5A1F;
+    --orange2: #FF3D00;
+    --green:   #22C55E;
+    --blue:    #38BDF8;
+    --warn:    #FBBF24;
+    --danger:  #EF4444;
+  }
+  * { font-family: var(--font-body); }
+  /* Geist Mono for data elements */
+  .df-mono { font-family: var(--font-mono) !important; }
+  .df-display { font-family: var(--font-display) !important; }
 `;
 
 /*  Drivers  */
@@ -397,16 +420,16 @@ function uid() { return Math.random().toString(36).slice(2,9).toUpperCase(); }
 /*  Shared UI  */
 const Badge = ({ status }) => {
   const c = STATUS_CFG[status] || STATUS_CFG.pending;
-  return <span style={{ background:c.bg, color:c.color, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", whiteSpace:"nowrap" }}>{c.icon} {c.label}</span>;
+  return <span style={{ background:c.bg, color:c.color, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600, fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", whiteSpace:"nowrap" }}>{c.icon} {c.label}</span>;
 };
 const Pill = ({ label, active, onClick, count }) => (
-  <button onClick={onClick} style={{ background:active?"#00D4FF":"rgba(255,255,255,.07)", color:active?"#0D0D0D":"rgba(255,255,255,.6)", border:"none", borderRadius:20, padding:"6px 14px", fontSize:12, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontWeight:active?600:400, cursor:"pointer", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:5 }}>
+  <button onClick={onClick} style={{ background:active?"#00D4FF":"rgba(255,255,255,.07)", color:active?"#090B10":"rgba(255,255,255,.6)", border:"none", borderRadius:20, padding:"6px 14px", fontSize:12, fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontWeight:active?600:400, cursor:"pointer", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:5 }}>
     {label}{count!==undefined&&<span style={{background:active?"rgba(0,0,0,.15)":"rgba(255,255,255,.15)",borderRadius:10,padding:"1px 6px",fontSize:10}}>{count}</span>}
   </button>
 );
 const Toast = ({ msg, toastKind="info" }) => {
   const c2 = { info:"rgba(0,212,255,.9)", success:"rgba(16,185,129,.9)", warn:"rgba(245,158,11,.9)", error:"rgba(239,68,68,.9)" }[toastKind] || "rgba(0,212,255,.9)";
-  return <div style={{ position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", background:c2, borderRadius:30, padding:"10px 20px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, zIndex:400, whiteSpace:"nowrap", boxShadow:"0 8px 32px rgba(0,0,0,.4)", animation:"fadeIn .3s" }}>{msg}</div>;
+  return <div style={{ position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", background:c2, borderRadius:30, padding:"10px 20px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13, zIndex:400, whiteSpace:"nowrap", boxShadow:"0 8px 32px rgba(0,0,0,.4)", animation:"fadeIn .3s" }}>{msg}</div>;
 };
 
 /*  PDF Upload & Parse (uses Anthropic API)  */
@@ -796,8 +819,8 @@ setProgress("Found " + result.orders.length + " orders for " + (result.driverNam
 
   return (
     <div style={{ background:"rgba(255,255,255,.04)", border:"1.5px dashed rgba(0,212,255,.35)", borderRadius:18, padding:24 }}>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:16, fontWeight:700, marginBottom:4 }}> Upload Delivery PDF</div>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginBottom:18 }}>SAP Business One   Bill-wise Details report</div>
+      <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:16, fontWeight:700, marginBottom:4 }}> Upload Delivery PDF</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginBottom:18 }}>SAP Business One   Bill-wise Details report</div>
 
       <input ref={fileRef} type="file" accept="application/pdf" style={{ display:"none" }} onChange={e => handleFile(e.target.files[0])} />
 
@@ -808,24 +831,24 @@ setProgress("Found " + result.orders.length + " orders for " + (result.driverNam
         {parsing ? (
           <div>
             <div style={{ fontSize:32, marginBottom:10, animation:"spin 1s linear infinite", display:"inline-block" }}></div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:14 }}>{progress}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:14 }}>{progress}</div>
           </div>
         ) : file ? (
           <div>
             <div style={{ fontSize:32, marginBottom:8 }}></div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:14, fontWeight:700 }}>{file.name}</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:4 }}>{progress || "Click to upload a different file"}</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:14, fontWeight:700 }}>{file.name}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:4 }}>{progress || "Click to upload a different file"}</div>
           </div>
         ) : (
           <div>
             <div style={{ fontSize:40, marginBottom:10 }}></div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:600 }}>Drop PDF here or click to browse</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:6 }}>Supports SAP Business One delivery reports</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:600 }}>Drop PDF here or click to browse</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:6 }}>Supports SAP Business One delivery reports</div>
           </div>
         )}
       </div>
 
-      {error && <div style={{ background:"rgba(245,158,11,.1)", border:"1px solid rgba(245,158,11,.3)", borderRadius:10, padding:"10px 12px", marginTop:10, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#F59E0B", fontSize:13 }}> {error}</div>}
+      {error && <div style={{ background:"rgba(245,158,11,.1)", border:"1px solid rgba(245,158,11,.3)", borderRadius:10, padding:"10px 12px", marginTop:10, fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#F59E0B", fontSize:13 }}> {error}</div>}
 
 
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
@@ -932,7 +955,7 @@ function LabelScanner({ onExtracted, onError }) {
           border: "1.5px solid rgba(0,212,255,.35)",
           borderRadius:10, padding:"8px 14px",
           color: scanning ? "rgba(0,212,255,.5)" : "#00D4FF",
-          fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, fontWeight:600,
+          fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, fontWeight:600,
           cursor: scanning ? "default" : "pointer",
           whiteSpace:"nowrap", flexShrink:0,
           transition:"opacity .2s",
@@ -1018,7 +1041,7 @@ function ManualOrderForm({ onAdd, driverList }) {
   if (!show) return (
     <div style={{ display:"flex", gap:8, marginBottom:12 }}>
       <button onClick={function(){ setShow(true); }}
-        style={{ flex:1, background:"rgba(255,107,53,.08)", border:"1px dashed rgba(255,107,53,.4)", borderRadius:12, padding:"12px", color:"#FF6B35", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+        style={{ flex:1, background:"rgba(255,90,31,.08)", border:"1px dashed rgba(255,90,31,.4)", borderRadius:12, padding:"12px", color:"#FF5A1F", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>
         + Add Manual Order
       </button>
       <LabelScanner
@@ -1029,9 +1052,9 @@ function ManualOrderForm({ onAdd, driverList }) {
   );
 
   return (
-    <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,107,53,.3)", borderRadius:14, padding:16, marginBottom:14 }}>
+    <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,90,31,.3)", borderRadius:14, padding:16, marginBottom:14 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:14, fontWeight:800 }}>Manual Order Entry</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:14, fontWeight:800 }}>Manual Order Entry</div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <LabelScanner
             onExtracted={fillFromScan}
@@ -1041,33 +1064,33 @@ function ManualOrderForm({ onAdd, driverList }) {
         </div>
       </div>
       {scanMsg && (
-        <div style={{ background: scanMsg.startsWith("✅") ? "rgba(16,185,129,.1)" : "rgba(239,68,68,.1)", border:"1px solid " + (scanMsg.startsWith("✅") ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"), borderRadius:10, padding:"8px 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, color: scanMsg.startsWith("✅") ? "#10B981" : "#EF4444", marginBottom:12 }}>
+        <div style={{ background: scanMsg.startsWith("✅") ? "rgba(16,185,129,.1)" : "rgba(239,68,68,.1)", border:"1px solid " + (scanMsg.startsWith("✅") ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"), borderRadius:10, padding:"8px 12px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, color: scanMsg.startsWith("✅") ? "#10B981" : "#EF4444", marginBottom:12 }}>
           {scanMsg}
         </div>
       )}
 
       {/* Store */}
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>STORE</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>STORE</div>
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
         {["Trikart Online","Webstore Online","ReStore Online","Other"].map(function(s){
           return <button key={s} onClick={function(){ setStore(s); if(s!=="Other") setCustomStoreName(""); }}
-            style={{ background:store===s?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:store===s?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", color:store===s?"#00D4FF":"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>{s}</button>;
+            style={{ background:store===s?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:store===s?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", color:store===s?"#00D4FF":"rgba(255,255,255,.6)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>{s}</button>;
         })}
       </div>
       {store === "Other" && (
         <div style={{ marginBottom:12 }}>
           <input type="text" value={customStoreName} onChange={function(e){ setCustomStoreName(e.target.value); }}
             placeholder="Enter store name..."
-            style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"9px 12px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }} />
+            style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"9px 12px", color:"#00D4FF", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }} />
         </div>
       )}
 
       {/* Driver */}
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>ASSIGN TO DRIVER</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>ASSIGN TO DRIVER</div>
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
         {driverList.map(function(d){
           return <button key={d.id} onClick={function(){ setDriver(d.id); }}
-            style={{ background:driver===d.id?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:driver===d.id?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", color:driver===d.id?"#00D4FF":"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>{d.name}</button>;
+            style={{ background:driver===d.id?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:driver===d.id?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", color:driver===d.id?"#00D4FF":"rgba(255,255,255,.6)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>{d.name}</button>;
         })}
       </div>
 
@@ -1080,30 +1103,30 @@ function ManualOrderForm({ onAdd, driverList }) {
       ].map(function(f){
         return (
           <div key={f[0]} style={{ marginBottom:10 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>{f[0].toUpperCase()}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>{f[0].toUpperCase()}</div>
             <input type={f[3]} value={f[1]} onChange={function(e){ f[2](e.target.value); }} placeholder={f[4]}
-              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }} />
+              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }} />
           </div>
         );
       })}
 
       {/* Area selector — after address */}
       <div style={{ marginBottom:10 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>AREA (KUWAIT)</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>AREA (KUWAIT)</div>
         <input type="text" value={areaSearch}
           onChange={function(e){ setAreaSearch(e.target.value); setArea(""); }}
           placeholder="Type to search area..."
-          style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:area?"10px 10px 0 0":"10", padding:"10px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none", borderBottom:areaSearch&&!area?"none":"1px solid rgba(255,255,255,.12)" }} />
+          style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:area?"10px 10px 0 0":"10", padding:"10px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none", borderBottom:areaSearch&&!area?"none":"1px solid rgba(255,255,255,.12)" }} />
         {area ? (
           <div style={{ background:"rgba(0,212,255,.1)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"8px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:13, fontWeight:600 }}>{area}</span>
+            <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:13, fontWeight:600 }}>{area}</span>
             <button onClick={function(){ setArea(""); setAreaSearch(""); }} style={{ background:"none", border:"none", color:"rgba(255,255,255,.4)", cursor:"pointer", fontSize:14 }}>✕</button>
           </div>
         ) : areaSearch ? (
           <div style={{ background:"#1A2035", border:"1px solid rgba(255,255,255,.15)", borderRadius:"0 0 10px 10px", maxHeight:160, overflowY:"auto" }}>
             {ALL_AREAS.filter(function(a){ return a.toLowerCase().includes(areaSearch.toLowerCase()); }).slice(0,20).map(function(a){
               return <div key={a} onClick={function(){ setArea(a); setAreaSearch(a); }}
-                style={{ padding:"8px 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.8)", fontSize:12, cursor:"pointer", borderBottom:"1px solid rgba(255,255,255,.05)" }}>{a}</div>;
+                style={{ padding:"8px 12px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.8)", fontSize:12, cursor:"pointer", borderBottom:"1px solid rgba(255,255,255,.05)" }}>{a}</div>;
             })}
           </div>
         ) : null}
@@ -1116,26 +1139,26 @@ function ManualOrderForm({ onAdd, driverList }) {
       ].map(function(f){
         return (
           <div key={f[0]} style={{ marginBottom:10 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>{f[0].toUpperCase()}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>{f[0].toUpperCase()}</div>
             <input type={f[3]} value={f[1]} onChange={function(e){ f[2](e.target.value); }} placeholder={f[4]}
-              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }} />
+              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }} />
           </div>
         );
       })}
 
       {/* Payment */}
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>PAYMENT TYPE</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>PAYMENT TYPE</div>
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:14 }}>
         {MANUAL_PAYS.map(function(p){
           return <button key={p} onClick={function(){ setPay(p); }}
-            style={{ background:pay===p?"rgba(16,185,129,.15)":"rgba(255,255,255,.06)", border:pay===p?"1.5px solid #10B981":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", color:pay===p?"#10B981":"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>{p}</button>;
+            style={{ background:pay===p?"rgba(16,185,129,.15)":"rgba(255,255,255,.06)", border:pay===p?"1.5px solid #10B981":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", color:pay===p?"#10B981":"rgba(255,255,255,.6)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>{p}</button>;
         })}
       </div>
 
-      {err && <div style={{ color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, marginBottom:8 }}>{err}</div>}
+      {err && <div style={{ color:"#EF4444", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, marginBottom:8 }}>{err}</div>}
 
       <button onClick={submit}
-        style={{ width:"100%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:12, padding:"13px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:14, fontWeight:700, cursor:"pointer" }}>
+        style={{ width:"100%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:12, padding:"13px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:14, fontWeight:700, cursor:"pointer" }}>
         Add Order
       </button>
     </div>
@@ -1200,7 +1223,7 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
 
           {allOrders.length > 0 && (
             <div style={{ marginTop:20 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:12 }}>Today&apos;s Assigned Orders</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:12 }}>Today&apos;s Assigned Orders</div>
               {DRIVERS.map(function(d) {
                 var _todayStr = new Date().toDateString();
                 const dOrders = allOrders.filter(function(o) {
@@ -1221,32 +1244,32 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
                 return (
                   <div key={d.id} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:14, padding:14, marginBottom:10 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-                      <div style={{ width:38, height:38, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:800, color:"#fff", fontSize:13 }}>{d.avatar}</div>
+                      <div style={{ width:38, height:38, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:800, color:"#fff", fontSize:13 }}>{d.avatar}</div>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{d.name}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>{dOrders.length} orders</div>
+                        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{d.name}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>{dOrders.length} orders</div>
                       </div>
                       <div style={{ textAlign:"right" }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:14, fontWeight:700 }}>{done}/{dOrders.length}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>delivered</div>
+                        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:14, fontWeight:700 }}>{done}/{dOrders.length}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>delivered</div>
                       </div>
                     </div>
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6 }}>
                       <div style={{ background:"rgba(0,212,255,.12)", borderRadius:10, padding:"6px 4px", textAlign:"center" }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:14, fontWeight:800 }}>{collected}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:9 }}>Collected</div>
+                        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:14, fontWeight:800 }}>{collected}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:9 }}>Collected</div>
                       </div>
                       <div style={{ background:"rgba(16,185,129,.12)", borderRadius:10, padding:"6px 4px", textAlign:"center" }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:14, fontWeight:800 }}>{done}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:9 }}>Delivered</div>
+                        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:14, fontWeight:800 }}>{done}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:9 }}>Delivered</div>
                       </div>
                       <div style={{ background:"rgba(239,68,68,.1)", borderRadius:10, padding:"6px 4px", textAlign:"center" }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:14, fontWeight:800 }}>{cancelled}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:9 }}>Cancelled</div>
+                        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontSize:14, fontWeight:800 }}>{cancelled}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:9 }}>Cancelled</div>
                       </div>
                       <div style={{ background:"rgba(139,92,246,.12)", borderRadius:10, padding:"6px 4px", textAlign:"center" }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#8B5CF6", fontSize:14, fontWeight:800 }}>{postponed}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:9 }}>Postponed</div>
+                        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#8B5CF6", fontSize:14, fontWeight:800 }}>{postponed}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:9 }}>Postponed</div>
                       </div>
                     </div>
                   </div>
@@ -1258,30 +1281,30 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
       ) : (
         <div>
           <div style={{ background:"rgba(0,212,255,.08)", border:"1px solid rgba(0,212,255,.3)", borderRadius:16, padding:16, marginBottom:16 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:15, fontWeight:700 }}>Orders Extracted: {parsed.orders.length}</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:13, marginTop:2 }}>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:15, fontWeight:700 }}>Orders Extracted: {parsed.orders.length}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:13, marginTop:2 }}>
               {parsed.company} &nbsp; Suggested: <strong style={{ color:"#fff" }}>{parsed.driverName}</strong>
             </div>
             <div style={{ display:"flex", gap:12, marginTop:10 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#10B981", fontSize:12 }}>New: {parsed.fresh ? parsed.fresh.length : parsed.orders.length}</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#10B981", fontSize:12 }}>New: {parsed.fresh ? parsed.fresh.length : parsed.orders.length}</div>
               {parsed.dupes && parsed.dupes.length > 0 && (
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#F59E0B", fontSize:12, fontWeight:600 }}>Duplicates: {parsed.dupes.length}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#F59E0B", fontSize:12, fontWeight:600 }}>Duplicates: {parsed.dupes.length}</div>
               )}
             </div>
           </div>
 
           {parsed.dupes && parsed.dupes.length > 0 && (
             <div style={{ background:"rgba(245,158,11,.08)", border:"1px solid rgba(245,158,11,.3)", borderRadius:14, padding:"12px 14px", marginBottom:14 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontSize:13, fontWeight:700, marginBottom:6 }}>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#F59E0B", fontSize:13, fontWeight:700, marginBottom:6 }}>
                 {parsed.dupes.length} Duplicate Order{parsed.dupes.length > 1 ? "s" : ""} Found
               </div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:10, lineHeight:1.5 }}>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:10, lineHeight:1.5 }}>
                 These invoices already exist. They are unchecked by default. You can include them if needed.
               </div>
               <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                 {parsed.dupes.map(function(o) {
                   return (
-                    <span key={o.invoiceNo} style={{ background:"rgba(245,158,11,.15)", border:"1px solid rgba(245,158,11,.3)", borderRadius:20, padding:"3px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#F59E0B", fontSize:11 }}>
+                    <span key={o.invoiceNo} style={{ background:"rgba(245,158,11,.15)", border:"1px solid rgba(245,158,11,.3)", borderRadius:20, padding:"3px 10px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#F59E0B", fontSize:11 }}>
                       #{o.invoiceNo} - {o.customer}
                     </span>
                   );
@@ -1295,20 +1318,20 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
             if (!so.length) return null;
             return (
               <div key={s} style={{ background:"rgba(255,255,255,.03)", borderRadius:10, padding:"8px 12px", marginBottom:6, display:"flex", justifyContent:"space-between" }}>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.7)", fontSize:13 }}>{s}</span>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{so.length} orders</span>
+                <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.7)", fontSize:13 }}>{s}</span>
+                <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:13, fontWeight:700 }}>{so.length} orders</span>
               </div>
             );
           })}
 
           <div style={{ marginTop:16, marginBottom:12 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:8 }}>ASSIGN TO DRIVER</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:8 }}>ASSIGN TO DRIVER</div>
             <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
               {DRIVERS.map(function(d) {
                 return (
                   <button key={d.id} onClick={function() { setAssignTo(d.id); }} style={{ display:"flex", alignItems:"center", gap:8, background:assignTo===d.id?"rgba(0,212,255,.15)":"rgba(255,255,255,.05)", border:assignTo===d.id?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"10px 14px", cursor:"pointer" }}>
-                    <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:800, color:"#fff" }}>{d.avatar}</div>
-                    <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:assignTo===d.id?"#00D4FF":"#fff", fontSize:13, fontWeight:600 }}>{d.name}</span>
+                    <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:11, fontWeight:800, color:"#fff" }}>{d.avatar}</div>
+                    <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:assignTo===d.id?"#00D4FF":"#fff", fontSize:13, fontWeight:600 }}>{d.name}</span>
                   </button>
                 );
               })}
@@ -1316,7 +1339,7 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
           </div>
 
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>{selected.size} of {parsed.orders.length} selected</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>{selected.size} of {parsed.orders.length} selected</div>
             <button onClick={function() {
               if (selectAll) {
                 setSelected(new Set());
@@ -1326,7 +1349,7 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
                 setSelected(s);
               }
               setSelectAll(function(v) { return !v; });
-            }} style={{ background:"none", border:"none", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>
+            }} style={{ background:"none", border:"none", color:"#00D4FF", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>
               {selectAll ? "Deselect All" : "Select All"}
             </button>
           </div>
@@ -1341,13 +1364,13 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
                     {selected.has(i) ? "v" : ""}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:500 }}>{o.customer}</div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>#{o.invoiceNo} · {o.store}</div>
-                    {o.onlineOrderNo ? <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700 }}>Online Order: {o.onlineOrderNo}</div> : null}
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:500 }}>{o.customer}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>#{o.invoiceNo} · {o.store}</div>
+                    {o.onlineOrderNo ? <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700 }}>Online Order: {o.onlineOrderNo}</div> : null}
                   </div>
                   <div style={{ textAlign:"right", flexShrink:0 }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(o.total)}</div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10 }}><PaymentBadge payType={o.paymentType} small /></div>
+                    <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:13, fontWeight:700 }}>{fmt(o.total)}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10 }}><PaymentBadge payType={o.paymentType} small /></div>
                   </div>
                 </div>
               );
@@ -1355,9 +1378,9 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
           </div>
 
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={function() { setParsed(null); setSelected(new Set()); }} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", cursor:"pointer" }}>Back</button>
+            <button onClick={function() { setParsed(null); setSelected(new Set()); }} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", cursor:"pointer" }}>Back</button>
             <button onClick={handleAssign} disabled={!assignTo || selected.size===0}
-              style={{ flex:2, background:assignTo&&selected.size>0?"linear-gradient(135deg,#00D4FF,#7C3AED)":"rgba(255,255,255,.1)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:assignTo?"pointer":"default" }}>
+              style={{ flex:2, background:assignTo&&selected.size>0?"linear-gradient(135deg,#00D4FF,#7C3AED)":"rgba(255,255,255,.1)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:assignTo?"pointer":"default" }}>
               Assign {selected.size} Orders
             </button>
           </div>
@@ -1397,7 +1420,7 @@ function AdminOrdersTab({ orders, onStatusUpdate, onRemoveOrder }) {
   return (
     <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search customer, invoice, order no..."
-        style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 16px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:14, marginBottom:12, boxSizing:"border-box", outline:"none" }} />
+        style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 16px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:14, marginBottom:12, boxSizing:"border-box", outline:"none" }} />
 
       <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:2 }}>
         <Pill label="All Drivers" active={driverFilter==="all"} onClick={() => setDriverFilter("all")} />
@@ -1412,32 +1435,32 @@ function AdminOrdersTab({ orders, onStatusUpdate, onRemoveOrder }) {
         )})}
       </div>
 
-      <div style={{ background:"rgba(255,107,53,.08)", border:"1px solid rgba(255,107,53,.2)", borderRadius:12, padding:"10px 14px", marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:13 }}>Showing {filtered.length} orders</span>
-        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:14, fontWeight:700 }}>{fmt(totalKD)}</span>
+      <div style={{ background:"rgba(255,90,31,.08)", border:"1px solid rgba(255,90,31,.2)", borderRadius:12, padding:"10px 14px", marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:13 }}>Showing {filtered.length} orders</span>
+        <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:14, fontWeight:700 }}>{fmt(totalKD)}</span>
       </div>
 
       {/* Bulk remove toolbar */}
       <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:10, gap:6 }}>
         {!selectMode ? (
           <button onClick={function(){ setSelectMode(true); setSelected(new Set()); }}
-            style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:8, padding:"4px 14px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>
+            style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:8, padding:"4px 14px", color:"#EF4444", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>
             Select to Remove
           </button>
         ) : (
           <>
             <button onClick={function(){ setSelected(new Set(filtered.map(function(o){ return o.id||o.invoiceNo; }))); }}
-              style={{ background:"rgba(255,255,255,.07)", border:"none", borderRadius:8, padding:"4px 10px", color:"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>
+              style={{ background:"rgba(255,255,255,.07)", border:"none", borderRadius:8, padding:"4px 10px", color:"rgba(255,255,255,.6)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>
               Select All
             </button>
             {selected.size > 0 && (
               <button onClick={removeSelected}
-                style={{ background:"rgba(239,68,68,.2)", border:"1px solid rgba(239,68,68,.4)", borderRadius:8, padding:"4px 12px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                style={{ background:"rgba(239,68,68,.2)", border:"1px solid rgba(239,68,68,.4)", borderRadius:8, padding:"4px 12px", color:"#EF4444", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, fontWeight:600, cursor:"pointer" }}>
                 Remove ({selected.size})
               </button>
             )}
             <button onClick={function(){ setSelectMode(false); setSelected(new Set()); }}
-              style={{ background:"none", border:"1px solid rgba(255,255,255,.1)", borderRadius:8, padding:"4px 10px", color:"rgba(255,255,255,.4)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>
+              style={{ background:"none", border:"1px solid rgba(255,255,255,.1)", borderRadius:8, padding:"4px 10px", color:"rgba(255,255,255,.4)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>
               Cancel
             </button>
           </>
@@ -1445,7 +1468,7 @@ function AdminOrdersTab({ orders, onStatusUpdate, onRemoveOrder }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:40 }}>No orders found</div>
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", padding:40 }}>No orders found</div>
       ) : filtered.map(function(o, i) {
         var oid = o.id||o.invoiceNo;
         var isChk = selected.has(oid);
@@ -1473,23 +1496,23 @@ function AdminOrderCard({ order, onStatusUpdate }) {
       <div onClick={() => setExp(e => !e)} style={{ padding:"12px 14px", cursor:"pointer" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{order.customer}</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:1 }}>#{order.invoiceNo} {order.onlineOrderNo ? "  OO:" + (order.onlineOrderNo) : ""}   {order.store}</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{order.customer}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:1 }}>#{order.invoiceNo} {order.onlineOrderNo ? "  OO:" + (order.onlineOrderNo) : ""}   {order.store}</div>
           </div>
           <Badge status={order.status} />
         </div>
         <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
-          {driver && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}> {driver.name}</span>}
-          {order.scanned && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11 }}> Collected</span>}
+          <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
+          <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
+          {driver && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}> {driver.name}</span>}
+          {order.scanned && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:11 }}> Collected</span>}
         </div>
       </div>
       {exp && (
         <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", padding:"12px 14px", background:"rgba(0,0,0,.15)" }}>
-          <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:4, marginBottom:4  }}>{(function(){ var _a = detectArea(order.address); return _a ? <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"1px 9px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700, marginRight:6 }}>{_a}</span> : null; })()}<span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.55)", fontSize:12  }}>{order.address}</span></div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.55)", fontSize:12, marginBottom:4 }}> {order.phone}</div>
-          {order.note && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#C4B5FD", fontSize:12 }}> {order.note}</div>}
+          <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:4, marginBottom:4  }}>{(function(){ var _a = detectArea(order.address); return _a ? <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"1px 9px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700, marginRight:6 }}>{_a}</span> : null; })()}<span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.55)", fontSize:12  }}>{order.address}</span></div>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.55)", fontSize:12, marginBottom:4 }}> {order.phone}</div>
+          {order.note && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#C4B5FD", fontSize:12 }}> {order.note}</div>}
         </div>
       )}
     </div>
@@ -1513,61 +1536,61 @@ function TransferModal({ order, fromDriverId, onRequestTransfer, onClose }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:300, display:"flex", alignItems:"flex-end" }}>
-      <div style={{ width:"100%", background:"#161616", borderRadius:"24px 24px 0 0", padding:24 }}>
+      <div style={{ width:"100%", background:"#161B24", borderRadius:"24px 24px 0 0", padding:24 }}>
         {sent ? (
           <div style={{ textAlign:"center", padding:"20px 0" }}>
             <div style={{ fontSize:48, marginBottom:12 }}></div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:18, fontWeight:700 }}>Transfer Requested!</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:13, marginTop:8 }}>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:18, fontWeight:700 }}>Transfer Requested!</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:13, marginTop:8 }}>
               Admin has been notified. Awaiting approval.
             </div>
-            <button onClick={onClose} style={{ marginTop:20, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:"12px 32px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", cursor:"pointer" }}>Close</button>
+            <button onClick={onClose} style={{ marginTop:20, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:"12px 32px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", cursor:"pointer" }}>Close</button>
           </div>
         ) : (
           <>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:17, fontWeight:700 }}> Transfer Order</div>
-              <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>x</button>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:17, fontWeight:700 }}> Transfer Order</div>
+              <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>x</button>
             </div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>
-              This order belongs to <span style={{ color:"#FF6B35", fontWeight:600 }}>{ownerDriver?.name}</span>. Request admin to transfer it.
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>
+              This order belongs to <span style={{ color:"#FF5A1F", fontWeight:600 }}>{ownerDriver?.name}</span>. Request admin to transfer it.
             </div>
 
             {/* Order preview */}
-            <div style={{ background:"rgba(255,107,53,.07)", border:"1px solid rgba(255,107,53,.2)", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{order.customer}</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>#{order.invoiceNo}   {order.store}   {fmt(order.total)}</div>
+            <div style={{ background:"rgba(255,90,31,.07)", border:"1px solid rgba(255,90,31,.2)", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{order.customer}</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>#{order.invoiceNo}   {order.store}   {fmt(order.total)}</div>
             </div>
 
             {/* Transfer type */}
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.45)", fontSize:12, marginBottom:8 }}>TRANSFER TO</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.45)", fontSize:12, marginBottom:8 }}>TRANSFER TO</div>
             <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:14 }}>
               {/* Option: take myself */}
               <button onClick={() => setToDriver(fromDriverId)} style={{ display:"flex", alignItems:"center", gap:10, background:toDriver===fromDriverId?"rgba(0,212,255,.12)":"rgba(255,255,255,.05)", border:toDriver===fromDriverId?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 14px", cursor:"pointer" }}>
-                <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#00D4FF,#7C3AED)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif" }}>ME</div>
+                <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#00D4FF,#7C3AED)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif" }}>ME</div>
                 <div style={{ textAlign:"left" }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:toDriver===fromDriverId?"#00D4FF":"#fff", fontSize:13, fontWeight:600 }}>Take to me ({DRIVERS.find(d=>d.id===fromDriverId)?.name})</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>Request to take this order from {ownerDriver?.name}</div>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:toDriver===fromDriverId?"#00D4FF":"#fff", fontSize:13, fontWeight:600 }}>Take to me ({DRIVERS.find(d=>d.id===fromDriverId)?.name})</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>Request to take this order from {ownerDriver?.name}</div>
                 </div>
               </button>
               {/* Other drivers */}
               {otherDrivers.filter(d => d.id !== order.driverId).map(d => (
                 <button key={d.id} onClick={() => setToDriver(d.id)} style={{ display:"flex", alignItems:"center", gap:10, background:toDriver===d.id?"rgba(139,92,246,.12)":"rgba(255,255,255,.05)", border:toDriver===d.id?"1.5px solid #8B5CF6":"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 14px", cursor:"pointer" }}>
-                  <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif" }}>{d.avatar}</div>
+                  <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif" }}>{d.avatar}</div>
                   <div style={{ textAlign:"left" }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:toDriver===d.id?"#8B5CF6":"#fff", fontSize:13, fontWeight:600 }}>Transfer to {d.name}</div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>Send to {d.name}&apos;s order list</div>
+                    <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:toDriver===d.id?"#8B5CF6":"#fff", fontSize:13, fontWeight:600 }}>Transfer to {d.name}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>Send to {d.name}&apos;s order list</div>
                   </div>
                 </button>
               ))}
             </div>
 
             <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Reason for transfer (optional)..."
-              style={{ width:"100%", background:"rgba(255,255,255,.05)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:12, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, resize:"none", height:60, boxSizing:"border-box", outline:"none", marginBottom:14 }} />
+              style={{ width:"100%", background:"rgba(255,255,255,.05)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:12, color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, resize:"none", height:60, boxSizing:"border-box", outline:"none", marginBottom:14 }} />
 
             <div style={{ display:"flex", gap:10 }}>
-              <button onClick={onClose} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", cursor:"pointer" }}>Cancel</button>
-              <button onClick={submit} disabled={!toDriver} style={{ flex:2, background:toDriver?"linear-gradient(135deg,#FF6B35,#FF3D71)":"rgba(255,255,255,.1)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, cursor:toDriver?"pointer":"default" }}>
+              <button onClick={onClose} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", cursor:"pointer" }}>Cancel</button>
+              <button onClick={submit} disabled={!toDriver} style={{ flex:2, background:toDriver?"linear-gradient(135deg,#FF6B35,#FF3D71)":"rgba(255,255,255,.1)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, cursor:toDriver?"pointer":"default" }}>
                 Send Transfer Request ->
               </button>
             </div>
@@ -1670,15 +1693,15 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
       {/* Progress bar */}
       <div style={{ background:"rgba(255,255,255,.05)", borderRadius:16, padding:16, marginBottom:14 }}>
         <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:13 }}>Collection Progress</span>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:14, fontWeight:700 }}>{scanned.length}/{myOrders.length}</span>
+          <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:13 }}>Collection Progress</span>
+          <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:14, fontWeight:700 }}>{scanned.length}/{myOrders.length}</span>
         </div>
         <div style={{ background:"rgba(255,255,255,.08)", borderRadius:30, height:8, overflow:"hidden" }}>
           <div style={{ height:"100%", width:(myOrders.length>0?scanned.length/myOrders.length*100:0) + "%", background:"linear-gradient(90deg,#00D4FF,#7C3AED)", borderRadius:30, transition:"width .6s ease" }} />
         </div>
         <div style={{ display:"flex", gap:12, marginTop:10 }}>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:12 }}> {scanned.length} collected</span>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#F59E0B", fontSize:12 }}> {unscanned.length} remaining</span>
+          <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:12 }}> {scanned.length} collected</span>
+          <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#F59E0B", fontSize:12 }}> {unscanned.length} remaining</span>
         </div>
       </div>
 
@@ -1704,13 +1727,13 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
               {scanning ? (
                 <div style={{ textAlign:"center" }}>
                   <div style={{ width:60, height:3, background:"#00D4FF", margin:"0 auto", animation:"scanLine 1s ease infinite", borderRadius:2 }} />
-                  <div style={{ color:"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, marginTop:12 }}>Opening camera...</div>
+                  <div style={{ color:"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, marginTop:12 }}>Opening camera...</div>
                 </div>
               ) : (
                 <>
                   <div style={{ fontSize:36, marginBottom:8 }}>[ ]</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:14, fontWeight:700 }}>Tap to Scan Barcode</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:4 }}>Opens phone camera</div>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:14, fontWeight:700 }}>Tap to Scan Barcode</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:4 }}>Opens phone camera</div>
                 </>
               )}
               {["tl","tr","bl","br"].map(p => (
@@ -1755,10 +1778,10 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
               onChange={function(e) { setScanInput(e.target.value); }}
               onKeyDown={function(e) { if (e.key === "Enter") { doScan(scanInput); } }}
               placeholder="Invoice# — or use a barcode scanner"
-              style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:14, outline:"none" }} />
-            <button onClick={function() { doScan(scanInput); }} style={{ background:"#00D4FF", border:"none", borderRadius:12, padding:"0 16px", color:"#0D0D0D", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, cursor:"pointer" }}>Go</button>
+              style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:14, outline:"none" }} />
+            <button onClick={function() { doScan(scanInput); }} style={{ background:"#00D4FF", border:"none", borderRadius:12, padding:"0 16px", color:"#090B10", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, cursor:"pointer" }}>Go</button>
           </div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.25)", fontSize:11, marginBottom:14, textAlign:"center" }}>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.25)", fontSize:11, marginBottom:14, textAlign:"center" }}>
             Physical barcode scanner? Just scan — it types directly into the box above
           </div>
 
@@ -1766,7 +1789,7 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
           {scanError && (
             <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:12, padding:"12px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:10 }}>
               <span style={{ fontSize:20 }}></span>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#EF4444", fontSize:13 }}>{scanError}</span>
+              <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#EF4444", fontSize:13 }}>{scanError}</span>
             </div>
           )}
 
@@ -1776,24 +1799,24 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
                 <div style={{ width:36, height:36, borderRadius:10, background:"rgba(239,68,68,.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}></div>
                 <div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:14, fontWeight:700 }}>Not in your order list!</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>
-                    This order belongs to <span style={{ color:"#FF6B35", fontWeight:600 }}>{DRIVERS.find(d=>d.id===wrongDriver.driverId)?.name || "another driver"}</span>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontSize:14, fontWeight:700 }}>Not in your order list!</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>
+                    This order belongs to <span style={{ color:"#FF5A1F", fontWeight:600 }}>{DRIVERS.find(d=>d.id===wrongDriver.driverId)?.name || "another driver"}</span>
                   </div>
                 </div>
               </div>
               <div style={{ background:"rgba(0,0,0,.2)", borderRadius:10, padding:"10px 12px", marginBottom:12 }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:500 }}>{wrongDriver.customer}</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>#{wrongDriver.invoiceNo}   {wrongDriver.store}   {fmt(wrongDriver.total)}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:500 }}>{wrongDriver.customer}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>#{wrongDriver.invoiceNo}   {wrongDriver.store}   {fmt(wrongDriver.total)}</div>
               </div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.45)", fontSize:12, marginBottom:8 }}>Do you want to request a transfer?</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.45)", fontSize:12, marginBottom:8 }}>Do you want to request a transfer?</div>
               <div style={{ display:"flex", gap:8 }}>
                 <button onClick={() => { setWrongDriver(null); setScanInput(""); }}
-                  style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, cursor:"pointer" }}>
+                  style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, cursor:"pointer" }}>
                   Dismiss
                 </button>
                 <button onClick={() => { onOpenTransfer(wrongDriver); setWrongDriver(null); setScanInput(""); setScanError(""); }}
-                  style={{ flex:2, background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                  style={{ flex:2, background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
                    Request Transfer
                 </button>
               </div>
@@ -1805,17 +1828,17 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
             <div style={{ background:"rgba(0,212,255,.08)", border:"1px solid rgba(0,212,255,.35)", borderRadius:16, padding:16, marginBottom:10 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
                 <span style={{ fontSize:18 }}></span>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:14, fontWeight:700 }}>Your Order - Ready to Collect</div>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:14, fontWeight:700 }}>Your Order - Ready to Collect</div>
               </div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}>{scanResult.customer}</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:13, marginTop:2 }}>Invoice #{scanResult.invoiceNo}{scanResult.onlineOrderNo ? "   OO: " + (scanResult.onlineOrderNo) : ""}</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:13 }}> {scanResult.store}</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}>{scanResult.customer}</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:13, marginTop:2 }}>Invoice #{scanResult.invoiceNo}{scanResult.onlineOrderNo ? "   OO: " + (scanResult.onlineOrderNo) : ""}</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:13 }}> {scanResult.store}</div>
               <div style={{ display:"flex", gap:10, marginTop:8, alignItems:"center" }}>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:16, fontWeight:800 }}>{fmt(scanResult.total)}</span>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12 }}><PaymentBadge payType={scanResult.paymentType} /></span>
+                <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:16, fontWeight:800 }}>{fmt(scanResult.total)}</span>
+                <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12 }}><PaymentBadge payType={scanResult.paymentType} /></span>
               </div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginTop:6 }}> {scanResult.address}</div>
-              <button onClick={confirmScan} style={{ width:"100%", marginTop:12, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginTop:6 }}> {scanResult.address}</div>
+              <button onClick={confirmScan} style={{ width:"100%", marginTop:12, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
                  Confirm Collection
               </button>
             </div>
@@ -1825,16 +1848,16 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
           {scanned.length > 0 && (
             <>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8, marginTop:8 }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:13, fontWeight:700 }}>Collected ({scanned.length})</div>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:13, fontWeight:700 }}>Collected ({scanned.length})</div>
                 {!removeMode ? (
                   <button onClick={function(){ setRemoveMode(true); }}
-                    style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:8, padding:"3px 12px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
+                    style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:8, padding:"3px 12px", color:"#EF4444", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>
                     Select
                   </button>
                 ) : (
                   <div style={{ display:"flex", gap:6 }}>
                     <button onClick={function(){ setBulkSelected(new Set(scanned.map(function(o){ return o.id||o.invoiceNo; }))); }}
-                      style={{ background:"rgba(255,255,255,.07)", border:"none", borderRadius:8, padding:"3px 10px", color:"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
+                      style={{ background:"rgba(255,255,255,.07)", border:"none", borderRadius:8, padding:"3px 10px", color:"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>
                       All
                     </button>
                     {bulkSelected.size > 0 && (
@@ -1842,12 +1865,12 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
                         if(!window.confirm("Remove "+bulkSelected.size+" orders?")) return;
                         scanned.filter(function(o){ return bulkSelected.has(o.id||o.invoiceNo); }).forEach(function(o){ onRemoveOrder && onRemoveOrder(o.id||o.invoiceNo); });
                         setBulkSelected(new Set()); setRemoveMode(false);
-                      }} style={{ background:"rgba(239,68,68,.2)", border:"1px solid rgba(239,68,68,.4)", borderRadius:8, padding:"3px 10px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                      }} style={{ background:"rgba(239,68,68,.2)", border:"1px solid rgba(239,68,68,.4)", borderRadius:8, padding:"3px 10px", color:"#EF4444", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, fontWeight:600, cursor:"pointer" }}>
                         Remove ({bulkSelected.size})
                       </button>
                     )}
                     <button onClick={function(){ setRemoveMode(false); setBulkSelected(new Set()); }}
-                      style={{ background:"none", border:"none", borderRadius:8, padding:"3px 8px", color:"rgba(255,255,255,.35)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
+                      style={{ background:"none", border:"none", borderRadius:8, padding:"3px 8px", color:"rgba(255,255,255,.35)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>
                       Cancel
                     </button>
                   </div>
@@ -1867,16 +1890,16 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
                         </div>
                       )}
                       <div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:500 }}>{o.customer}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>#{o.invoiceNo} · {o.store}</div>
-                        {o.onlineOrderNo ? <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700 }}>Online Order: {o.onlineOrderNo}</div> : null}
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:500 }}>{o.customer}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>#{o.invoiceNo} · {o.store}</div>
+                        {o.onlineOrderNo ? <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700 }}>Online Order: {o.onlineOrderNo}</div> : null}
                       </div>
                     </div>
                     <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
-                      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:12, fontWeight:700 }}>{fmt(o.total)}</div>
+                      <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:12, fontWeight:700 }}>{fmt(o.total)}</div>
                       {!removeMode && (
                         <button onClick={function(e){ e.stopPropagation(); if(window.confirm("Remove this order?")) onRemoveOrder && onRemoveOrder(oid); }}
-                          style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.25)", borderRadius:6, padding:"2px 8px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, cursor:"pointer" }}>
+                          style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.25)", borderRadius:6, padding:"2px 8px", color:"#EF4444", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10, cursor:"pointer" }}>
                           Remove
                         </button>
                       )}
@@ -1892,7 +1915,7 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
       {tab === "list" && (
         <>
           {myOrders.length === 0 ? (
-            <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:40, fontSize:14 }}>
+            <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", padding:40, fontSize:14 }}>
               No orders assigned yet.<br/>Please wait for admin to upload.
             </div>
           ) : (
@@ -1908,10 +1931,10 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
                         setBulkSelected(new Set(unscanned.map(o => o.id||o.invoiceNo)));
                       }
                     }}
-                    style={{ width:22, height:22, borderRadius:6, background: unscanned.every(o=>bulkSelected.has(o.id||o.invoiceNo))?"#00D4FF":"rgba(255,255,255,.1)", border:"1.5px solid rgba(0,212,255,.5)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:13, color:"#0D0D0D" }}>
+                    style={{ width:22, height:22, borderRadius:6, background: unscanned.every(o=>bulkSelected.has(o.id||o.invoiceNo))?"#00D4FF":"rgba(255,255,255,.1)", border:"1.5px solid rgba(0,212,255,.5)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:13, color:"#090B10" }}>
                     {unscanned.every(o=>bulkSelected.has(o.id||o.invoiceNo)) ? "v" : ""}
                   </button>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.6)", fontSize:13, flex:1 }}>
+                  <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.6)", fontSize:13, flex:1 }}>
                     {bulkSelected.size > 0 ? (bulkSelected.size) + " selected" : "Select all to bulk collect"}
                   </span>
                   {bulkSelected.size > 0 && (
@@ -1919,7 +1942,7 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
                       playSound("bulk"); bulkSelected.forEach(id => onScan(id));
                       setBulkSelected(new Set());
                     }}
-                      style={{ background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:10, padding:"7px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer", whiteSpace:"nowrap" }}>
+                      style={{ background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:10, padding:"7px 14px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:12, cursor:"pointer", whiteSpace:"nowrap" }}>
                        Collect {bulkSelected.size}
                     </button>
                   )}
@@ -1927,7 +1950,7 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
               )}
               {scanned.length > 0 && unscanned.length === 0 && (
                 <div style={{ background:"rgba(16,185,129,.08)", border:"1px solid rgba(16,185,129,.25)", borderRadius:12, padding:"10px 14px", marginBottom:12, textAlign:"center" }}>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#10B981", fontSize:13 }}> All orders collected! Head out for delivery.</span>
+                  <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#10B981", fontSize:13 }}> All orders collected! Head out for delivery.</span>
                 </div>
               )}
               {myOrders.map((o) => (
@@ -1955,35 +1978,35 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
           {unscanned.length === 0 ? (
             <div style={{ textAlign:"center", padding:40 }}>
               <div style={{ fontSize:40, marginBottom:10 }}></div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:16, fontWeight:700 }}>All Collected!</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:6 }}>You have collected all assigned orders.</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:16, fontWeight:700 }}>All Collected!</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:6 }}>You have collected all assigned orders.</div>
             </div>
           ) : (
             <>
               <div style={{ background:"rgba(245,158,11,.08)", border:"1px solid rgba(245,158,11,.2)", borderRadius:14, padding:"12px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:10 }}>
                 <span style={{ fontSize:18 }}></span>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontSize:13, fontWeight:700 }}>{unscanned.length} orders not yet collected</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>These orders are waiting at the warehouse</div>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#F59E0B", fontSize:13, fontWeight:700 }}>{unscanned.length} orders not yet collected</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>These orders are waiting at the warehouse</div>
                 </div>
               </div>
               {/* Bulk collect all pending */}
               <button onClick={() => { playSound("bulk"); unscanned.forEach(o => onScan(o.id||o.invoiceNo)); }}
-                style={{ width:"100%", background:"linear-gradient(135deg,#F59E0B,#FF6B35)", border:"none", borderRadius:12, padding:"13px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer", marginBottom:14 }}>
+                style={{ width:"100%", background:"linear-gradient(135deg,#F59E0B,#FF6B35)", border:"none", borderRadius:12, padding:"13px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer", marginBottom:14 }}>
                  Collect All {unscanned.length} Pending Orders
               </button>
               {unscanned.map((o) => (
                 <div key={o.id||o.invoiceNo} style={{ background:"rgba(245,158,11,.06)", border:"1px solid rgba(245,158,11,.2)", borderRadius:12, padding:"12px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{o.customer}</div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>#{o.invoiceNo}{o.onlineOrderNo?" · Online Order: "+o.onlineOrderNo:""} · {o.store}</div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}> {o.address?.slice(0,40)}{o.address?.length>40?"...":""}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{o.customer}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>#{o.invoiceNo}{o.onlineOrderNo?" · Online Order: "+o.onlineOrderNo:""} · {o.store}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}> {o.address?.slice(0,40)}{o.address?.length>40?"...":""}</div>
                   </div>
                   <div style={{ textAlign:"right", flexShrink:0, marginLeft:8 }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(o.total)}</div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, marginTop:2 }}><PaymentBadge payType={o.paymentType} small /></div>
+                    <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:13, fontWeight:700 }}>{fmt(o.total)}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10, marginTop:2 }}><PaymentBadge payType={o.paymentType} small /></div>
                     <button onClick={() => { playSound('collect'); onScan(o.id||o.invoiceNo); }}
-                      style={{ marginTop:6, background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.3)", borderRadius:8, padding:"4px 10px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:11, cursor:"pointer" }}>
+                      style={{ marginTop:6, background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.3)", borderRadius:8, padding:"4px 10px", color:"#00D4FF", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:11, cursor:"pointer" }}>
                       Collect
                     </button>
                   </div>
@@ -2014,7 +2037,7 @@ function DriverOrderRow({ order, onTransfer, selected, onToggleSelect }) {
       <div style={{ padding:"11px 14px", display:"flex", alignItems:"center", gap:10 }}>
         {!order.scanned ? (
           <button onClick={function(e) { e.stopPropagation(); if (onToggleSelect) onToggleSelect(); }}
-            style={{ width:22, height:22, borderRadius:6, background:selected?"#00D4FF":"rgba(255,255,255,.08)", border:"1.5px solid " + (selected?"#00D4FF":"rgba(255,255,255,.2)"), display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:12, color:"#0D0D0D" }}>
+            style={{ width:22, height:22, borderRadius:6, background:selected?"#00D4FF":"rgba(255,255,255,.08)", border:"1.5px solid " + (selected?"#00D4FF":"rgba(255,255,255,.2)"), display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:12, color:"#090B10" }}>
             {selected ? "v" : ""}
           </button>
         ) : (
@@ -2023,19 +2046,19 @@ function DriverOrderRow({ order, onTransfer, selected, onToggleSelect }) {
         <div onClick={function() { setExp(function(e) { return !e; }); }} style={{ flex:1, minWidth:0, cursor:"pointer" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{order.customer}</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{order.customer}</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>
                 {"#" + order.invoiceNo + "   " + order.store}
               </div>
               {order.onlineOrderNo ? (
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#FF6B35", fontSize:11, fontWeight:600 }}>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#FF5A1F", fontSize:11, fontWeight:600 }}>
                   {"Online Order: " + order.onlineOrderNo}
                 </div>
               ) : null}
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
-              {(order.extraAmount > 0) && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EA580C", fontSize:11, fontWeight:700 }}>{"+"+fmt(order.extraAmount)}</span>}
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
+              {(order.extraAmount > 0) && <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EA580C", fontSize:11, fontWeight:700 }}>{"+"+fmt(order.extraAmount)}</span>}
               <span style={{ color:"rgba(255,255,255,.3)", fontSize:11 }}>{exp ? "^" : "v"}</span>
             </div>
           </div>
@@ -2045,39 +2068,39 @@ function DriverOrderRow({ order, onTransfer, selected, onToggleSelect }) {
         <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", padding:"12px 14px", background:"rgba(0,0,0,.18)" }}>
           {order.onlineOrderNo ? (
             <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>Online Order No:</span>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:12, fontWeight:700 }}>{order.onlineOrderNo}</span>
+              <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>Online Order No:</span>
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:12, fontWeight:700 }}>{order.onlineOrderNo}</span>
             </div>
           ) : null}
-          <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:6, marginBottom:6  }}>{(function(){ var _a = detectArea(order.address); return _a ? <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"1px 9px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700, marginRight:6 }}>{_a}</span> : null; })()}<span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12  }}>{order.address}</span></div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:8 }}>{"📞 " + order.phone}</div>
+          <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:6, marginBottom:6  }}>{(function(){ var _a = detectArea(order.address); return _a ? <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"1px 9px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700, marginRight:6 }}>{_a}</span> : null; })()}<span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12  }}>{order.address}</span></div>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:8 }}>{"📞 " + order.phone}</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
             <button onClick={function(e){e.preventDefault();window.location.href=callHref;}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, background:"rgba(16,185,129,.12)", border:"1px solid rgba(16,185,129,.3)", borderRadius:10, padding:"10px 8px", textDecoration:"none" }}>
               <span style={{ fontSize:16 }}></span>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:12, fontWeight:700 }}>Call</span>
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:12, fontWeight:700 }}>Call</span>
             </button>
             <button onClick={function(e){ e.preventDefault(); var callUrl = "whatsapp://call?phone=" + waPhone; window.location.href = callUrl; }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, background:"rgba(37,211,102,.12)", border:"1px solid rgba(37,211,102,.35)", borderRadius:10, padding:"10px 8px" }}>
               <span style={{ fontSize:16 }}></span>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#25D366", fontSize:12, fontWeight:700 }}>WA Call</span>
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#25D366", fontSize:12, fontWeight:700 }}>WA Call</span>
             </button>
           </div>
           <div style={{ background:"rgba(37,211,102,.07)", border:"1px solid rgba(37,211,102,.2)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, textTransform:"uppercase", letterSpacing:.5 }}>Out-for-Delivery Notification</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.75)", fontSize:11, lineHeight:1.6, marginBottom:8 }}>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, textTransform:"uppercase", letterSpacing:.5 }}>Out-for-Delivery Notification</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.75)", fontSize:11, lineHeight:1.6, marginBottom:8 }}>
               Dear Customer, your order from <span style={{ color:"#25D366", fontWeight:600 }}>{order.store}</span> is out for delivery.
               {isCOD && <span style={{ color:"#F59E0B", fontWeight:600 }}> Please have <span style={{ color:"#fff" }}>{fmt(order.total)}</span> ready for cash payment.</span>}
             </div>
             <button onClick={function(){window.open(waHref,"_blank");}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, width:"100%", background:"linear-gradient(135deg,#25D366,#128C7E)", borderRadius:10, padding:"11px", textDecoration:"none" }}>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>Notify - Out for Delivery</span>
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>Notify - Out for Delivery</span>
             </button>
           </div>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
-            {order.onlineOrderNo && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{"Online Order: " + order.onlineOrderNo}</span>}
+            <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
+            {order.onlineOrderNo && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{"Online Order: " + order.onlineOrderNo}</span>}
           </div>
           {!order.scanned && onTransfer && (
             <button onClick={function(e) { e.stopPropagation(); onTransfer(order); }}
-              style={{ width:"100%", marginTop:10, background:"rgba(255,107,53,.1)", border:"1px solid rgba(255,107,53,.3)", borderRadius:10, padding:"9px", color:"#FF6B35", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>
+              style={{ width:"100%", marginTop:10, background:"rgba(255,90,31,.1)", border:"1px solid rgba(255,90,31,.3)", borderRadius:10, padding:"9px", color:"#FF5A1F", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>
               Request Transfer to Another Driver
             </button>
           )}
@@ -2159,7 +2182,7 @@ function DriverManualOrderForm({ driverId, onAdd }) {
   if (!show) return (
     <div style={{ display:"flex", gap:8, marginBottom:10 }}>
       <button onClick={function(){ setShow(true); }}
-        style={{ flex:1, background:"rgba(255,107,53,.07)", border:"1px dashed rgba(255,107,53,.35)", borderRadius:12, padding:"11px", color:"#FF6B35", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+        style={{ flex:1, background:"rgba(255,90,31,.07)", border:"1px dashed rgba(255,90,31,.35)", borderRadius:12, padding:"11px", color:"#FF5A1F", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>
         + Add Manual Order
       </button>
       <LabelScanner
@@ -2170,9 +2193,9 @@ function DriverManualOrderForm({ driverId, onAdd }) {
   );
 
   return (
-    <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,107,53,.3)", borderRadius:14, padding:14, marginBottom:10 }}>
+    <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,90,31,.3)", borderRadius:14, padding:14, marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:14, fontWeight:800 }}>Add Manual Order</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:14, fontWeight:800 }}>Add Manual Order</div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <LabelScanner
             onExtracted={fillFromScan}
@@ -2182,24 +2205,24 @@ function DriverManualOrderForm({ driverId, onAdd }) {
         </div>
       </div>
       {scanMsg && (
-        <div style={{ background: scanMsg.startsWith("✅") ? "rgba(16,185,129,.1)" : "rgba(239,68,68,.1)", border:"1px solid " + (scanMsg.startsWith("✅") ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"), borderRadius:10, padding:"8px 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, color: scanMsg.startsWith("✅") ? "#10B981" : "#EF4444", marginBottom:10 }}>
+        <div style={{ background: scanMsg.startsWith("✅") ? "rgba(16,185,129,.1)" : "rgba(239,68,68,.1)", border:"1px solid " + (scanMsg.startsWith("✅") ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"), borderRadius:10, padding:"8px 12px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, color: scanMsg.startsWith("✅") ? "#10B981" : "#EF4444", marginBottom:10 }}>
           {scanMsg}
         </div>
       )}
 
       {/* Store */}
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>STORE</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>STORE</div>
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
         {["Trikart Online","Webstore Online","ReStore Online","Other"].map(function(s){
           return <button key={s} onClick={function(){ setStore(s); if(s!=="Other") setCustomStoreName(""); }}
-            style={{ background:store===s?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:store===s?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 10px", color:store===s?"#00D4FF":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>{s}</button>;
+            style={{ background:store===s?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:store===s?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 10px", color:store===s?"#00D4FF":"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>{s}</button>;
         })}
       </div>
       {store === "Other" && (
         <div style={{ marginBottom:12 }}>
           <input type="text" value={customStoreName} onChange={function(e){ setCustomStoreName(e.target.value); }}
             placeholder="Enter store name..."
-            style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"9px 12px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }} />
+            style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"9px 12px", color:"#00D4FF", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }} />
         </div>
       )}
 
@@ -2212,30 +2235,30 @@ function DriverManualOrderForm({ driverId, onAdd }) {
       ].map(function(f){
         return (
           <div key={f[0]} style={{ marginBottom:8 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:3 }}>{f[0].toUpperCase()}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:3 }}>{f[0].toUpperCase()}</div>
             <input type={f[3]} value={f[1]} onChange={function(e){ f[2](e.target.value); }} placeholder={f[4]}
-              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }} />
+              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }} />
           </div>
         );
       })}
 
       {/* Area selector — right after address */}
       <div style={{ marginBottom:8 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:3 }}>AREA (KUWAIT)</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:3 }}>AREA (KUWAIT)</div>
         <input type="text" value={areaSearch}
           onChange={function(e){ setAreaSearch(e.target.value); setArea(""); }}
           placeholder="Type to search area..."
-          style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:area||!areaSearch?"10px":"10px 10px 0 0", padding:"9px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }} />
+          style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:area||!areaSearch?"10px":"10px 10px 0 0", padding:"9px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }} />
         {area ? (
           <div style={{ background:"rgba(0,212,255,.1)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"7px 12px", display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:4 }}>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:12, fontWeight:600 }}>{area}</span>
+            <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:12, fontWeight:600 }}>{area}</span>
             <button onClick={function(){ setArea(""); setAreaSearch(""); }} style={{ background:"none", border:"none", color:"rgba(255,255,255,.4)", cursor:"pointer", fontSize:14 }}>✕</button>
           </div>
         ) : areaSearch ? (
           <div style={{ background:"#1A2035", border:"1px solid rgba(255,255,255,.15)", borderTop:"none", borderRadius:"0 0 10px 10px", maxHeight:150, overflowY:"auto" }}>
             {ALL_AREAS.filter(function(a){ return a.toLowerCase().includes(areaSearch.toLowerCase()); }).slice(0,15).map(function(a){
               return <div key={a} onClick={function(){ setArea(a); setAreaSearch(a); }}
-                style={{ padding:"7px 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.8)", fontSize:12, cursor:"pointer", borderBottom:"1px solid rgba(255,255,255,.05)" }}>{a}</div>;
+                style={{ padding:"7px 12px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.8)", fontSize:12, cursor:"pointer", borderBottom:"1px solid rgba(255,255,255,.05)" }}>{a}</div>;
             })}
           </div>
         ) : null}
@@ -2248,25 +2271,25 @@ function DriverManualOrderForm({ driverId, onAdd }) {
       ].map(function(f){
         return (
           <div key={f[0]} style={{ marginBottom:8 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:3 }}>{f[0].toUpperCase()}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:3 }}>{f[0].toUpperCase()}</div>
             <input type={f[3]} value={f[1]} onChange={function(e){ f[2](e.target.value); }} placeholder={f[4]}
-              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }} />
+              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }} />
           </div>
         );
       })}
 
       {/* Payment */}
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:6, marginTop:4 }}>PAYMENT</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:6, marginTop:4 }}>PAYMENT</div>
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
         {PAYS.map(function(p){
           return <button key={p} onClick={function(){ setPay(p); }}
-            style={{ background:pay===p?"rgba(16,185,129,.15)":"rgba(255,255,255,.06)", border:pay===p?"1.5px solid #10B981":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 10px", color:pay===p?"#10B981":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>{p}</button>;
+            style={{ background:pay===p?"rgba(16,185,129,.15)":"rgba(255,255,255,.06)", border:pay===p?"1.5px solid #10B981":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 10px", color:pay===p?"#10B981":"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>{p}</button>;
         })}
       </div>
 
-      {err && <div style={{ color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, marginBottom:8 }}>{err}</div>}
+      {err && <div style={{ color:"#EF4444", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, marginBottom:8 }}>{err}</div>}
       <button onClick={submit}
-        style={{ width:"100%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:12, padding:"12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+        style={{ width:"100%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:12, padding:"12px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>
         Add to My Orders
       </button>
     </div>
@@ -2354,7 +2377,7 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
           value={searchQ}
           onChange={function(e){ setSearchQ(e.target.value); }}
           placeholder="Search name, invoice no, OO no, phone..."
-          style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:12, padding:"11px 40px 11px 40px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }}
+          style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:12, padding:"11px 40px 11px 40px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }}
         />
         {searchQ ? (
           <button onClick={function(){ setSearchQ(""); }}
@@ -2367,8 +2390,8 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
           const icon=item[0],v=item[1],l=item[2],c=item[3];
           return (
             <div key={l} style={{ background:c+"10", border:"1px solid "+c+"25", borderRadius:12, padding:"10px 6px", textAlign:"center" }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:c, fontSize:18, fontWeight:800 }}>{v}</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10 }}>{l}</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:c, fontSize:18, fontWeight:800 }}>{v}</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:10 }}>{l}</div>
             </div>
           );
         })}
@@ -2401,8 +2424,8 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
 
       {(storeFilter !== "all" || payFilter !== "all") && (
         <div style={{ background:"rgba(255,255,255,.05)", borderRadius:10, padding:"8px 12px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>Showing {filtered.length} of {myOrders.length} orders</span>
-          <button onClick={function() { setStoreFilter("all"); setPayFilter("all"); }} style={{ background:"none", border:"none", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>Clear x</button>
+          <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>Showing {filtered.length} of {myOrders.length} orders</span>
+          <button onClick={function() { setStoreFilter("all"); setPayFilter("all"); }} style={{ background:"none", border:"none", color:"#00D4FF", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>Clear x</button>
         </div>
       )}
 
@@ -2415,20 +2438,20 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
           {!rearranging ? (
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <button onClick={function(){ setRearranging(true); setTouchOrder([]); }}
-                style={{ background:"rgba(124,58,237,.12)", border:"1px solid rgba(124,58,237,.3)", borderRadius:10, padding:"6px 14px", color:"#A78BFA", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+                style={{ background:"rgba(124,58,237,.12)", border:"1px solid rgba(124,58,237,.3)", borderRadius:10, padding:"6px 14px", color:"#A78BFA", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:12, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
                 <span>⇅</span> Rearrange Route
               </button>
               {Object.keys(orderSeq).length > 0 && (
                 <button onClick={function(){ setOrderSeq({}); try{ localStorage.removeItem("df_route_seq_" + driverId); }catch(e){} }}
-                  style={{ background:"none", border:"none", color:"rgba(255,255,255,.25)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>Reset order</button>
+                  style={{ background:"none", border:"none", color:"rgba(255,255,255,.25)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>Reset order</button>
               )}
             </div>
           ) : (
             <div>
               <div style={{ display:"flex", gap:8, marginBottom:8 }}>
                 <div style={{ flex:1, background:"rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.25)", borderRadius:10, padding:"8px 12px" }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#A78BFA", fontSize:12, fontWeight:700 }}>Tap orders in delivery order</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:2 }}>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#A78BFA", fontSize:12, fontWeight:700 }}>Tap orders in delivery order</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:2 }}>
                     {touchOrder.length === 0 ? "Tap first order → second order → ..." : touchOrder.length + " of " + filtered.length + " tapped"}
                   </div>
                 </div>
@@ -2446,18 +2469,18 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
                     setOrderSeq(newSeq);
                     setTouchOrder([]);
                     setRearranging(false);
-                  }} style={{ background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:10, padding:"7px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                  }} style={{ background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:10, padding:"7px 14px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>
                     Done
                   </button>
                   <button onClick={function(){ setRearranging(false); setTouchOrder([]); }}
-                    style={{ background:"rgba(255,255,255,.07)", border:"none", borderRadius:10, padding:"7px 10px", color:"rgba(255,255,255,.4)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
+                    style={{ background:"rgba(255,255,255,.07)", border:"none", borderRadius:10, padding:"7px 10px", color:"rgba(255,255,255,.4)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>
                     Cancel
                   </button>
                 </div>
               </div>
               {touchOrder.length > 0 && (
                 <button onClick={function(){ setTouchOrder([]); }}
-                  style={{ background:"none", border:"none", color:"rgba(255,255,255,.2)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
+                  style={{ background:"none", border:"none", color:"rgba(255,255,255,.2)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>
                   ↺ Start over
                 </button>
               )}
@@ -2467,7 +2490,7 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
       )}
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:40 }}>
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", padding:40 }}>
           {filter === "collected" ? "No collected orders yet - scan at warehouse first!" : "No orders match the filters"}
         </div>
       ) : (function() {
@@ -2499,18 +2522,18 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
                 style={{ display:"flex", alignItems:"center", gap:10, background:isTapped?"rgba(0,212,255,.08)":"rgba(255,255,255,.04)", border:"1.5px solid "+(isTapped?"rgba(0,212,255,.4)":"rgba(255,255,255,.08)"), borderRadius:14, padding:"12px 14px", marginBottom:8, cursor:"pointer", userSelect:"none" }}>
                 <div style={{ width:36, height:36, borderRadius:10, background:isTapped?"rgba(0,212,255,.2)":"rgba(255,255,255,.06)", border:"1.5px solid "+(isTapped?"#00D4FF":"rgba(255,255,255,.15)"), display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                   {isTapped ? (
-                    <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:16, fontWeight:900 }}>{tapIdx+1}</span>
+                    <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:16, fontWeight:900 }}>{tapIdx+1}</span>
                   ) : (
-                    <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.2)", fontSize:11 }}>tap</span>
+                    <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.2)", fontSize:11 }}>tap</span>
                   )}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:isTapped?"#fff":"rgba(255,255,255,.6)", fontSize:13, fontWeight:700 }}>{o.customer}</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:11 }}>#{o.invoiceNo} · {o.store}{o.onlineOrderNo?" · Online Order: "+o.onlineOrderNo:""}</div>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:isTapped?"#fff":"rgba(255,255,255,.6)", fontSize:13, fontWeight:700 }}>{o.customer}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:11 }}>#{o.invoiceNo} · {o.store}{o.onlineOrderNo?" · Online Order: "+o.onlineOrderNo:""}</div>
                   <div style={{ display:"flex", gap:6, marginTop:3, flexWrap:"wrap" }}>
-                    <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:12, fontWeight:700 }}>{fmt(o.total)}</span>
-                    {area && <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.2)", borderRadius:20, padding:"1px 8px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700 }}>{area}</span>}
-                    {orderTags && orderTags[o.invoiceNo] && <span style={{ background:"rgba(245,158,11,.15)", borderRadius:20, padding:"1px 8px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontSize:10, fontWeight:700 }}>{orderTags[o.invoiceNo]}</span>}
+                    <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:12, fontWeight:700 }}>{fmt(o.total)}</span>
+                    {area && <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.2)", borderRadius:20, padding:"1px 8px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700 }}>{area}</span>}
+                    {orderTags && orderTags[o.invoiceNo] && <span style={{ background:"rgba(245,158,11,.15)", borderRadius:20, padding:"1px 8px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#F59E0B", fontSize:10, fontWeight:700 }}>{orderTags[o.invoiceNo]}</span>}
                   </div>
                 </div>
                 {isTapped && <span style={{ color:"rgba(255,255,255,.2)", fontSize:16 }}>✓</span>}
@@ -2539,29 +2562,29 @@ function TagButton({ invoiceNo, orderTags, onSetTag }) {
     return (
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
         {currentTag ? (
-          <span style={{ background:"rgba(245,158,11,.15)", border:"1px solid rgba(245,158,11,.35)", borderRadius:20, padding:"3px 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontSize:12, fontWeight:700 }}>
+          <span style={{ background:"rgba(245,158,11,.15)", border:"1px solid rgba(245,158,11,.35)", borderRadius:20, padding:"3px 12px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#F59E0B", fontSize:12, fontWeight:700 }}>
             {currentTag}
           </span>
         ) : null}
         <button onClick={function(){ setVal(currentTag||""); setEditing(true); }}
-          style={{ background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:20, padding:"3px 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, cursor:"pointer" }}>
+          style={{ background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:20, padding:"3px 12px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, cursor:"pointer" }}>
           {currentTag ? "Edit Tag" : "+ Add Tag"}
         </button>
         {currentTag && (
           <button onClick={function(){ if(onSetTag) onSetTag(invoiceNo, null); }}
-            style={{ background:"none", border:"none", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>Remove</button>
+            style={{ background:"none", border:"none", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>Remove</button>
         )}
       </div>
     );
   }
   return (
     <div style={{ background:"rgba(245,158,11,.06)", border:"1px solid rgba(245,158,11,.2)", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontSize:12, fontWeight:700, marginBottom:8 }}>Tag this order</div>
+      <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#F59E0B", fontSize:12, fontWeight:700, marginBottom:8 }}>Tag this order</div>
       <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
         {PRESET_TAGS.map(function(t) {
           return (
             <button key={t} onClick={function(){ if(onSetTag) onSetTag(invoiceNo, t); setEditing(false); }}
-              style={{ background: currentTag===t?"rgba(245,158,11,.25)":"rgba(255,255,255,.06)", border:"1px solid "+(currentTag===t?"rgba(245,158,11,.5)":"rgba(255,255,255,.1)"), borderRadius:20, padding:"4px 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:currentTag===t?"#F59E0B":"rgba(255,255,255,.6)", fontSize:12, cursor:"pointer" }}>
+              style={{ background: currentTag===t?"rgba(245,158,11,.25)":"rgba(255,255,255,.06)", border:"1px solid "+(currentTag===t?"rgba(245,158,11,.5)":"rgba(255,255,255,.1)"), borderRadius:20, padding:"4px 12px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:currentTag===t?"#F59E0B":"rgba(255,255,255,.6)", fontSize:12, cursor:"pointer" }}>
               {t}
             </button>
           );
@@ -2569,13 +2592,13 @@ function TagButton({ invoiceNo, orderTags, onSetTag }) {
       </div>
       <div style={{ display:"flex", gap:8 }}>
         <input value={val} onChange={function(e){ setVal(e.target.value); }} placeholder="Custom tag name..."
-          style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"8px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }} />
+          style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"8px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }} />
         <button onClick={function(){ if(val.trim() && onSetTag) onSetTag(invoiceNo, val.trim()); setEditing(false); }}
-          style={{ background:"rgba(245,158,11,.2)", border:"1px solid rgba(245,158,11,.4)", borderRadius:10, padding:"8px 14px", color:"#F59E0B", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+          style={{ background:"rgba(245,158,11,.2)", border:"1px solid rgba(245,158,11,.4)", borderRadius:10, padding:"8px 14px", color:"#F59E0B", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>
           Set
         </button>
         <button onClick={function(){ setEditing(false); }}
-          style={{ background:"rgba(255,255,255,.05)", border:"none", borderRadius:10, padding:"8px 10px", color:"rgba(255,255,255,.4)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>
+          style={{ background:"rgba(255,255,255,.05)", border:"none", borderRadius:10, padding:"8px 10px", color:"rgba(255,255,255,.4)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>
           Cancel
         </button>
       </div>
@@ -2600,17 +2623,17 @@ function EditOrderModal({ order, onSave, onClose }) {
     onClose();
   }
 
-  const inputStyle = { width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.25)", borderRadius:12, padding:"12px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:14, outline:"none" };
-  const labelStyle = { fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.45)", fontSize:11, marginBottom:5, textTransform:"uppercase", letterSpacing:.5, display:"block" };
+  const inputStyle = { width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.25)", borderRadius:12, padding:"12px 14px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:14, outline:"none" };
+  const labelStyle = { fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.45)", fontSize:11, marginBottom:5, textTransform:"uppercase", letterSpacing:.5, display:"block" };
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:9100, display:"flex", alignItems:"flex-end" }}>
-      <div style={{ width:"100%", background:"#161616", borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"85dvh", overflowY:"auto" }}>
+      <div style={{ width:"100%", background:"#161B24", borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"85dvh", overflowY:"auto" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:17, fontWeight:700 }}>✏️ Edit Order Details</div>
-          <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>✕</button>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:17, fontWeight:700 }}>✏️ Edit Order Details</div>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,.6)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>✕</button>
         </div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:20 }}>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:20 }}>
           #{order.invoiceNo} · {order.store}
         </div>
 
@@ -2628,10 +2651,10 @@ function EditOrderModal({ order, onSave, onClose }) {
         ))}
 
         <div style={{ display:"flex", gap:10, marginTop:8 }}>
-          <button onClick={onClose} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", cursor:"pointer" }}>
+          <button onClick={onClose} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", cursor:"pointer" }}>
             Cancel
           </button>
-          <button onClick={save} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+          <button onClick={save} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
             Save Changes
           </button>
         </div>
@@ -2680,16 +2703,16 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
               if (e.key==="Escape") { setEditingOO(false); setOoVal(order.onlineOrderNo||""); }
             }}
             placeholder="Enter Online Order No"
-            style={{ width:90, background:"rgba(0,212,255,.1)", border:"1px solid #00D4FF", borderRadius:6, padding:"2px 6px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, outline:"none" }} />
+            style={{ width:90, background:"rgba(0,212,255,.1)", border:"1px solid #00D4FF", borderRadius:6, padding:"2px 6px", color:"#00D4FF", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, outline:"none" }} />
           <button onClick={function(e){ e.stopPropagation(); setEditingOO(false); if(ooVal.trim()&&onEditOrder) onEditOrder(order.id||order.invoiceNo,{onlineOrderNo:ooVal.trim()}); }}
-            style={{ background:"#00D4FF", border:"none", borderRadius:4, padding:"2px 6px", color:"#000", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, fontWeight:700, cursor:"pointer" }}>✓</button>
+            style={{ background:"#00D4FF", border:"none", borderRadius:4, padding:"2px 6px", color:"#000", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10, fontWeight:700, cursor:"pointer" }}>✓</button>
         </div>
       );
     }
     if (order.onlineOrderNo) {
       return (
         <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:3 }}>
-          <span style={{ background:"rgba(0,212,255,.15)", borderRadius:6, padding:"1px 7px", border:"1px solid rgba(0,212,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:700 }}>
+          <span style={{ background:"rgba(0,212,255,.15)", borderRadius:6, padding:"1px 7px", border:"1px solid rgba(0,212,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:11, fontWeight:700 }}>
             Online Order: {order.onlineOrderNo}
           </span>
         </div>
@@ -2697,7 +2720,7 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
     }
     return (
       <button onClick={function(e){ e.stopPropagation(); setEditingOO(true); }}
-        style={{ marginTop:3, background:"rgba(255,255,255,.06)", border:"1px dashed rgba(255,255,255,.2)", borderRadius:6, padding:"1px 8px", color:"rgba(255,255,255,.35)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, cursor:"pointer" }}>
+        style={{ marginTop:3, background:"rgba(255,255,255,.06)", border:"1px dashed rgba(255,255,255,.2)", borderRadius:6, padding:"1px 8px", color:"rgba(255,255,255,.35)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10, cursor:"pointer" }}>
         + Online Order
       </button>
     );
@@ -2708,8 +2731,8 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
       <div onClick={function() { setExp(function(v) { return !v; }); }} style={{ padding:"13px 15px", cursor:"pointer" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:5 }}>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{order.customer}</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:1 }}>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{order.customer}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:1 }}>
               {"#" + order.invoiceNo + "   " + order.store}
             </div>
             {renderOOSection()}
@@ -2717,61 +2740,61 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
           <Badge status={isActive ? "collected" : order.status} />
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
+          <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:13, fontWeight:700 }}>{fmt(order.total)}</span>
           {(order.extraAmount > 0) && (
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EA580C", fontSize:11, fontWeight:700, background:"rgba(234,88,12,.12)", borderRadius:20, padding:"2px 8px", border:"1px solid rgba(234,88,12,.3)" }}>+{fmt(order.extraAmount)} extra</span>
+            <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EA580C", fontSize:11, fontWeight:700, background:"rgba(234,88,12,.12)", borderRadius:20, padding:"2px 8px", border:"1px solid rgba(234,88,12,.3)" }}>+{fmt(order.extraAmount)} extra</span>
           )}
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
+          <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11 }}><PaymentBadge payType={order.paymentType} small /></span>
           {isExchangeOrder && (
-            <span style={{ background:"rgba(107,114,128,.2)", color:"#9CA3AF", borderRadius:20, padding:"2px 10px", fontSize:11, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, border:"1px solid rgba(107,114,128,.3)" }}>Exchange</span>
+            <span style={{ background:"rgba(107,114,128,.2)", color:"#9CA3AF", borderRadius:20, padding:"2px 10px", fontSize:11, fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, border:"1px solid rgba(107,114,128,.3)" }}>Exchange</span>
           )}
           {(function(){ var _a = detectArea(order.address); return _a ? (
-            <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.3)", borderRadius:20, padding:"2px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:700 }}>{_a}</span>
+            <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.3)", borderRadius:20, padding:"2px 10px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:11, fontWeight:700 }}>{_a}</span>
           ) : null; })()}
           {orderTags && orderTags[order.invoiceNo] && (
-            <span style={{ background:"rgba(245,158,11,.15)", border:"1px solid rgba(245,158,11,.35)", borderRadius:20, padding:"2px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontSize:11, fontWeight:700 }}>{orderTags[order.invoiceNo]}</span>
+            <span style={{ background:"rgba(245,158,11,.15)", border:"1px solid rgba(245,158,11,.35)", borderRadius:20, padding:"2px 10px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#F59E0B", fontSize:11, fontWeight:700 }}>{orderTags[order.invoiceNo]}</span>
           )}
         </div>
       </div>
 
       {exp && (
         <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", padding:"14px 15px", background:"rgba(0,0,0,.15)" }}>
-          <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:6, marginBottom:6  }}>{(function(){ var _a = detectArea(order.address); return _a ? <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"1px 9px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700, marginRight:6 }}>{_a}</span> : null; })()}<span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12  }}>{order.address}</span></div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:10 }}>{"📞 " + order.phone}</div>
+          <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:6, marginBottom:6  }}>{(function(){ var _a = detectArea(order.address); return _a ? <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"1px 9px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700, marginRight:6 }}>{_a}</span> : null; })()}<span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12  }}>{order.address}</span></div>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:10 }}>{"📞 " + order.phone}</div>
 
           {isExchangeOrder && (
             <div style={{ background:"rgba(107,114,128,.1)", border:"1px solid rgba(107,114,128,.3)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#9CA3AF", fontSize:13, fontWeight:700 }}>Exchange Order - No cash collection required.</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#9CA3AF", fontSize:13, fontWeight:700 }}>Exchange Order - No cash collection required.</div>
             </div>
           )}
 
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
             <button onClick={function(e){e.preventDefault();window.location.href=callHref;}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, background:"rgba(16,185,129,.12)", border:"1px solid rgba(16,185,129,.3)", borderRadius:10, padding:"10px 8px", textDecoration:"none" }}>
               <span style={{ fontSize:16 }}></span>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:12, fontWeight:700 }}>Call</span>
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:12, fontWeight:700 }}>Call</span>
             </button>
             <button onClick={function(e){ e.preventDefault(); var callUrl = "whatsapp://call?phone=" + waPhone; window.location.href = callUrl; }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, background:"rgba(37,211,102,.12)", border:"1px solid rgba(37,211,102,.35)", borderRadius:10, padding:"10px 8px" }}>
               <span style={{ fontSize:16 }}></span>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#25D366", fontSize:12, fontWeight:700 }}>WA Call</span>
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#25D366", fontSize:12, fontWeight:700 }}>WA Call</span>
             </button>
           </div>
 
           {/* Out-for-Delivery WhatsApp notification */}
           <div style={{ background:"rgba(37,211,102,.07)", border:"1px solid rgba(37,211,102,.2)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, textTransform:"uppercase", letterSpacing:.5 }}>Out-for-Delivery Notification</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.75)", fontSize:11, lineHeight:1.6, marginBottom:8 }}>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, textTransform:"uppercase", letterSpacing:.5 }}>Out-for-Delivery Notification</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.75)", fontSize:11, lineHeight:1.6, marginBottom:8 }}>
               Dear Customer, your order from <span style={{ color:"#25D366", fontWeight:600 }}>{order.store}</span> is out for delivery.
               {isCOD && <span style={{ color:"#F59E0B", fontWeight:600 }}> Please have <span style={{ color:"#fff" }}>{fmt(order.total)}</span> ready for cash payment.</span>}
             </div>
             <button onClick={function(){window.open(waHref,"_blank");}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, width:"100%", background:"linear-gradient(135deg,#25D366,#128C7E)", borderRadius:10, padding:"11px", textDecoration:"none" }}>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>Notify - Out for Delivery</span>
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>Notify - Out for Delivery</span>
             </button>
           </div>
 
           {/* Help Request */}
           {helpOpen && (
             <div style={{ background:"rgba(239,68,68,.06)", border:"1px solid rgba(239,68,68,.2)", borderRadius:12, padding:14, marginBottom:10 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:13, fontWeight:700, marginBottom:10 }}>Request Help - Select Issue</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontSize:13, fontWeight:700, marginBottom:10 }}>Request Help - Select Issue</div>
               {[
                 { key:"no_answer",    label:"Call Not Answering",          icon:"SOS" },
                 { key:"wrong_number", label:"Wrong Phone Number",           icon:"!" },
@@ -2785,23 +2808,23 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
                     setHelpOpen(false);
                     playSound("collect");
                   }} style={{ width:"100%", background:"rgba(255,255,255,.05)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"10px 14px", marginBottom:6, display:"flex", alignItems:"center", gap:10, cursor:"pointer", textAlign:"left" }}>
-                    <span style={{ background:"rgba(239,68,68,.15)", color:"#EF4444", borderRadius:6, padding:"2px 6px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:10, fontWeight:700, flexShrink:0 }}>{h.icon}</span>
-                    <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13 }}>{h.label}</span>
+                    <span style={{ background:"rgba(239,68,68,.15)", color:"#EF4444", borderRadius:6, padding:"2px 6px", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:10, fontWeight:700, flexShrink:0 }}>{h.icon}</span>
+                    <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13 }}>{h.label}</span>
                   </button>
                 );
               })}
-              <button onClick={function(){ setHelpOpen(false); }} style={{ width:"100%", background:"none", border:"none", color:"rgba(255,255,255,.35)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, padding:"6px 0", cursor:"pointer" }}>Cancel</button>
+              <button onClick={function(){ setHelpOpen(false); }} style={{ width:"100%", background:"none", border:"none", color:"rgba(255,255,255,.35)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, padding:"6px 0", cursor:"pointer" }}>Cancel</button>
             </div>
           )}
 
           <div style={{ display:"flex", gap:8, marginBottom:8 }}>
             {!helpOpen && (
-              <button onClick={function(){ setHelpOpen(true); }} style={{ flex:1, background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:12, padding:12, color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+              <button onClick={function(){ setHelpOpen(true); }} style={{ flex:1, background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:12, padding:12, color:"#EF4444", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
                 Need Help
               </button>
             )}
             {(isActive || isPostponed) && (
-              <button onClick={onUpdate} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+              <button onClick={onUpdate} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
                 {isPostponed ? "Retry ->" : "Update Status ->"}
               </button>
             )}
@@ -2809,7 +2832,7 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
 
           {order.note && (
             <div style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"8px 12px", marginBottom:8 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>Note: {order.note}</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>Note: {order.note}</div>
             </div>
           )}
           {/* Tag */}
@@ -2817,14 +2840,14 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
 
           {onOpenTransfer && !isDelivered && (
             <button onClick={function() { onOpenTransfer(order); }}
-              style={{ width:"100%", background:"rgba(255,107,53,.1)", border:"1px solid rgba(255,107,53,.3)", borderRadius:12, padding:11, color:"#FF6B35", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+              style={{ width:"100%", background:"rgba(255,90,31,.1)", border:"1px solid rgba(255,90,31,.3)", borderRadius:12, padding:11, color:"#FF5A1F", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
               Request Transfer to Another Driver
             </button>
           )}
 
           {/* Edit Order Details */}
           <button onClick={function(e) { e.stopPropagation(); setEditOpen(true); }}
-            style={{ width:"100%", marginTop:8, background:"rgba(0,212,255,.08)", border:"1px solid rgba(0,212,255,.25)", borderRadius:12, padding:11, color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+            style={{ width:"100%", marginTop:8, background:"rgba(0,212,255,.08)", border:"1px solid rgba(0,212,255,.25)", borderRadius:12, padding:11, color:"#00D4FF", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
             ✏️ Edit Order Details
           </button>
         </div>
@@ -2937,33 +2960,33 @@ function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
         <span style={{ fontSize:22 }}>🪪</span>
         <div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:14, fontWeight:700 }}>Collect Customer Civil ID</div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.45)", fontSize:11 }}>Enter details from customer's Civil ID card</div>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:14, fontWeight:700 }}>Collect Customer Civil ID</div>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.45)", fontSize:11 }}>Enter details from customer's Civil ID card</div>
         </div>
       </div>
 
       {saved ? (
         <div style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:12, padding:"14px", textAlign:"center" }}>
           <div style={{ fontSize:28, marginBottom:6 }}>✅</div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:14, fontWeight:700 }}>Civil ID Saved Successfully!</div>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:14, fontWeight:700 }}>Civil ID Saved Successfully!</div>
         </div>
 
       ) : confirmed ? (
         // Review step before saving
         <div>
           <div style={{ background:"rgba(0,0,0,.25)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:8, letterSpacing:1 }}>PLEASE VERIFY BEFORE SAVING</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}>{manualName}</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:14, letterSpacing:2 }}>{manualId}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:8, letterSpacing:1 }}>PLEASE VERIFY BEFORE SAVING</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}>{manualName}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:14, letterSpacing:2 }}>{manualId}</div>
           </div>
-          {err && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#EF4444", fontSize:12, marginBottom:8 }}>{err}</div>}
+          {err && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#EF4444", fontSize:12, marginBottom:8 }}>{err}</div>}
           <div style={{ display:"flex", gap:8 }}>
             <button onClick={function(){ setConfirmed(false); setErr(""); }}
-              style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"11px", color:"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>
+              style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"11px", color:"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>
               ← Edit
             </button>
             <button onClick={handleSave} disabled={saving}
-              style={{ flex:2, background:saving?"rgba(16,185,129,.2)":"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"11px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:13, fontWeight:700, cursor:saving?"default":"pointer" }}>
+              style={{ flex:2, background:saving?"rgba(16,185,129,.2)":"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"11px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:13, fontWeight:700, cursor:saving?"default":"pointer" }}>
               {saving ? "⏳ Saving…" : "✓ Confirm & Save"}
             </button>
           </div>
@@ -2973,18 +2996,18 @@ function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
         // Entry form
         <div>
           <div style={{ marginBottom:10 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>CIVIL ID NUMBER (12 digits)</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>CIVIL ID NUMBER (12 digits)</div>
             <input type="text" value={manualId} onChange={function(e){ setManualId(e.target.value.replace(/\D/g,"")); }} placeholder="000000000000" maxLength={12} inputMode="numeric"
-              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"11px 14px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:16, fontWeight:700, outline:"none", letterSpacing:3 }} />
+              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"11px 14px", color:"#00D4FF", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:16, fontWeight:700, outline:"none", letterSpacing:3 }} />
           </div>
           <div style={{ marginBottom:12 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>FULL NAME (English only)</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:4 }}>FULL NAME (English only)</div>
             <input type="text" value={manualName} onChange={function(e){ setManualName(e.target.value); }} placeholder="e.g. Mohammed Ali Al-Mutairi"
-              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"11px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }} />
+              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.3)", borderRadius:10, padding:"11px 14px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none" }} />
           </div>
-          {err && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#EF4444", fontSize:12, marginBottom:8 }}>{err}</div>}
+          {err && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#EF4444", fontSize:12, marginBottom:8 }}>{err}</div>}
           <button onClick={handleReview}
-            style={{ width:"100%", background:"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:12, padding:"12px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+            style={{ width:"100%", background:"rgba(0,212,255,.15)", border:"1.5px solid rgba(0,212,255,.4)", borderRadius:12, padding:"12px", color:"#00D4FF", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>
             Review →
           </button>
         </div>
@@ -2992,7 +3015,7 @@ function CivilIdScanner({ order, driverName, onSaved, onSkip }) {
 
       {!saved && (
         <button onClick={onSkip}
-          style={{ width:"100%", background:"none", border:"none", color:"rgba(255,255,255,.25)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer", marginTop:10, textDecoration:"underline" }}>
+          style={{ width:"100%", background:"none", border:"none", color:"rgba(255,255,255,.25)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer", marginTop:10, textDecoration:"underline" }}>
           Skip Civil ID collection
         </button>
       )}
@@ -3053,14 +3076,14 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
 
   return (
     <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,.88)", zIndex:9000, display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
-      <div style={{ width:"100%", background:"#161616", borderRadius:"24px 24px 0 0", maxHeight:"92dvh", display:"flex", flexDirection:"column", WebkitOverflowScrolling:"touch" }}>
+      <div style={{ width:"100%", background:"#161B24", borderRadius:"24px 24px 0 0", maxHeight:"92dvh", display:"flex", flexDirection:"column", WebkitOverflowScrolling:"touch" }}>
         {/* Scrollable content - flex:1 so button is always visible below */}
         <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch", padding:"24px 20px 16px" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:17, fontWeight:700 }}>Update Delivery Status</div>
-            <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>✕ Close</button>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:17, fontWeight:700 }}>Update Delivery Status</div>
+            <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,.6)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>✕ Close</button>
           </div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginBottom:18 }}>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginBottom:18 }}>
             #{order.invoiceNo} — {order.customer}
             {isCOD && <span style={{ color:"#F59E0B", marginLeft:8, fontWeight:600 }}>{fmt(order.total)} COD</span>}
           </div>
@@ -3072,8 +3095,8 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
               return (
                 <button key={s} onClick={function(){ setStatus(s); setPayMode(""); setLinkPlatform(""); }}
                   style={{ background:status===s?(c+"20"):"rgba(255,255,255,.05)", border:status===s?("2px solid "+c):"1px solid rgba(255,255,255,.1)", borderRadius:14, padding:"14px 16px", cursor:"pointer", textAlign:"left" }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:status===s?c:"#fff", fontSize:14, fontWeight:700 }}>{l}</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:status===s?c:"#fff", fontSize:14, fontWeight:700 }}>{l}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>
                     {s==="delivered"?"Order handed to customer":s==="postponed"?"Customer unavailable - retry later":"Order could not be delivered"}
                   </div>
                 </button>
@@ -3084,7 +3107,7 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
           {/* COD payment options — only for Delivered */}
           {status === "delivered" && isCOD && (
             <div style={{ background:"rgba(245,158,11,.06)", border:"1px solid rgba(245,158,11,.2)", borderRadius:14, padding:"14px", marginBottom:16 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontSize:13, fontWeight:700, marginBottom:10 }}>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#F59E0B", fontSize:13, fontWeight:700, marginBottom:10 }}>
                 💵 How was payment collected?
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
@@ -3098,7 +3121,7 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
                     <button key={opt.id} onClick={function(){ setPayMode(opt.id); setLinkPlatform(""); setSplitLink(""); setCashAmt(""); }}
                       style={{ background:payMode===opt.id?(opt.color+"20"):"rgba(255,255,255,.05)", border:payMode===opt.id?("2px solid "+opt.color):"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"10px 6px", cursor:"pointer", textAlign:"center" }}>
                       <div style={{ fontSize:18, marginBottom:3 }}>{opt.label}</div>
-                      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:payMode===opt.id?opt.color:"rgba(255,255,255,.6)", fontSize:10, fontWeight:700 }}>{opt.sub}</div>
+                      <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:payMode===opt.id?opt.color:"rgba(255,255,255,.6)", fontSize:10, fontWeight:700 }}>{opt.sub}</div>
                     </button>
                   );
                 })}
@@ -3107,7 +3130,7 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
               {/* Pre-Paid — pick payment method */}
               {payMode === "pre_paid" && (
                 <div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>SELECT PRE-PAID METHOD</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>SELECT PRE-PAID METHOD</div>
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                     {[
                       { id:"KNET",  label:"K-NET",  color:"#003DA5" },
@@ -3118,56 +3141,56 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
                       return (
                         <button key={pp.id} onClick={function(){ setLinkPlatform(pp.id); }}
                           style={{ flex:1, minWidth:70, background:linkPlatform===pp.id?(pp.color+"33"):"rgba(255,255,255,.06)", border:linkPlatform===pp.id?("2px solid "+pp.color):"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"9px 6px", cursor:"pointer", textAlign:"center" }}>
-                          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:linkPlatform===pp.id?pp.color:"rgba(255,255,255,.6)", fontSize:12, fontWeight:700 }}>{pp.label}</div>
+                          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:linkPlatform===pp.id?pp.color:"rgba(255,255,255,.6)", fontSize:12, fontWeight:700 }}>{pp.label}</div>
                         </button>
                       );
                     })}
                   </div>
-                  {linkPlatform && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#10B981", fontSize:12, marginTop:8 }}>✓ Pre-paid via {linkPlatform} — no cash collection needed</div>}
+                  {linkPlatform && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#10B981", fontSize:12, marginTop:8 }}>✓ Pre-paid via {linkPlatform} — no cash collection needed</div>}
                 </div>
               )}
 
               {/* Full link — pick platform */}
               {payMode === "full_link" && (
                 <div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>SELECT PLATFORM</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>SELECT PLATFORM</div>
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                     {LINK_OPTIONS.map(function(lk) {
                       return (
                         <button key={lk.id} onClick={function(){ setLinkPlatform(lk.id); }}
                           style={{ flex:1, minWidth:80, background:linkPlatform===lk.id?(lk.color+"25"):"rgba(255,255,255,.06)", border:linkPlatform===lk.id?("2px solid "+lk.color):"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"8px 6px", cursor:"pointer", textAlign:"center" }}>
-                          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:linkPlatform===lk.id?lk.color:"rgba(255,255,255,.6)", fontSize:11, fontWeight:700 }}>{lk.label}</div>
+                          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:linkPlatform===lk.id?lk.color:"rgba(255,255,255,.6)", fontSize:11, fontWeight:700 }}>{lk.label}</div>
                         </button>
                       );
                     })}
                   </div>
-                  {linkPlatform && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#A855F7", fontSize:12, marginTop:8 }}>✓ Full {fmt(total)} via {linkPlatform}</div>}
+                  {linkPlatform && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#A855F7", fontSize:12, marginTop:8 }}>✓ Full {fmt(total)} via {linkPlatform}</div>}
                 </div>
               )}
 
               {/* Split — cash amount + link platform */}
               {payMode === "split" && (
                 <div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>CASH AMOUNT RECEIVED</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>CASH AMOUNT RECEIVED</div>
                   <input type="number" value={cashAmt} onChange={function(e){ setCashAmt(e.target.value); }} placeholder={"e.g. " + fmt(total/2)}
-                    style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:14, marginBottom:10, boxSizing:"border-box" }} />
+                    style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 14px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:14, marginBottom:10, boxSizing:"border-box" }} />
                   {cashNum > 0 && cashNum < total && (
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:10 }}>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:10 }}>
                       Link amount: <span style={{ color:"#00D4FF", fontWeight:600 }}>{fmt(linkNum)}</span>
                     </div>
                   )}
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>LINK PLATFORM</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>LINK PLATFORM</div>
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                     {LINK_OPTIONS.map(function(lk) {
                       return (
                         <button key={lk.id} onClick={function(){ setSplitLink(lk.id); }}
                           style={{ flex:1, minWidth:80, background:splitLink===lk.id?(lk.color+"25"):"rgba(255,255,255,.06)", border:splitLink===lk.id?("2px solid "+lk.color):"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"8px 6px", cursor:"pointer", textAlign:"center" }}>
-                          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:splitLink===lk.id?lk.color:"rgba(255,255,255,.6)", fontSize:11, fontWeight:700 }}>{lk.label}</div>
+                          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:splitLink===lk.id?lk.color:"rgba(255,255,255,.6)", fontSize:11, fontWeight:700 }}>{lk.label}</div>
                         </button>
                       );
                     })}
                   </div>
-                  {splitValid && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:12, marginTop:8 }}>✓ Cash {fmt(cashNum)} + {splitLink} {fmt(linkNum)}</div>}
+                  {splitValid && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:12, marginTop:8 }}>✓ Cash {fmt(cashNum)} + {splitLink} {fmt(linkNum)}</div>}
                 </div>
               )}
             </div>
@@ -3178,37 +3201,37 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
             <div style={{ marginBottom:14 }}>
               <button onClick={function(){ setPartialMode(function(v){ return !v; }); setActualAmt(""); setPartialReason(""); }}
                 style={{ width:"100%", background:partialMode?"rgba(239,68,68,.12)":"rgba(255,255,255,.05)", border:partialMode?"1.5px solid #EF4444":"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"11px 14px", cursor:"pointer", textAlign:"left" }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:partialMode?"#EF4444":"rgba(255,255,255,.6)", fontSize:13, fontWeight:700 }}>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:partialMode?"#EF4444":"rgba(255,255,255,.6)", fontSize:13, fontWeight:700 }}>
                   {partialMode ? "✓ Partial Delivery Active" : "Partial Delivery (amount dispute / partial items)"}
                 </div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:2 }}>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:2 }}>
                   Customer refused charge or took only some items
                 </div>
               </button>
               {partialMode && (
                 <div style={{ background:"rgba(239,68,68,.06)", border:"1px solid rgba(239,68,68,.2)", borderRadius:12, padding:14, marginTop:8 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:6 }}>ACTUAL AMOUNT COLLECTED (KD)</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:6 }}>ACTUAL AMOUNT COLLECTED (KD)</div>
                   <input type="number" value={actualAmt} onChange={function(e){ setActualAmt(e.target.value); }}
                     placeholder={"Less than " + total.toFixed(3)}
-                    style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.08)", border:"1px solid rgba(239,68,68,.3)", borderRadius:10, padding:"10px 12px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:16, fontWeight:700, outline:"none", marginBottom:8 }} />
+                    style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.08)", border:"1px solid rgba(239,68,68,.3)", borderRadius:10, padding:"10px 12px", color:"#EF4444", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:16, fontWeight:700, outline:"none", marginBottom:8 }} />
                   {actualNum > 0 && actualNum < total && (
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, marginBottom:8 }}>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, marginBottom:8 }}>
                       <span style={{ color:"#10B981", fontWeight:700 }}>KD {actualNum.toFixed(3)}</span>
                       <span style={{ color:"rgba(255,255,255,.3)" }}> collected — KD {(total-actualNum).toFixed(3)} waived</span>
                     </div>
                   )}
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:6, marginTop:4 }}>REASON</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:6, marginTop:4 }}>REASON</div>
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:partialReason==="Other"?8:0 }}>
                     {["Refused delivery charge","Took 1 item only","Price dispute","Other"].map(function(r){
                       return <button key={r} onClick={function(){ setPartialReason(r); }}
-                        style={{ background:partialReason===r?"rgba(239,68,68,.2)":"rgba(255,255,255,.06)", border:partialReason===r?"1px solid #EF4444":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 10px", color:partialReason===r?"#EF4444":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>{r}</button>;
+                        style={{ background:partialReason===r?"rgba(239,68,68,.2)":"rgba(255,255,255,.06)", border:partialReason===r?"1px solid #EF4444":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 10px", color:partialReason===r?"#EF4444":"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>{r}</button>;
                     })}
                   </div>
                   {partialReason === "Other" && (
                     <input type="text" value={otherReason}
                       onChange={function(e){ setOtherReason(e.target.value); }}
                       placeholder="Describe the reason..."
-                      style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(239,68,68,.3)", borderRadius:8, padding:"8px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, outline:"none", marginTop:6 }} />
+                      style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(239,68,68,.3)", borderRadius:8, padding:"8px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, outline:"none", marginTop:6 }} />
                   )}
                 </div>
               )}
@@ -3218,15 +3241,15 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
           {/* Extra Amount — for all delivered orders */}
           {status === "delivered" && (
             <div style={{ background:"rgba(255,165,0,.06)", border:"1px solid rgba(255,165,0,.2)", borderRadius:14, padding:14, marginBottom:14 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FFA500", fontSize:13, fontWeight:700, marginBottom:4 }}>➕ Extra Amount to Collect?</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:10 }}>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FFA500", fontSize:13, fontWeight:700, marginBottom:4 }}>➕ Extra Amount to Collect?</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:10 }}>
                 e.g. delivery charge, extra items not in original order
               </div>
               <input type="number" value={extraAmt} onChange={function(e){ setExtraAmt(e.target.value); }}
                 placeholder="0.000 KD  (leave blank if none)" step="0.001" min="0"
-                style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,165,0,.3)", borderRadius:10, padding:"10px 14px", color:"#FFA500", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:15, fontWeight:700, outline:"none", marginBottom: (parseFloat(extraAmt)||0)>0 ? 8 : 0 }} />
+                style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,165,0,.3)", borderRadius:10, padding:"10px 14px", color:"#FFA500", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:15, fontWeight:700, outline:"none", marginBottom: (parseFloat(extraAmt)||0)>0 ? 8 : 0 }} />
               {(parseFloat(extraAmt)||0) > 0 && (
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#FFA500", fontSize:12 }}>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#FFA500", fontSize:12 }}>
                   Total with extra: <strong>KD {(Number(order.total) + (parseFloat(extraAmt)||0)).toFixed(3)}</strong>
                 </div>
               )}
@@ -3236,12 +3259,12 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
           {/* Note */}
           {status && status !== "delivered" && (
             <textarea value={note} onChange={function(e){ setNote(e.target.value); }} placeholder="Add a note (optional)..."
-              style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:12, padding:"10px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:14, minHeight:72, resize:"none", boxSizing:"border-box", marginBottom:16 }} />
+              style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:12, padding:"10px 14px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:14, minHeight:72, resize:"none", boxSizing:"border-box", marginBottom:16 }} />
           )}
         </div>
 
         {/* Confirm button OUTSIDE scroll area — always visible on iOS */}
-        <div style={{ flexShrink:0, background:"#161616", padding:"12px 20px", paddingBottom:"max(env(safe-area-inset-bottom, 0px) + 12px, 20px)", borderTop:"1px solid rgba(255,255,255,.06)" }}>
+        <div style={{ flexShrink:0, background:"#161B24", padding:"12px 20px", paddingBottom:"max(env(safe-area-inset-bottom, 0px) + 12px, 20px)", borderTop:"1px solid rgba(255,255,255,.06)" }}>
           {showCivilId ? (
             <CivilIdScanner
               order={order}
@@ -3251,7 +3274,7 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
             />
           ) : (
             <button onClick={handleConfirm} disabled={!canConfirm}
-              style={{ width:"100%", background:canConfirm?"linear-gradient(135deg,#00D4FF,#7C3AED)":"rgba(255,255,255,.1)", border:"none", borderRadius:14, padding:15, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:15, cursor:canConfirm?"pointer":"default" }}>
+              style={{ width:"100%", background:canConfirm?"linear-gradient(135deg,#00D4FF,#7C3AED)":"rgba(255,255,255,.1)", border:"none", borderRadius:14, padding:15, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:15, cursor:canConfirm?"pointer":"default" }}>
               {status ? "Confirm " + status.charAt(0).toUpperCase()+status.slice(1) : "Select a status above"}
             </button>
           )}
@@ -3281,10 +3304,10 @@ function CommissionCard({ deliveredCount }) {
     <div style={{ background: earned ? "linear-gradient(135deg,rgba(16,185,129,.15),rgba(0,212,255,.1))" : "rgba(255,255,255,.04)", border:"1px solid " + (earned?"rgba(16,185,129,.3)":"rgba(255,255,255,.1)"), borderRadius:16, padding:16, marginBottom:14 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
         <div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color: earned?"#10B981":"#fff", fontSize:14, fontWeight:700 }}>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color: earned?"#10B981":"#fff", fontSize:14, fontWeight:700 }}>
             {earned ? "🎉 Commission Earned!" : " Commission Progress"}
           </div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.45)", fontSize:12, marginTop:2 }}>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.45)", fontSize:12, marginTop:2 }}>
             {earned
               ? (eligible) + " order" + (eligible>1?"s":"") + " x KD " + (COMMISSION_PER_ORDER.toFixed(3)) + " (orders 21-" + (deliveredCount) + ")"
               : "Deliver " + (needed) + " more order" + (needed>1?"s":"") + " to start earning"}
@@ -3292,8 +3315,8 @@ function CommissionCard({ deliveredCount }) {
         </div>
         {earned && (
           <div style={{ textAlign:"right" }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:22, fontWeight:800 }}>{fmt(amount)}</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>today&apos;s commission</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:22, fontWeight:800 }}>{fmt(amount)}</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>today&apos;s commission</div>
           </div>
         )}
       </div>
@@ -3302,8 +3325,8 @@ function CommissionCard({ deliveredCount }) {
         <div style={{ height:"100%", width:(pct) + "%", background: earned ? "linear-gradient(90deg,#10B981,#00D4FF)" : "linear-gradient(90deg,#F59E0B,#FF6B35)", borderRadius:30, transition:"width .8s ease" }} />
       </div>
       <div style={{ display:"flex", justifyContent:"space-between" }}>
-        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{deliveredCount} delivered</span>
-        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>
+        <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{deliveredCount} delivered</span>
+        <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>
           {earned ? "+" + (eligible) + " commission orders" : (COMMISSION_THRESHOLD) + " to unlock   KD " + (COMMISSION_PER_ORDER.toFixed(3)) + "/order from 21st"}
         </span>
       </div>
@@ -3317,9 +3340,9 @@ function Row({ icon, label, value, highlight }) {
     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid rgba(255,255,255,.06)" }}>
       <div style={{ display:"flex", alignItems:"center", gap:10 }}>
         <span style={{ fontSize:16, width:22, textAlign:"center" }}>{icon}</span>
-        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.45)", fontSize:13 }}>{label}</span>
+        <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.45)", fontSize:13 }}>{label}</span>
       </div>
-      <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color: highlight || "#fff", fontSize:13, fontWeight:600, textAlign:"right", maxWidth:180 }}>{value || "-"}</span>
+      <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color: highlight || "#fff", fontSize:13, fontWeight:600, textAlign:"right", maxWidth:180 }}>{value || "-"}</span>
     </div>
   );
 }
@@ -3348,16 +3371,16 @@ function DriverProfileTab({ user, orders, expenses }) {
 
       {/* Avatar + name hero */}
       <div style={{ background:"linear-gradient(135deg,rgba(0,212,255,.08),rgba(124,58,237,.1))", border:"1px solid rgba(0,212,255,.15)", borderRadius:20, padding:24, marginBottom:16, textAlign:"center" }}>
-        <div style={{ width:72, height:72, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:26, fontWeight:800, color:"#fff" }}>
+        <div style={{ width:72, height:72, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:26, fontWeight:800, color:"#fff" }}>
           {driver.avatar || user.name?.slice(0,2).toUpperCase()}
         </div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:20, fontWeight:800 }}>{driver.name}</div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:4 }}>ID: {user.id.toUpperCase()}   Delivery Driver</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:20, fontWeight:800 }}>{driver.name}</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:4 }}>ID: {user.id.toUpperCase()}   Delivery Driver</div>
         <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:10 }}>
-          <span style={{ background: driver.status==="active"?"rgba(16,185,129,.15)":"rgba(107,114,128,.15)", color: driver.status==="active"?"#10B981":"#9CA3AF", border:"1px solid " + (driver.status==="active"?"rgba(16,185,129,.3)":"rgba(107,114,128,.3)"), borderRadius:20, padding:"3px 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, fontWeight:600 }}>
+          <span style={{ background: driver.status==="active"?"rgba(16,185,129,.15)":"rgba(107,114,128,.15)", color: driver.status==="active"?"#10B981":"#9CA3AF", border:"1px solid " + (driver.status==="active"?"rgba(16,185,129,.3)":"rgba(107,114,128,.3)"), borderRadius:20, padding:"3px 12px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, fontWeight:600 }}>
             {driver.status==="active" ? "Active" : "Inactive"}
           </span>
-          <span style={{ background:"rgba(255,107,53,.1)", color:"#FF6B35", border:"1px solid rgba(255,107,53,.25)", borderRadius:20, padding:"3px 12px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12 }}>
+          <span style={{ background:"rgba(255,90,31,.1)", color:"#FF5A1F", border:"1px solid rgba(255,90,31,.25)", borderRadius:20, padding:"3px 12px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12 }}>
             {vehicleIcon} {driver.vehicleType || "-"}
           </span>
         </div>
@@ -3365,7 +3388,7 @@ function DriverProfileTab({ user, orders, expenses }) {
 
       {/* Personal Details */}
       <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, padding:"0 16px", marginBottom:14 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", padding:"12px 0 4px" }}>Personal Details</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", padding:"12px 0 4px" }}>Personal Details</div>
         <Row icon="👤" label="Full Name"       value={driver.name} />
         <Row icon="📞" label="Mobile Number"   value={driver.phone} />
         <Row icon="🌍" label="Nationality"     value={driver.nationality} />
@@ -3374,7 +3397,7 @@ function DriverProfileTab({ user, orders, expenses }) {
 
       {/* Vehicle Details */}
       <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, padding:"0 16px", marginBottom:14 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", padding:"12px 0 4px" }}>Vehicle Details</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", padding:"12px 0 4px" }}>Vehicle Details</div>
         <Row icon={vehicleIcon} label="Vehicle Type"   value={driver.vehicleType} />
         <Row icon="🔢"          label="Vehicle Number" value={driver.vehicleNo} />
         <Row icon="📋"          label="License No."    value={driver.licenseNo} />
@@ -3386,21 +3409,21 @@ function DriverProfileTab({ user, orders, expenses }) {
 
       {/* Company Vehicle Assignment */}
       <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, padding:"14px 16px", marginBottom:14 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", marginBottom:12 }}>Assigned Vehicle</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", marginBottom:12 }}>Assigned Vehicle</div>
         {selVehicle ? (
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
               <div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}>{selVehicle.brand} {selVehicle.model}</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>
-                  Plate: <span style={{ color:"#FF6B35", fontWeight:600 }}>{selVehicle.plate}</span>   {selVehicle.color} {selVehicle.type}
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}>{selVehicle.brand} {selVehicle.model}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>
+                  Plate: <span style={{ color:"#FF5A1F", fontWeight:600 }}>{selVehicle.plate}</span>   {selVehicle.color} {selVehicle.type}
                 </div>
               </div>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>Assigned by Admin</span>
+              <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>Assigned by Admin</span>
             </div>
           </div>
         ) : (
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>No vehicle assigned yet. Contact admin.</div>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>No vehicle assigned yet. Contact admin.</div>
         )}
       </div>
 
@@ -3409,17 +3432,17 @@ function DriverProfileTab({ user, orders, expenses }) {
         <div style={{ background: daftarExpired?"rgba(239,68,68,.1)":"rgba(245,158,11,.1)", border:"1px solid " + (daftarExpired?"rgba(239,68,68,.3)":"rgba(245,158,11,.3)"), borderRadius:12, padding:"12px 14px", marginBottom:14, display:"flex", gap:10, alignItems:"center" }}>
           <span style={{ fontSize:20 }}>{daftarExpired ? "🚨" : ""}</span>
           <div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color: daftarExpired?"#EF4444":"#F59E0B", fontSize:13, fontWeight:700 }}>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color: daftarExpired?"#EF4444":"#F59E0B", fontSize:13, fontWeight:700 }}>
               {daftarExpired ? "Daftar EXPIRED!" : "Daftar expires in " + (daysToExpiry) + " days"}
             </div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>Please renew vehicle registration immediately</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>Please renew vehicle registration immediately</div>
           </div>
         </div>
       )}
 
       {/* Today's Performance */}
       <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, padding:"0 16px", marginBottom:14 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", padding:"12px 0 4px" }}>Today&apos;s Performance</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", padding:"12px 0 4px" }}>Today&apos;s Performance</div>
         <Row icon="📦" label="Total Orders"   value={(orders.length) + " assigned"} />
         <Row icon="" label="Delivered"       value={(delivered) + " orders"} highlight="#10B981" />
         <Row icon="" label="Commission"      value={comm.earned ? fmt(comm.amount) : "Not yet (" + (Math.max(0,21-orders.filter(o=>o.status==="delivered"&&!isExchange(o.paymentType)).length)) + " more needed)"} highlight={comm.earned ? "#10B981" : undefined} />
@@ -3429,7 +3452,7 @@ function DriverProfileTab({ user, orders, expenses }) {
       {/* Today's Order Activity */}
       {orders.length > 0 && (
         <div style={{ marginBottom:14 }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", marginBottom:10 }}>Today's Order Activity</div>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", marginBottom:10 }}>Today's Order Activity</div>
           {[
             { label:"Delivered", items:orders.filter(function(o){ return o.status==="delivered"&&!isExchange(o.paymentType)&&!isExchange(o.originalPaymentType); }), color:"#10B981", border:"rgba(16,185,129,.2)" },
             { label:"Exchange",  items:orders.filter(function(o){ return o.status==="delivered"&&(isExchange(o.paymentType)||isExchange(o.originalPaymentType)); }), color:"#9CA3AF", border:"rgba(107,114,128,.2)" },
@@ -3438,24 +3461,24 @@ function DriverProfileTab({ user, orders, expenses }) {
           ].filter(function(g){ return g.items.length>0; }).map(function(g){
             return (
               <div key={g.label} style={{ background:"rgba(255,255,255,.03)", border:"1px solid "+g.border, borderRadius:14, padding:"12px 14px", marginBottom:8 }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:g.color, fontSize:13, fontWeight:700, marginBottom:6 }}>{g.label} — {g.items.length} order{g.items.length>1?"s":""}</div>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:g.color, fontSize:13, fontWeight:700, marginBottom:6 }}>{g.label} — {g.items.length} order{g.items.length>1?"s":""}</div>
                 {g.items.map(function(o){
                   return (
                     <div key={o.invoiceNo} style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", padding:"5px 0", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.8)", fontSize:12, fontWeight:600 }}>{o.customer}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>#{o.invoiceNo}{o.onlineOrderNo?" · OO:"+o.onlineOrderNo:""} · {o.store}</div>
-                        {o.note?<div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.25)", fontSize:10, fontStyle:"italic" }}>{o.note}</div>:null}
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.8)", fontSize:12, fontWeight:600 }}>{o.customer}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>#{o.invoiceNo}{o.onlineOrderNo?" · OO:"+o.onlineOrderNo:""} · {o.store}</div>
+                        {o.note?<div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.25)", fontSize:10, fontStyle:"italic" }}>{o.note}</div>:null}
                       </div>
                       <div style={{ textAlign:"right", marginLeft:8 }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:g.color, fontSize:12, fontWeight:700 }}>{fmt(o.total)}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>{o.paymentType}</div>
+                        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:g.color, fontSize:12, fontWeight:700 }}>{fmt(o.total)}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>{o.paymentType}</div>
                       </div>
                     </div>
                   );
                 })}
                 {g.label==="Delivered" && (
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:g.color, fontSize:11, fontWeight:700, marginTop:6, textAlign:"right" }}>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:g.color, fontSize:11, fontWeight:700, marginTop:6, textAlign:"right" }}>
                     Total Collected: {fmt(g.items.reduce(function(a,o){ return a+Number(o.total); },0))}
                   </div>
                 )}
@@ -3500,15 +3523,15 @@ function DriverExpensesTab({ driverId, driverName, expenses, orders, onAddExpens
 
       {/* Add expense form */}
       <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:16, padding:16, marginBottom:16 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700, marginBottom:14 }}> Log Vehicle Expense</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700, marginBottom:14 }}> Log Vehicle Expense</div>
 
         {/* Type selector */}
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>EXPENSE TYPE</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>EXPENSE TYPE</div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:14 }}>
           {EXPENSE_TYPES.map(t => (
             <button key={t} onClick={() => setExpType(t)}
-              style={{ background:expType===t?"rgba(255,107,53,.2)":"rgba(255,255,255,.06)", border:expType===t?"1.5px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"7px 14px", cursor:"pointer" }}>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:expType===t?"#FF6B35":"rgba(255,255,255,.6)", fontSize:13, fontWeight:expType===t?600:400 }}>
+              style={{ background:expType===t?"rgba(255,90,31,.2)":"rgba(255,255,255,.06)", border:expType===t?"1.5px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"7px 14px", cursor:"pointer" }}>
+              <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:expType===t?"#FF5A1F":"rgba(255,255,255,.6)", fontSize:13, fontWeight:expType===t?600:400 }}>
                 {t==="Fuel"?" Fuel":t==="Parking"?"🅿 Parking":t==="Toll"?"🛣 Toll":t==="Car Wash"?"🚿 Car Wash":t==="Maintenance"?"🔧 Maintenance":"📋 "+t}
               </span>
             </button>
@@ -3516,18 +3539,18 @@ function DriverExpensesTab({ driverId, driverName, expenses, orders, onAddExpens
         </div>
 
         {/* Amount */}
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>AMOUNT (KD)</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>AMOUNT (KD)</div>
         <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.000" step="0.001" min="0"
-          style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"12px 14px", color:"#FF6B35", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:16, fontWeight:700, outline:"none", boxSizing:"border-box", marginBottom:12 }} />
+          style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"12px 14px", color:"#FF5A1F", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:16, fontWeight:700, outline:"none", boxSizing:"border-box", marginBottom:12 }} />
 
         {/* Note */}
         <input value={note} onChange={e=>setNote(e.target.value)} placeholder="Note (optional, e.g. filled at KNPC station)"
-          style={{ width:"100%", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:12 }} />
+          style={{ width:"100%", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:12 }} />
 
-        {err && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#EF4444", fontSize:12, marginBottom:8 }}> {err}</div>}
+        {err && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#EF4444", fontSize:12, marginBottom:8 }}> {err}</div>}
 
         <button onClick={submit}
-          style={{ width:"100%", background: saved?"#10B981":"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer", transition:"background .3s" }}>
+          style={{ width:"100%", background: saved?"#10B981":"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:12, padding:14, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer", transition:"background .3s" }}>
           {saved ? " Expense Saved!" : "Save Expense ->"}
         </button>
       </div>
@@ -3536,35 +3559,35 @@ function DriverExpensesTab({ driverId, driverName, expenses, orders, onAddExpens
       {expenses.length > 0 && (
         <>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>Today&apos;s Expenses</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:15, fontWeight:800 }}>- {fmt(totalExp)}</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>Today&apos;s Expenses</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontSize:15, fontWeight:800 }}>- {fmt(totalExp)}</div>
           </div>
           {expenses.map(function(e,i) {
             if (editId === e.id) {
               return (
-                <div key={e.id||i} style={{ background:"rgba(255,107,53,.08)", border:"1px solid rgba(255,107,53,.3)", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:13, fontWeight:700, marginBottom:10 }}>Edit Expense</div>
+                <div key={e.id||i} style={{ background:"rgba(255,90,31,.08)", border:"1px solid rgba(255,90,31,.3)", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:13, fontWeight:700, marginBottom:10 }}>Edit Expense</div>
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
                     {EXPENSE_TYPES.map(function(t){ return (
                       <button key={t} onClick={function(){ setEditType(t); }}
-                        style={{ background:editType===t?"rgba(255,107,53,.2)":"rgba(255,255,255,.06)", border:editType===t?"1.5px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 10px", cursor:"pointer" }}>
-                        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:editType===t?"#FF6B35":"rgba(255,255,255,.5)", fontSize:12 }}>{t}</span>
+                        style={{ background:editType===t?"rgba(255,90,31,.2)":"rgba(255,255,255,.06)", border:editType===t?"1.5px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 10px", cursor:"pointer" }}>
+                        <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:editType===t?"#FF5A1F":"rgba(255,255,255,.5)", fontSize:12 }}>{t}</span>
                       </button>
                     ); })}
                   </div>
                   <input type="number" value={editAmount} onChange={function(e){ setEditAmount(e.target.value); }} placeholder="Amount KD"
-                    style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"9px 12px", color:"#FF6B35", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:15, fontWeight:700, outline:"none", marginBottom:8 }} />
+                    style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"9px 12px", color:"#FF5A1F", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:15, fontWeight:700, outline:"none", marginBottom:8 }} />
                   <input value={editNote} onChange={function(e){ setEditNote(e.target.value); }} placeholder="Note (optional)"
-                    style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none", marginBottom:10 }} />
+                    style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none", marginBottom:10 }} />
                   <div style={{ display:"flex", gap:8 }}>
                     <button onClick={function(){
                         if (!editAmount || isNaN(editAmount) || Number(editAmount)<=0) return;
                         onUpdateExpense && onUpdateExpense(e.id, { type:editType, amount:Number(editAmount), note:editNote });
                         setEditId(null);
                       }}
-                      style={{ flex:1, background:"#FF6B35", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>Save</button>
+                      style={{ flex:1, background:"#FF5A1F", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>Save</button>
                     <button onClick={function(){ setEditId(null); }}
-                      style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:10, padding:"10px", color:"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, cursor:"pointer" }}>Cancel</button>
+                      style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:10, padding:"10px", color:"rgba(255,255,255,.6)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, cursor:"pointer" }}>Cancel</button>
                   </div>
                 </div>
               );
@@ -3572,16 +3595,16 @@ function DriverExpensesTab({ driverId, driverName, expenses, orders, onAddExpens
             return (
               <div key={e.id||i} style={{ background:"rgba(239,68,68,.05)", border:"1px solid rgba(239,68,68,.15)", borderRadius:12, padding:"12px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{e.type==="Fuel"?"⛽":e.type==="Parking"?"🅿":e.type==="Toll"?"🛣":e.type==="Car Wash"?"🚿":e.type==="Maintenance"?"🔧":"📋"} {e.type}</div>
-                  {e.note && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>{e.note}</div>}
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.25)", fontSize:10, marginTop:2 }}>{new Date(e.createdAt).toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{e.type==="Fuel"?"⛽":e.type==="Parking"?"🅿":e.type==="Toll"?"🛣":e.type==="Car Wash"?"🚿":e.type==="Maintenance"?"🔧":"📋"} {e.type}</div>
+                  {e.note && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>{e.note}</div>}
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.25)", fontSize:10, marginTop:2 }}>{new Date(e.createdAt).toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</div>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:14, fontWeight:800 }}>- {fmt(e.amount)}</div>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontSize:14, fontWeight:800 }}>- {fmt(e.amount)}</div>
                   <button onClick={function(){ setEditId(e.id); setEditType(e.type); setEditAmount(String(e.amount)); setEditNote(e.note||""); }}
-                    style={{ background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"4px 8px", color:"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>Edit</button>
+                    style={{ background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"4px 8px", color:"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>Edit</button>
                   <button onClick={function(){ if(window.confirm("Delete this expense?")) { onDeleteExpense && onDeleteExpense(e.id); } }}
-                    style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:8, padding:"4px 8px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>✕</button>
+                    style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:8, padding:"4px 8px", color:"#EF4444", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>✕</button>
                 </div>
               </div>
             );
@@ -3596,8 +3619,8 @@ function DriverExpensesTab({ driverId, driverName, expenses, orders, onAddExpens
 function SCard({ label, value, color, bg }) {
   return (
     <div style={{ background:bg, borderRadius:9, padding:"10px 12px", flex:1, minWidth:100 }}>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:color, fontSize:20, fontWeight:800 }}>{value}</div>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#475569", fontSize:11, marginTop:2 }}>{label}</div>
+      <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:color, fontSize:20, fontWeight:800 }}>{value}</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#475569", fontSize:11, marginTop:2 }}>{label}</div>
     </div>
   );
 }
@@ -3656,8 +3679,8 @@ function ReportPreview({ data, onClose }) {
   return (
     <div style={{ position:"absolute", inset:0, zIndex:999, background:"#f8fafc", display:"flex", flexDirection:"column", overflowY:"auto" }}>
       {/* Sticky action bar */}
-      <div style={{ position:"sticky", top:0, zIndex:10, background:"#0D0D0D", padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>Daily Report - {drvName}</div>
+      <div style={{ position:"sticky", top:0, zIndex:10, background:"#090B10", padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>Daily Report - {drvName}</div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           <button onClick={function() {
             var pri = document.getElementById("report-print-area");
@@ -3674,7 +3697,7 @@ function ReportPreview({ data, onClose }) {
               setTimeout(function(){ document.body.removeChild(ifr); URL.revokeObjectURL(url); },2000);
             };
             ifr.src = url;
-          }} style={{ background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.4)", borderRadius:8, padding:"6px 12px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>
+          }} style={{ background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.4)", borderRadius:8, padding:"6px 12px", color:"#00D4FF", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>
             Print A4
           </button>
           <button onClick={function() {
@@ -3695,23 +3718,23 @@ function ReportPreview({ data, onClose }) {
             } else {
               setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
             }
-          }} style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.4)", borderRadius:8, padding:"6px 12px", color:"#10B981", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>
+          }} style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.4)", borderRadius:8, padding:"6px 12px", color:"#10B981", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>
             Download
           </button>
-          <button onClick={onClose} style={{ background:"rgba(239,68,68,.2)", border:"1px solid rgba(239,68,68,.4)", borderRadius:8, padding:"6px 14px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>x Close</button>
+          <button onClick={onClose} style={{ background:"rgba(239,68,68,.2)", border:"1px solid rgba(239,68,68,.4)", borderRadius:8, padding:"6px 14px", color:"#EF4444", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>x Close</button>
         </div>
       </div>
 
-      <div id="report-print-area" style={{ padding:"12px 14px 40px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#111", maxWidth:"100%", margin:"0 auto", width:"100%" }}>
+      <div id="report-print-area" style={{ padding:"12px 14px 40px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#111", maxWidth:"100%", margin:"0 auto", width:"100%" }}>
 
         {/* Header */}
         <div style={{ background:"linear-gradient(135deg,#0A0F1E,#1a2340)", color:"#fff", borderRadius:12, padding:"16px 18px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
           <div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:18, fontWeight:800, letterSpacing:-1 }}>Deliver<span style={{ color:"#00D4FF" }}>Flow</span></div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:18, fontWeight:800, letterSpacing:-1 }}>Deliver<span style={{ color:"#00D4FF" }}>Flow</span></div>
             <div style={{ fontSize:11, opacity:.5, marginTop:2 }}>Daily Delivery Report   AMTEL TELECOM FOR GENERAL TRADING CO.</div>
           </div>
           <div style={{ textAlign:"right", fontSize:12, opacity:.75, lineHeight:1.8 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>Delivery Boy: {drvName}</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>Delivery Boy: {drvName}</div>
             <div>Date: {date}</div>
             <div>Generated: {new Date().toLocaleTimeString("en-KW",{hour:"2-digit",minute:"2-digit"})}</div>
             <div>Total Orders: {myOrders.length}</div>
@@ -3719,7 +3742,7 @@ function ReportPreview({ data, onClose }) {
         </div>
 
         {/* Order Summary */}
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Order Summary</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Order Summary</div>
         <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:8 }}>
           <SCard label="Total"      value={myOrders.length}       color="#1D4ED8" bg="#EFF6FF" />
           <SCard label="Delivered"  value={deliveredOrds.length}  color="#059669" bg="#ECFDF5" />
@@ -3731,23 +3754,23 @@ function ReportPreview({ data, onClose }) {
         </div>
 
         {/* Collection Summary */}
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10, marginTop:16 }}>Collection Summary</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10, marginTop:16 }}>Collection Summary</div>
         <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0", marginBottom:6 }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", background:"#0D0D0D", padding:"7px 12px" }}>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase" }}>Payment Method</span>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:100, textAlign:"right" }}>Amount (KD)</span>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:70, textAlign:"right" }}>Orders</span>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", background:"#090B10", padding:"7px 12px" }}>
+            <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase" }}>Payment Method</span>
+            <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:100, textAlign:"right" }}>Amount (KD)</span>
+            <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, textTransform:"uppercase", minWidth:70, textAlign:"right" }}>Orders</span>
           </div>
           {collectionRows.map((r,i) => (
             <div key={r.label} style={{ display:"grid", gridTemplateColumns:"1fr auto auto", padding:"8px 12px", background:i%2===0?"#fff":"#F8FAFC", borderTop:"1px solid #F1F5F9" }}>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#111", fontWeight:600, fontSize:13 }}>{r.label}</span>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#111", fontWeight:700, fontSize:13, minWidth:100, textAlign:"right" }}>KD {r.amt.toFixed(3)}</span>
+              <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#111", fontWeight:600, fontSize:13 }}>{r.label}</span>
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#111", fontWeight:700, fontSize:13, minWidth:100, textAlign:"right" }}>KD {r.amt.toFixed(3)}</span>
               <span style={{ color:"#64748B", fontSize:12, minWidth:70, textAlign:"right" }}>{nonExDel.filter(o=>{const p=o.originalPaymentType||o.paymentType; return r.label==="Cash in Hand (COD)"?(p==="Cash"||p==="COD")&&!o.originalPaymentType:r.label==="Split (Cash+Link)"?p?.startsWith("Split"):r.label==="GoCollect (Link)"?p?.includes("GoCollect"):r.label==="Trikart Link"?p?.includes("Trikart Link"):r.label==="WAMD (Link)"?p?.includes("WAMD"):p===r.label}).length}</span>
             </div>
           ))}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", padding:"9px 12px", background:"#0D0D0D", borderTop:"2px solid #334155" }}>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontWeight:700, fontSize:13 }}>TOTAL COLLECTED</span>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontWeight:800, fontSize:15, minWidth:100, textAlign:"right" }}>KD {grandTotal.toFixed(3)}</span>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto", padding:"9px 12px", background:"#090B10", borderTop:"2px solid #334155" }}>
+            <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontWeight:700, fontSize:13 }}>TOTAL COLLECTED</span>
+            <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontWeight:800, fontSize:15, minWidth:100, textAlign:"right" }}>KD {grandTotal.toFixed(3)}</span>
             <span style={{ color:"rgba(255,255,255,.5)", fontSize:12, minWidth:70, textAlign:"right" }}>{nonExDel.length} orders</span>
           </div>
           {totalExpAmt > 0 && (function(){
@@ -3757,16 +3780,16 @@ function ReportPreview({ data, onClose }) {
             return (
               <div style={{ padding:"9px 12px", background:"#1e3a5f", borderTop:"1px solid #334155" }}>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr auto", marginBottom:4 }}>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.7)", fontSize:12 }}>Cash in Hand (COD)</span>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontWeight:700, fontSize:13 }}>KD {cashAmt.toFixed(3)}</span>
+                  <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.7)", fontSize:12 }}>Cash in Hand (COD)</span>
+                  <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#F59E0B", fontWeight:700, fontSize:13 }}>KD {cashAmt.toFixed(3)}</span>
                 </div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr auto", marginBottom:4 }}>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.7)", fontSize:12 }}>Less: Vehicle Expenses</span>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontWeight:700, fontSize:13 }}>- KD {totalExpAmt.toFixed(3)}</span>
+                  <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.7)", fontSize:12 }}>Less: Vehicle Expenses</span>
+                  <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontWeight:700, fontSize:13 }}>- KD {totalExpAmt.toFixed(3)}</span>
                 </div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr auto", borderTop:"1px solid rgba(255,255,255,.2)", paddingTop:6 }}>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontWeight:700, fontSize:13 }}>NET CASH TO RETURN</span>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:cashAfterExp>=0?"#10B981":"#EF4444", fontWeight:800, fontSize:15 }}>KD {cashAfterExp.toFixed(3)}</span>
+                  <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontWeight:700, fontSize:13 }}>NET CASH TO RETURN</span>
+                  <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:cashAfterExp>=0?"#10B981":"#EF4444", fontWeight:800, fontSize:15 }}>KD {cashAfterExp.toFixed(3)}</span>
                 </div>
               </div>
             );
@@ -3776,10 +3799,10 @@ function ReportPreview({ data, onClose }) {
 
         {/* Bill-wise Details - Per Store */}
         <div style={{ pageBreakBefore:"auto", marginTop:16 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Bill-wise Details</div>
-        <div style={{ display:"flex", gap:8, background:"#0D0D0D", padding:"7px 10px", borderRadius:"10px 10px 0 0", marginBottom:2 }}>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10 }}>Bill-wise Details</div>
+        <div style={{ display:"flex", gap:8, background:"#090B10", padding:"7px 10px", borderRadius:"10px 10px 0 0", marginBottom:2 }}>
           {["Date","Invoice No","Customer","OO No.","Total","Extra","Payment","Status","Note"].map(h=>(
-            <span key={h} style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:600, textTransform:"uppercase", flex:h==="Customer"||h==="Note"?2:1, minWidth:0 }}>{h}</span>
+            <span key={h} style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:10, fontWeight:600, textTransform:"uppercase", flex:h==="Customer"||h==="Note"?2:1, minWidth:0 }}>{h}</span>
           ))}
         </div>
         {orderedStores.map(function(store) {
@@ -3804,54 +3827,54 @@ function ReportPreview({ data, onClose }) {
             <div key={store} style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:10, overflow:"hidden", marginBottom:10, pageBreakInside:"avoid" }}>
               {/* Store header */}
               <div style={{ background:"#1e293b", padding:"8px 10px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontWeight:700, fontSize:13 }}>{store}</span>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11 }}>
+                <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontWeight:700, fontSize:13 }}>{store}</span>
+                <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:11 }}>
                   {sDelOrds.length} delivered  {sCancOrds.length > 0 ? "  "+sCancOrds.length+" cancelled" : ""}  {sPostOrds.length > 0 ? "  "+sPostOrds.length+" postponed" : ""}  {sExOrds.length > 0 ? "  "+sExOrds.length+" exchange" : ""}
                 </span>
               </div>
               {/* Delivered orders */}
               {sDelOrds.length > 0 && (
                 <div>
-                  <div style={{ background:"#ECFDF5", padding:"4px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#059669", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Delivered</div>
+                  <div style={{ background:"#ECFDF5", padding:"4px 10px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#059669", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Delivered</div>
                   {sDelOrds.map((o,idx) => <OrderRow key={o.invoiceNo} o={o} i={idx} statusBg={statusBg} statusColor={statusColor} />)}
                 </div>
               )}
               {/* Exchange orders */}
               {sExOrds.length > 0 && (
                 <div>
-                  <div style={{ background:"#F3F4F6", padding:"4px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#6B7280", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Exchange (No Cash)</div>
+                  <div style={{ background:"#F3F4F6", padding:"4px 10px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#6B7280", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Exchange (No Cash)</div>
                   {sExOrds.map((o,idx) => <OrderRow key={o.invoiceNo} o={o} i={idx} statusBg={statusBg} statusColor={statusColor} />)}
                 </div>
               )}
               {/* Cancelled orders */}
               {sCancOrds.length > 0 && (
                 <div>
-                  <div style={{ background:"#FEF2F2", padding:"4px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#DC2626", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Cancelled</div>
+                  <div style={{ background:"#FEF2F2", padding:"4px 10px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#DC2626", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Cancelled</div>
                   {sCancOrds.map((o,idx) => <OrderRow key={o.invoiceNo} o={o} i={idx} statusBg={statusBg} statusColor={statusColor} />)}
                 </div>
               )}
               {/* Postponed orders */}
               {sPostOrds.length > 0 && (
                 <div>
-                  <div style={{ background:"#F5F3FF", padding:"4px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#7C3AED", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Postponed</div>
+                  <div style={{ background:"#F5F3FF", padding:"4px 10px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#7C3AED", fontSize:10, fontWeight:700, textTransform:"uppercase" }}>Postponed</div>
                   {sPostOrds.map((o,idx) => <OrderRow key={o.invoiceNo} o={o} i={idx} statusBg={statusBg} statusColor={statusColor} />)}
                 </div>
               )}
               {/* Payment breakdown - only delivered non-exchange */}
               <div style={{ background:"#F8FAFC", padding:"8px 10px", borderTop:"1px solid #E2E8F0" }}>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 16px", marginBottom:4 }}>
-                  {sCash>0  && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#059669" }}>Cash: <strong>KD {sCash.toFixed(3)}</strong></span>}
-                  {sKnet>0  && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#0284C7" }}>KNET: <strong>KD {sKnet.toFixed(3)}</strong></span>}
-                  {sDeema>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#7C3AED" }}>Deema: <strong>KD {sDeema.toFixed(3)}</strong></span>}
-                  {sTabby>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#D97706" }}>Tabby: <strong>KD {sTabby.toFixed(3)}</strong></span>}
-                  {sVisa>0  && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#DC2626" }}>VISA/MC: <strong>KD {sVisa.toFixed(3)}</strong></span>}
-                  {sLink>0  && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#0891B2" }}>Link: <strong>KD {sLink.toFixed(3)}</strong></span>}
-                  {sSplit>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#6B7280" }}>Split: <strong>KD {sSplit.toFixed(3)}</strong></span>}
-                  {sExtra>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, color:"#EA580C" }}>⚡ Extra: <strong>KD {sExtra.toFixed(3)}</strong></span>}
+                  {sCash>0  && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, color:"#059669" }}>Cash: <strong>KD {sCash.toFixed(3)}</strong></span>}
+                  {sKnet>0  && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, color:"#0284C7" }}>KNET: <strong>KD {sKnet.toFixed(3)}</strong></span>}
+                  {sDeema>0 && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, color:"#7C3AED" }}>Deema: <strong>KD {sDeema.toFixed(3)}</strong></span>}
+                  {sTabby>0 && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, color:"#D97706" }}>Tabby: <strong>KD {sTabby.toFixed(3)}</strong></span>}
+                  {sVisa>0  && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, color:"#DC2626" }}>VISA/MC: <strong>KD {sVisa.toFixed(3)}</strong></span>}
+                  {sLink>0  && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, color:"#0891B2" }}>Link: <strong>KD {sLink.toFixed(3)}</strong></span>}
+                  {sSplit>0 && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, color:"#6B7280" }}>Split: <strong>KD {sSplit.toFixed(3)}</strong></span>}
+                  {sExtra>0 && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, color:"#EA580C" }}>⚡ Extra: <strong>KD {sExtra.toFixed(3)}</strong></span>}
                 </div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, color:"#0F172A", textAlign:"right" }}>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:12, fontWeight:700, color:"#0F172A", textAlign:"right" }}>
                   Store Total (Delivered): KD {sTotalWithExtra.toFixed(3)}
-                  {sExtra>0 && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, color:"#EA580C", marginLeft:6, fontWeight:400 }}>(incl. KD {sExtra.toFixed(3)} extra)</span>}
+                  {sExtra>0 && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10, color:"#EA580C", marginLeft:6, fontWeight:400 }}>(incl. KD {sExtra.toFixed(3)} extra)</span>}
                 </div>
               </div>
             </div>
@@ -3861,7 +3884,7 @@ function ReportPreview({ data, onClose }) {
         </div>{/* end bill-wise section */}
 
         {/* Commission & Expenses */}
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10, marginTop:16 }}>Commission &amp; Expenses</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:11, fontWeight:700, color:"#64748B", letterSpacing:1, textTransform:"uppercase", borderBottom:"2px solid #E2E8F0", paddingBottom:4, marginBottom:10, marginTop:16 }}>Commission &amp; Expenses</div>
         <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
           <SCard label={comm.earned?"Commission (" + (comm.eligible) + " orders x KD 0.250)":"Commission (not yet earned)"} value={comm.earned?"KD " + (comm.amount.toFixed(3)):"-"} color={comm.earned?"#059669":"#D97706"} bg={comm.earned?"#ECFDF5":"#FFFBEB"} />
           <SCard label="Vehicle Expenses" value={totalExpAmt>0?"- KD " + (totalExpAmt.toFixed(3)):"None"} color="#DC2626" bg="#FEF2F2" />
@@ -3869,8 +3892,8 @@ function ReportPreview({ data, onClose }) {
         </div>
         {myExpenses.length > 0 && (
           <div style={{ background:"#fff", borderRadius:10, overflow:"hidden", border:"1px solid #E2E8F0" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", background:"#0D0D0D", padding:"7px 12px" }}>
-              {["Type","Amount","Note","Time"].map(h=><span key={h} style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:600 }}>{h}</span>)}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", background:"#090B10", padding:"7px 12px" }}>
+              {["Type","Amount","Note","Time"].map(h=><span key={h} style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:10, fontWeight:600 }}>{h}</span>)}
             </div>
             {myExpenses.map((e,i)=>(
               <div key={e.id||i} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 2fr auto", padding:"7px 12px", background:i%2===0?"#fff":"#F8FAFC", borderTop:"1px solid #F1F5F9", fontSize:12 }}>
@@ -3897,8 +3920,8 @@ function Stat({ l, v, c, icon }) {
   return (
     <div style={{ background:c+"10", border:"1px solid "+c+"25", borderRadius:14, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
       <div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>{icon} {l}</div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:c, fontSize:22, fontWeight:800, marginTop:2 }}>{v}</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>{icon} {l}</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:c, fontSize:22, fontWeight:800, marginTop:2 }}>{v}</div>
       </div>
     </div>
   );
@@ -4001,7 +4024,7 @@ function DayClosingTab({ orders, driverId, driverName }) {
     return (
       <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:12, padding:32 }}>
         <span style={{ fontSize:40 }}>📭</span>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:16 }}>No orders to close today</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:16 }}>No orders to close today</div>
       </div>
     );
   }
@@ -4010,11 +4033,11 @@ function DayClosingTab({ orders, driverId, driverName }) {
     <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 80px" }}>
       {/* Header */}
       <div style={{ background:"linear-gradient(135deg,rgba(16,185,129,.12),rgba(0,212,255,.08))", border:"1px solid rgba(16,185,129,.25)", borderRadius:16, padding:"16px 18px", marginBottom:16 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:16, fontWeight:800, marginBottom:4 }}>Day Closing</div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:16, fontWeight:800, marginBottom:4 }}>Day Closing</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>
           Send closing reports to each store via WhatsApp
         </div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:4 }}>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:4 }}>
           {new Date().toLocaleDateString("en-KW",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
         </div>
       </div>
@@ -4030,8 +4053,8 @@ function DayClosingTab({ orders, driverId, driverName }) {
         ].map(function(s) {
           return (
             <div key={s.label} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:12, padding:"10px 8px", textAlign:"center" }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:s.color, fontSize:20, fontWeight:800 }}>{s.value}</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginTop:2 }}>{s.label}</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:s.color, fontSize:20, fontWeight:800 }}>{s.value}</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginTop:2 }}>{s.label}</div>
             </div>
           );
         })}
@@ -4048,11 +4071,11 @@ function DayClosingTab({ orders, driverId, driverName }) {
             {/* Store header */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
               <div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:storeColor, fontSize:14, fontWeight:700 }}>{store}</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:2 }}>WA: +{waNum}</div>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:storeColor, fontSize:14, fontWeight:700 }}>{store}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:2 }}>WA: +{waNum}</div>
               </div>
               {isSent && (
-                <span style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:20, padding:"2px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#10B981", fontSize:11 }}>
+                <span style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:20, padding:"2px 10px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#10B981", fontSize:11 }}>
                   ✓ Sent
                 </span>
               )}
@@ -4066,12 +4089,12 @@ function DayClosingTab({ orders, driverId, driverName }) {
                 { label:"Postponed", value:stats.postponed.length, color:"#8B5CF6" },
                 { label:"Cancelled", value:stats.cancelled.length, color:"#EF4444" },
                 { label:"Pending",   value:stats.pending.length,   color:"#F59E0B" },
-                { label:"Total KD",  value:"KD "+stats.totalAmt.toFixed(3), color:"#FF6B35", small:true },
+                { label:"Total KD",  value:"KD "+stats.totalAmt.toFixed(3), color:"#FF5A1F", small:true },
               ].map(function(s) {
                 return (
                   <div key={s.label} style={{ background:"rgba(255,255,255,.03)", borderRadius:10, padding:"8px 4px", textAlign:"center" }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:s.color, fontSize:s.small?11:16, fontWeight:700, lineHeight:1.2 }}>{s.value}</div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:9, marginTop:2 }}>{s.label}</div>
+                    <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:s.color, fontSize:s.small?11:16, fontWeight:700, lineHeight:1.2 }}>{s.value}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:9, marginTop:2 }}>{s.label}</div>
                   </div>
                 );
               })}
@@ -4080,12 +4103,12 @@ function DayClosingTab({ orders, driverId, driverName }) {
             {/* Collection breakdown */}
             <div style={{ background:"rgba(255,255,255,.03)", borderRadius:10, padding:"10px 12px", marginBottom:12 }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>💵 Cash COD</span>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#F59E0B", fontSize:12, fontWeight:700 }}>KD {stats.cashAmt.toFixed(3)}</span>
+                <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>💵 Cash COD</span>
+                <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#F59E0B", fontSize:12, fontWeight:700 }}>KD {stats.cashAmt.toFixed(3)}</span>
               </div>
               <div style={{ display:"flex", justifyContent:"space-between" }}>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>💳 Online/Link</span>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:12, fontWeight:700 }}>KD {stats.onlineAmt.toFixed(3)}</span>
+                <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>💳 Online/Link</span>
+                <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:12, fontWeight:700 }}>KD {stats.onlineAmt.toFixed(3)}</span>
               </div>
             </div>
 
@@ -4095,7 +4118,7 @@ function DayClosingTab({ orders, driverId, driverName }) {
               onClick={function(){ setSentStores(function(prev){ var n={...prev}; n[store]=true; return n; }); }}
               style={{ width:"100%", background:"linear-gradient(135deg,#25D366,#128C7E)", border:"none", borderRadius:12, padding:"13px", display:"flex", alignItems:"center", justifyContent:"center", gap:8, cursor:"pointer", textDecoration:"none", boxSizing:"border-box" }}>
               <span style={{ fontSize:18 }}>💬</span>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>
+              <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>
                 {isSent ? "Resend to " + store : "Send Report to " + store}
               </span>
             </a>
@@ -4108,7 +4131,7 @@ function DayClosingTab({ orders, driverId, driverName }) {
         <button onClick={sendAllWhatsApp}
           style={{ width:"100%", background:"rgba(37,211,102,.1)", border:"1px solid rgba(37,211,102,.3)", borderRadius:12, padding:"14px", display:"flex", alignItems:"center", justifyContent:"center", gap:8, cursor:"pointer", marginTop:4 }}>
           <span style={{ fontSize:18 }}>📤</span>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#25D366", fontSize:13, fontWeight:700 }}>Send All Reports</span>
+          <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#25D366", fontSize:13, fontWeight:700 }}>Send All Reports</span>
         </button>
       )}
     </div>
@@ -4173,13 +4196,13 @@ function DriverReportTab({ orders, driverId, expenses, onOpenReport }) {
     <div style={{ flex:1, overflowY:"auto", padding:"0 16px 80px" }}>
       {/* Summary hero */}
       <div style={{ background:"linear-gradient(135deg,rgba(0,212,255,.1),rgba(124,58,237,.1))", border:"1px solid rgba(0,212,255,.2)", borderRadius:20, padding:20, marginBottom:14, textAlign:"center" }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:13 }}>Today&apos;s Summary   {new Date().toLocaleDateString("en-KW")}</div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:46, fontWeight:800, lineHeight:1 }}>{myOrders.length}</div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:4 }}>Total Orders Assigned</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:13 }}>Today&apos;s Summary   {new Date().toLocaleDateString("en-KW")}</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:46, fontWeight:800, lineHeight:1 }}>{myOrders.length}</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, marginTop:4 }}>Total Orders Assigned</div>
         <div style={{ marginTop:10, background:"rgba(255,255,255,.08)", borderRadius:30, height:6, overflow:"hidden" }}>
           <div style={{ height:"100%", width:(rate) + "%", background:"linear-gradient(90deg,#10B981,#00D4FF)", borderRadius:30, transition:"width 1s ease" }} />
         </div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#10B981", fontSize:12, marginTop:4 }}>{rate}% success rate</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#10B981", fontSize:12, marginTop:4 }}>{rate}% success rate</div>
       </div>
 
       {/* Delivery stats */}
@@ -4199,13 +4222,13 @@ function DriverReportTab({ orders, driverId, expenses, onOpenReport }) {
       {/* Vehicle Expenses */}
       {(expenses||[]).length > 0 && (
         <div style={{ background:"rgba(239,68,68,.06)", border:"1px solid rgba(239,68,68,.2)", borderRadius:14, padding:"14px 16px", marginBottom:10 }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}> Vehicle Expenses</div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:22, fontWeight:800, marginTop:2 }}>- {fmt(totalExpenses)}</div>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}> Vehicle Expenses</div>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontSize:22, fontWeight:800, marginTop:2 }}>- {fmt(totalExpenses)}</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
             {EXPENSE_TYPES.map(function(expT) {
               const amt = (expenses||[]).filter(e=>e.type===expT).reduce((a,e)=>a+Number(e.amount),0);
               if (!amt) return null;
-              return <span key={expT} style={{ background:"rgba(239,68,68,.1)", borderRadius:20, padding:"2px 9px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#FCA5A5", fontSize:11 }}>{expT}: {fmt(amt)}</span>;
+              return <span key={expT} style={{ background:"rgba(239,68,68,.1)", borderRadius:20, padding:"2px 9px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#FCA5A5", fontSize:11 }}>{expT}: {fmt(amt)}</span>;
             })}
           </div>
         </div>
@@ -4218,30 +4241,30 @@ function DriverReportTab({ orders, driverId, expenses, onOpenReport }) {
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <span style={{ fontSize:20 }}></span>
             <div style={{ textAlign:"left" }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#9CA3AF", fontSize:14, fontWeight:700 }}>Exchange Orders</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>No cash collection - deliver &amp; exchange only</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#9CA3AF", fontSize:14, fontWeight:700 }}>Exchange Orders</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>No cash collection - deliver &amp; exchange only</div>
             </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#9CA3AF", fontSize:22, fontWeight:800 }}>{exchangeOrders.length}</span>
+            <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#9CA3AF", fontSize:22, fontWeight:800 }}>{exchangeOrders.length}</span>
             <span style={{ color:"rgba(255,255,255,.3)", fontSize:12 }}>{showExchangeList ? "^" : "v"}</span>
           </div>
         </button>
         {showExchangeList && (
           <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", padding:"12px 14px" }}>
             {exchangeOrders.length === 0 ? (
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:13, textAlign:"center", padding:"12px 0" }}>No exchange orders today</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:13, textAlign:"center", padding:"12px 0" }}>No exchange orders today</div>
             ) : exchangeOrders.map((o, i) => (
               <div key={o.id||i} style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"10px 12px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{o.customer}</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>#{o.invoiceNo}{o.onlineOrderNo?" · Online Order: "+o.onlineOrderNo:""} · {o.store}</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:2 }}> {o.address?.slice(0,50)}{o.address?.length>50?"...":""}</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}> {o.phone}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{o.customer}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}>#{o.invoiceNo}{o.onlineOrderNo?" · Online Order: "+o.onlineOrderNo:""} · {o.store}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:2 }}> {o.address?.slice(0,50)}{o.address?.length>50?"...":""}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11 }}> {o.phone}</div>
                 </div>
                 <div style={{ textAlign:"right", flexShrink:0, marginLeft:10 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#9CA3AF", fontSize:13, fontWeight:700 }}>{fmt(o.total)}</div>
-                  <span style={{ background:"rgba(107,114,128,.2)", color:"#9CA3AF", borderRadius:20, padding:"2px 8px", fontSize:10, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontWeight:600 }}> Exchange</span>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#9CA3AF", fontSize:13, fontWeight:700 }}>{fmt(o.total)}</div>
+                  <span style={{ background:"rgba(107,114,128,.2)", color:"#9CA3AF", borderRadius:20, padding:"2px 8px", fontSize:10, fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontWeight:600 }}> Exchange</span>
                   <div style={{ marginTop:4 }}>
                     <Badge status={o.status} />
                   </div>
@@ -4254,10 +4277,10 @@ function DriverReportTab({ orders, driverId, expenses, onOpenReport }) {
 
       {/* Generate button */}
       <button onClick={() => onOpenReport && onOpenReport(buildReportData())}
-        style={{ width:"100%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:14, padding:16, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:15, cursor:"pointer", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+        style={{ width:"100%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:14, padding:16, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:15, cursor:"pointer", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
         <span style={{ fontSize:18 }}></span> Preview &amp; Share Report
       </button>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:12, textAlign:"center", marginBottom:16 }}>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:12, textAlign:"center", marginBottom:16 }}>
         Full report opens inside the app - screenshot or share to save
       </div>
     </div>
@@ -4323,10 +4346,10 @@ function LoginScreen({ onLogin }) {
   }
 
   return (
-    <div style={{ minHeight:"100vh", background:"#0D0D0D", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px", position:"relative", overflow:"hidden" }}>
+    <div style={{ minHeight:"100vh", background:"#090B10", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px", position:"relative", overflow:"hidden" }}>
 
       {/* Background glow */}
-      <div style={{ position:"absolute", top:"-20%", left:"50%", transform:"translateX(-50%)", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, rgba(255,107,53,.12) 0%, transparent 70%)", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", top:"-20%", left:"50%", transform:"translateX(-50%)", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, rgba(255,90,31,.12) 0%, transparent 70%)", pointerEvents:"none" }} />
       <div style={{ position:"absolute", bottom:"-10%", right:"-10%", width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle, rgba(255,61,0,.06) 0%, transparent 70%)", pointerEvents:"none" }} />
 
       {/* Logo block */}
@@ -4336,7 +4359,7 @@ function LoginScreen({ onLogin }) {
           <svg viewBox="0 0 200 200" width={80} height={80} xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#FF7A45"/>
+                <stop offset="0%" stopColor="#FF5A1F"/>
                 <stop offset="100%" stopColor="#FF3D00"/>
               </linearGradient>
             </defs>
@@ -4352,58 +4375,58 @@ function LoginScreen({ onLogin }) {
           </svg>
         </div>
 
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:900, fontSize:30, letterSpacing:"-0.5px", lineHeight:1, marginBottom:6 }}>
-          <span style={{ color:"#FF6B35" }}>DELIVER</span><span style={{ color:"#fff" }}>FLOW</span>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:900, fontSize:30, letterSpacing:"-0.5px", lineHeight:1, marginBottom:6 }}>
+          <span style={{ color:"#FF5A1F", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700 }}>DELIVER</span><span style={{ color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700 }}>FLOW</span>
         </div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:11, letterSpacing:"3px", textTransform:"uppercase" }}>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:11, letterSpacing:"3px", textTransform:"uppercase" }}>
           AMTEL TELECOM
         </div>
       </div>
 
       {/* Card */}
-      <div style={{ width:"100%", maxWidth:360, background:"#161616", borderRadius:24, padding:"32px 28px", border:"1px solid rgba(255,255,255,.07)", boxShadow:"0 32px 64px rgba(0,0,0,.5)" }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:22, fontWeight:800, marginBottom:6 }}>Welcome back</div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:13, marginBottom:28 }}>Sign in to your workspace</div>
+      <div style={{ width:"100%", maxWidth:360, background:"#161B24", borderRadius:24, padding:"32px 28px", border:"1px solid rgba(255,255,255,.07)", boxShadow:"0 32px 64px rgba(0,0,0,.5)" }}>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:22, fontWeight:800, marginBottom:6 }}>Welcome back</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:13, marginBottom:28 }}>Sign in to your workspace</div>
 
         {/* Username */}
         <div style={{ marginBottom:14 }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Username</div>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Username</div>
           <input type="text" value={user}
             onChange={function(e){ setUser(e.target.value); setErr(""); }}
             onKeyDown={function(e){ if(e.key==="Enter") doLogin(); }}
             placeholder="Enter username"
-            style={{ width:"100%", background:"#1F1F1F", border:"1.5px solid rgba(255,255,255,.08)", borderRadius:14, padding:"14px 16px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:15, outline:"none", boxSizing:"border-box", transition:"border-color .2s" }}
-            onFocus={function(e){ e.target.style.borderColor="rgba(255,107,53,.6)"; }}
+            style={{ width:"100%", background:"#1F1F1F", border:"1.5px solid rgba(255,255,255,.08)", borderRadius:14, padding:"14px 16px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:15, outline:"none", boxSizing:"border-box", transition:"border-color .2s" }}
+            onFocus={function(e){ e.target.style.borderColor="rgba(255,90,31,.6)"; }}
             onBlur={function(e){ e.target.style.borderColor="rgba(255,255,255,.08)"; }}
           />
         </div>
 
         {/* Password */}
         <div style={{ marginBottom:err?14:24 }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Password</div>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Password</div>
           <input type="password" value={pass}
             onChange={function(e){ setPass(e.target.value); setErr(""); }}
             onKeyDown={function(e){ if(e.key==="Enter") doLogin(); }}
             placeholder="Enter password"
-            style={{ width:"100%", background:"#1F1F1F", border:"1.5px solid rgba(255,255,255,.08)", borderRadius:14, padding:"14px 16px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:15, outline:"none", boxSizing:"border-box", transition:"border-color .2s" }}
-            onFocus={function(e){ e.target.style.borderColor="rgba(255,107,53,.6)"; }}
+            style={{ width:"100%", background:"#1F1F1F", border:"1.5px solid rgba(255,255,255,.08)", borderRadius:14, padding:"14px 16px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:15, outline:"none", boxSizing:"border-box", transition:"border-color .2s" }}
+            onFocus={function(e){ e.target.style.borderColor="rgba(255,90,31,.6)"; }}
             onBlur={function(e){ e.target.style.borderColor="rgba(255,255,255,.08)"; }}
           />
         </div>
 
         {err && (
-          <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.2)", borderRadius:10, padding:"10px 14px", marginBottom:18, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#EF4444", fontSize:13 }}>
+          <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.2)", borderRadius:10, padding:"10px 14px", marginBottom:18, fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#EF4444", fontSize:13 }}>
             {err}
           </div>
         )}
 
         <button onClick={doLogin} disabled={loading}
-          style={{ width:"100%", background:loading?"rgba(255,107,53,.5)":"linear-gradient(135deg,#FF7A45 0%,#FF3D00 100%)", border:"none", borderRadius:14, padding:"15px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:16, fontWeight:700, cursor:loading?"default":"pointer", letterSpacing:"0.3px", boxShadow:loading?"none":"0 8px 24px rgba(255,107,53,.35)", transition:"all .2s" }}>
+          style={{ width:"100%", background:loading?"rgba(255,90,31,.5)":"linear-gradient(135deg,#FF7A45 0%,#FF3D00 100%)", border:"none", borderRadius:14, padding:"15px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:16, fontWeight:700, cursor:loading?"default":"pointer", letterSpacing:"0.3px", boxShadow:loading?"none":"0 8px 24px rgba(255,90,31,.35)", transition:"all .2s" }}>
           {loading ? "Signing in…" : "Sign In →"}
         </button>
 
-        <div style={{ textAlign:"center", marginTop:24, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.15)", fontSize:11 }}>
-          DeliverFlow v3 · Built by <span style={{ color:"rgba(255,107,53,.5)" }}>Sulaiman</span>
+        <div style={{ textAlign:"center", marginTop:24, fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.15)", fontSize:11 }}>
+          DeliverFlow v3 · Built by <span style={{ color:"rgba(255,90,31,.5)" }}>Sulaiman</span>
         </div>
       </div>
     </div>
@@ -4422,8 +4445,8 @@ function AdminHistoryTab({ history }) {
     return (
       <div style={{ padding:"40px 24px", textAlign:"center" }}>
         <div style={{ fontSize:40, marginBottom:12 }}>📋</div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:16, fontWeight:700, marginBottom:8 }}>No History Yet</div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, lineHeight:1.6 }}>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:16, fontWeight:700, marginBottom:8 }}>No History Yet</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:13, lineHeight:1.6 }}>
           Driver history is saved automatically at the end of each day.
           Upload today's PDF to start.
         </div>
@@ -4435,8 +4458,8 @@ function AdminHistoryTab({ history }) {
 
   return (
     <div style={{ padding:"0 16px 80px" }}>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}>Driver History</div>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>Daily performance records — last {history.length} day{history.length!==1?"s":""}</div>
+      <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}>Driver History</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>Daily performance records — last {history.length} day{history.length!==1?"s":""}</div>
 
       {/* Day selector */}
       <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:16, paddingBottom:4 }}>
@@ -4445,8 +4468,8 @@ function AdminHistoryTab({ history }) {
           return (
             <button key={h.timestamp} onClick={function() { setSelectedDay(h); setExpandedDriver(null); }}
               style={{ background:isSelected?"linear-gradient(135deg,#FF6B35,#FF3D71)":"rgba(255,255,255,.06)", border:isSelected?"none":"1px solid rgba(255,255,255,.1)", borderRadius:12, padding:"8px 14px", cursor:"pointer", flexShrink:0 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:12, fontWeight:700 }}>{h.date}</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:isSelected?"rgba(255,255,255,.7)":"rgba(255,255,255,.35)", fontSize:10, marginTop:2 }}>{h.drivers.length} drivers</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:12, fontWeight:700 }}>{h.date}</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:isSelected?"rgba(255,255,255,.7)":"rgba(255,255,255,.35)", fontSize:10, marginTop:2 }}>{h.drivers.length} drivers</div>
             </button>
           );
         })}
@@ -4467,8 +4490,8 @@ function AdminHistoryTab({ history }) {
           ].map(function(item) {
             return (
               <div key={item[1]} style={{ background:item[2]+"12", border:"1px solid "+item[2]+"25", borderRadius:12, padding:"10px 8px", textAlign:"center" }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:item[2], fontSize:16, fontWeight:800 }}>{item[0]}</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginTop:2 }}>{item[1]}</div>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:item[2], fontSize:16, fontWeight:800 }}>{item[0]}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginTop:2 }}>{item[1]}</div>
               </div>
             );
           });
@@ -4483,16 +4506,16 @@ function AdminHistoryTab({ history }) {
             {/* Header row */}
             <div onClick={function() { setExpandedDriver(isExp ? null : d.id); }}
               style={{ padding:"12px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}>
-              <div style={{ width:40, height:40, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:14, fontWeight:800, color:"#fff", flexShrink:0 }}>{d.avatar}</div>
+              <div style={{ width:40, height:40, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:14, fontWeight:800, color:"#fff", flexShrink:0 }}>{d.avatar}</div>
               <div style={{ flex:1 }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{d.name}</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{d.name}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>
                   {d.totalAssigned} assigned   {d.delivered} delivered   {d.successRate}% success
                 </div>
               </div>
               <div style={{ textAlign:"right" }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:13, fontWeight:700 }}>{fmt(d.cashCollected)}</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>Cash collected</div>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:13, fontWeight:700 }}>{fmt(d.cashCollected)}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>Cash collected</div>
               </div>
               <span style={{ color:"rgba(255,255,255,.3)", fontSize:12, marginLeft:4 }}>{isExp ? "^" : "v"}</span>
             </div>
@@ -4511,8 +4534,8 @@ function AdminHistoryTab({ history }) {
                   ].map(function(row) {
                     return (
                       <div key={row[0]} style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"8px 10px" }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:row[2], fontSize:16, fontWeight:800 }}>{row[1]}</div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginTop:2 }}>{row[0]}</div>
+                        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:row[2], fontSize:16, fontWeight:800 }}>{row[1]}</div>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginTop:2 }}>{row[0]}</div>
                       </div>
                     );
                   })}
@@ -4520,7 +4543,7 @@ function AdminHistoryTab({ history }) {
 
                 {/* Financial summary */}
                 <div style={{ background:"rgba(255,255,255,.04)", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:10, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Financial Summary</div>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:10, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Financial Summary</div>
                   {[
                     ["Cash Collected (COD)", fmt(d.cashCollected), "#F59E0B"],
                     ["Commission", d.commissionEarned ? fmt(d.commissionAmount) : "Not earned", d.commissionEarned ? "#10B981" : "#6B7280"],
@@ -4529,8 +4552,8 @@ function AdminHistoryTab({ history }) {
                   ].map(function(row) {
                     return (
                       <div key={row[0]} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>{row[0]}</span>
-                        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:row[2], fontSize:13, fontWeight:700 }}>{row[1]}</span>
+                        <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>{row[0]}</span>
+                        <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:row[2], fontSize:13, fontWeight:700 }}>{row[1]}</span>
                       </div>
                     );
                   })}
@@ -4541,7 +4564,7 @@ function AdminHistoryTab({ history }) {
                   <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                     {Object.keys(d.expenseBreakdown).map(function(type) {
                       return (
-                        <span key={type} style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.2)", borderRadius:20, padding:"3px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#FCA5A5", fontSize:11 }}>
+                        <span key={type} style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.2)", borderRadius:20, padding:"3px 10px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#FCA5A5", fontSize:11 }}>
                           {type}: {fmt(d.expenseBreakdown[type])}
                         </span>
                       );
@@ -4579,18 +4602,18 @@ function DriverOrderManager({ driverId, driverName, orders, onRemoveOrder }) {
     <div style={{ marginTop:10, marginBottom:4 }}>
       <button onClick={function(){ setOpen(function(p){return !p;}); setSelected(new Set()); }}
         style={{ width:"100%", background:"rgba(255,255,255,.05)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"8px 12px", display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer" }}>
-        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.6)", fontSize:12 }}>Manage Orders ({dOrders.length})</span>
+        <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.6)", fontSize:12 }}>Manage Orders ({dOrders.length})</span>
         <span style={{ color:"rgba(255,255,255,.3)", fontSize:11 }}>{open?"^":"v"}</span>
       </button>
       {open && (
         <div style={{ background:"rgba(0,0,0,.2)", borderRadius:"0 0 10px 10px", padding:"10px 12px" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-            <button onClick={toggleAll} style={{ background:"none", border:"1px solid rgba(255,255,255,.15)", borderRadius:6, padding:"3px 10px", color:"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
+            <button onClick={toggleAll} style={{ background:"none", border:"1px solid rgba(255,255,255,.15)", borderRadius:6, padding:"3px 10px", color:"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>
               {selected.size === dOrders.length ? "Deselect All" : "Select All"}
             </button>
             {selected.size > 0 && (
               <button onClick={removeSelected}
-                style={{ background:"rgba(239,68,68,.15)", border:"1px solid rgba(239,68,68,.3)", borderRadius:6, padding:"3px 10px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                style={{ background:"rgba(239,68,68,.15)", border:"1px solid rgba(239,68,68,.3)", borderRadius:6, padding:"3px 10px", color:"#EF4444", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, fontWeight:600, cursor:"pointer" }}>
                 Remove ({selected.size})
               </button>
             )}
@@ -4607,10 +4630,10 @@ function DriverOrderManager({ driverId, driverName, orders, onRemoveOrder }) {
                     {isChk && <span style={{ color:"#fff", fontSize:10, fontWeight:700 }}>x</span>}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:11, fontWeight:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.customer}</div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>#{o.invoiceNo} - {fmt(o.total)}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:11, fontWeight:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.customer}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>#{o.invoiceNo} - {fmt(o.total)}</div>
                   </div>
-                  <span style={{ background:sc.bg, color:sc.color, borderRadius:10, padding:"1px 7px", fontSize:9, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontWeight:600, flexShrink:0 }}>{sc.label}</span>
+                  <span style={{ background:sc.bg, color:sc.color, borderRadius:10, padding:"1px 7px", fontSize:9, fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontWeight:600, flexShrink:0 }}>{sc.label}</span>
                 </div>
               );
             })}
@@ -4646,19 +4669,19 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
   return (
     <div style={{ padding:"0 16px 80px" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}>Drivers &amp; Expenses</div>
-        <button onClick={function(){ setShowAdd(true); }} style={{ background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:10, padding:"7px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Add Driver</button>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}>Drivers &amp; Expenses</div>
+        <button onClick={function(){ setShowAdd(true); }} style={{ background:"linear-gradient(135deg,#FF6B35,#FF3D71)", border:"none", borderRadius:10, padding:"7px 14px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Add Driver</button>
       </div>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:14 }}>Manage drivers, view commission &amp; expenses</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:14 }}>Manage drivers, view commission &amp; expenses</div>
 
       {/* API Key Settings */}
       <div style={{ background:"rgba(0,212,255,.05)", border:"1px solid rgba(0,212,255,.2)", borderRadius:14, padding:"14px", marginBottom:16 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
           <span style={{ fontSize:18 }}>🔑</span>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:13, fontWeight:700 }}>Label Scan API Key</div>
-          {savedKey && <span style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:20, padding:"2px 8px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#10B981", fontSize:10, fontWeight:600 }}>✓ Set</span>}
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:13, fontWeight:700 }}>Label Scan API Key</div>
+          {savedKey && <span style={{ background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:20, padding:"2px 8px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#10B981", fontSize:10, fontWeight:600 }}>✓ Set</span>}
         </div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:10 }}>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:10 }}>
           Required for 📷 Scan Label feature. Get your key from{" "}
           <span style={{ color:"#00D4FF" }}>console.anthropic.com</span>
           {savedKey && <span style={{ color:"rgba(255,255,255,.3)" }}>  Current: {keyPreview}</span>}
@@ -4672,11 +4695,11 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
             style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(0,212,255,.25)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"monospace", fontSize:12, outline:"none", boxSizing:"border-box" }}
           />
           <button onClick={function(){ setShowApiKey(function(v){ return !v; }); }}
-            style={{ background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"9px 12px", color:"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer", flexShrink:0 }}>
+            style={{ background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"9px 12px", color:"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer", flexShrink:0 }}>
             {showApiKey ? "Hide" : "Show"}
           </button>
           <button onClick={handleSaveApiKey}
-            style={{ background: apiKeySaved ? "rgba(16,185,129,.2)" : "rgba(0,212,255,.15)", border: apiKeySaved ? "1px solid #10B981" : "1px solid rgba(0,212,255,.4)", borderRadius:10, padding:"9px 14px", color: apiKeySaved ? "#10B981" : "#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, fontWeight:700, cursor:"pointer", flexShrink:0 }}>
+            style={{ background: apiKeySaved ? "rgba(16,185,129,.2)" : "rgba(0,212,255,.15)", border: apiKeySaved ? "1px solid #10B981" : "1px solid rgba(0,212,255,.4)", borderRadius:10, padding:"9px 14px", color: apiKeySaved ? "#10B981" : "#00D4FF", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, fontWeight:700, cursor:"pointer", flexShrink:0 }}>
             {apiKeySaved ? "✓ Saved!" : "Save"}
           </button>
         </div>
@@ -4684,49 +4707,49 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
 
       {/* Login Credentials Summary */}
       <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.07)", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700, marginBottom:10 }}>Login Credentials</div>
+        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:700, marginBottom:10 }}>Login Credentials</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
-          <div style={{ background:"rgba(255,107,53,.08)", borderRadius:10, padding:"8px 10px" }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:2 }}>ADMIN</div>
-            <div style={{ fontFamily:"monospace", color:"#FF6B35", fontSize:12 }}>admin</div>
+          <div style={{ background:"rgba(255,90,31,.08)", borderRadius:10, padding:"8px 10px" }}>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:2 }}>ADMIN</div>
+            <div style={{ fontFamily:"monospace", color:"#FF5A1F", fontSize:12 }}>admin</div>
             <div style={{ fontFamily:"monospace", color:"rgba(255,255,255,.5)", fontSize:11 }}>{(passwords && passwords["admin"]) || "admin123"}</div>
           </div>
           {allDrivers.slice(0,3).map(function(d) {
             return (
               <div key={d.id} style={{ background:"rgba(0,212,255,.06)", borderRadius:10, padding:"8px 10px" }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:2 }}>{d.name.toUpperCase()}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:2 }}>{d.name.toUpperCase()}</div>
                 <div style={{ fontFamily:"monospace", color:"#00D4FF", fontSize:12 }}>{d.id}</div>
                 <div style={{ fontFamily:"monospace", color:"rgba(255,255,255,.5)", fontSize:11 }}>{(passwords && passwords[d.id]) || (d.id + "123")}</div>
               </div>
             );
           })}
         </div>
-        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.25)", fontSize:11 }}>To change a password: tap Edit on the driver card below</div>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.25)", fontSize:11 }}>To change a password: tap Edit on the driver card below</div>
       </div>
 
       {/* Add Driver Modal */}
       {showAdd && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:300, display:"flex", alignItems:"flex-end" }}>
-          <div style={{ width:"100%", background:"#161616", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:16, fontWeight:700, marginBottom:16 }}>Add New Driver</div>
+          <div style={{ width:"100%", background:"#161B24", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:16, fontWeight:700, marginBottom:16 }}>Add New Driver</div>
             {[["id","Driver ID (login username)"],["name","Full Name"],["avatar","Avatar (2 letters, e.g. AS)"],["phone","Phone Number"],["nationality","Nationality"],["vehicleType","Vehicle Type (Car/Van/Bike)"],["vehicleNo","Vehicle Number"],["licenseNo","License No"],["joinDate","Join Date (YYYY-MM-DD)"],["daftarExpiry","Daftar Expiry (YYYY-MM-DD)"]].map(function(f){
               return (
                 <div key={f[0]} style={{ marginBottom:10 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:4 }}>{f[1]}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:4 }}>{f[1]}</div>
                   <input value={newDrv[f[0]]||""} onChange={function(e){ var v=e.target.value; setNewDrv(function(p){ var n={...p}; n[f[0]]=v; return n; }); }}
-                    style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, boxSizing:"border-box" }} />
+                    style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, boxSizing:"border-box" }} />
                 </div>
               );
             })}
             <div style={{ display:"flex", gap:10, marginTop:16 }}>
               <button onClick={function(){ setShowAdd(false); setNewDrv({ id:"", name:"", avatar:"", phone:"", status:"active", vehicleType:"Car", vehicleNo:"", licenseNo:"", nationality:"", joinDate:"", daftarExpiry:"" }); }}
-                style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancel</button>
+                style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancel</button>
               <button onClick={function(){
                 if (!newDrv.id||!newDrv.name) { alert("Driver ID and Name are required"); return; }
                 if (onAddDriver) onAddDriver(newDrv);
                 setShowAdd(false);
                 setNewDrv({ id:"", name:"", avatar:"", phone:"", status:"active", vehicleType:"Car", vehicleNo:"", licenseNo:"", nationality:"", joinDate:"", daftarExpiry:"" });
-              }} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Save Driver</button>
+              }} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Save Driver</button>
             </div>
           </div>
         </div>
@@ -4735,23 +4758,23 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
       {/* Edit Driver Modal */}
       {editDriver && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:300, display:"flex", alignItems:"flex-end" }}>
-          <div style={{ width:"100%", background:"#161616", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:16, fontWeight:700, marginBottom:16 }}>Edit: {editDriver.name}</div>
+          <div style={{ width:"100%", background:"#161B24", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:16, fontWeight:700, marginBottom:16 }}>Edit: {editDriver.name}</div>
             {/* Password change */}
             <div style={{ marginBottom:14, background:"rgba(0,212,255,.06)", border:"1px solid rgba(0,212,255,.15)", borderRadius:12, padding:"12px 14px" }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:13, fontWeight:700, marginBottom:8 }}>Change Password</div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:13, fontWeight:700, marginBottom:8 }}>Change Password</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:8 }}>
                 Current: <span style={{ color:"rgba(255,255,255,.6)", fontFamily:"monospace" }}>{(passwords && passwords[editDriver.id]) || (editDriver.id + "123")}</span>
               </div>
               <input placeholder="New password" id={"pwd-"+editDriver.id}
-                style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, boxSizing:"border-box" }} />
+                style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, boxSizing:"border-box" }} />
               <button onClick={function(){
                 var el = document.getElementById("pwd-"+editDriver.id);
                 if (!el || !el.value.trim()) return;
                 if (onSetPassword) onSetPassword(editDriver.id, el.value.trim());
                 el.value = "";
                 alert("Password updated!");
-              }} style={{ marginTop:8, background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.3)", borderRadius:8, padding:"7px 16px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+              }} style={{ marginTop:8, background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.3)", borderRadius:8, padding:"7px 16px", color:"#00D4FF", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>
                 Update Password
               </button>
             </div>
@@ -4759,15 +4782,15 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
             {[["phone","Phone"],["nationality","Nationality"],["vehicleType","Vehicle Type"],["vehicleNo","Vehicle Number"],["licenseNo","License No"],["joinDate","Join Date (YYYY-MM-DD)"],["daftarExpiry","Daftar Expiry (YYYY-MM-DD)"],["status","Status (active/inactive)"]].map(function(f){
               return (
                 <div key={f[0]} style={{ marginBottom:10 }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:4 }}>{f[1]}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:11, marginBottom:4 }}>{f[1]}</div>
                   <input value={editDriver[f[0]]||""} onChange={function(e){ var v=e.target.value; setEditDriver(function(p){ var n={...p}; n[f[0]]=v; return n; }); }}
-                    style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, boxSizing:"border-box" }} />
+                    style={{ width:"100%", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, boxSizing:"border-box" }} />
                 </div>
               );
             })}
             {/* Vehicle Assignment - Dropdown */}
             <div style={{ marginBottom:14 }}>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:6 }}>Assign Company Vehicle</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, marginBottom:6 }}>Assign Company Vehicle</div>
               {(function(){
                 var curV = null;
                 try { curV = JSON.parse(localStorage.getItem("df_vehicle_" + editDriver.id)); } catch(e){}
@@ -4786,10 +4809,10 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
                         }
                         setEditDriver(function(p){ return Object.assign({},p,{_vUpdated:Date.now()}); });
                       }}
-                      style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none", cursor:"pointer" }}>
-                      <option value="" style={{ background:"#161616", color:"#fff" }}>— No vehicle assigned —</option>
+                      style={{ flex:1, background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.15)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none", cursor:"pointer" }}>
+                      <option value="" style={{ background:"#161B24", color:"#fff" }}>— No vehicle assigned —</option>
                       {AMTEL_VEHICLES.map(function(v) {
-                        return <option key={v.plate} value={v.plate} style={{ background:"#161616", color:"#fff" }}>{v.brand} {v.model} · {v.color} · Plate {v.plate}</option>;
+                        return <option key={v.plate} value={v.plate} style={{ background:"#161B24", color:"#fff" }}>{v.brand} {v.model} · {v.color} · Plate {v.plate}</option>;
                       })}
                     </select>
                   </div>
@@ -4798,11 +4821,11 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
             </div>
 
             <div style={{ display:"flex", gap:10, marginTop:16 }}>
-              <button onClick={function(){ setEditDriver(null); }} style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancel</button>
+              <button onClick={function(){ setEditDriver(null); }} style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancel</button>
               <button onClick={function(){
                 if (onUpdateDriver) onUpdateDriver(editDriver.id, editDriver);
                 setEditDriver(null);
-              }} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Save Changes</button>
+              }} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Save Changes</button>
             </div>
           </div>
         </div>
@@ -4811,8 +4834,8 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
       {/* Total expense hero */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
         <div style={{ background:"rgba(16,185,129,.1)", border:"1px solid rgba(16,185,129,.25)", borderRadius:14, padding:14, textAlign:"center" }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11 }}> Total Commission</div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#10B981", fontSize:20, fontWeight:800, marginTop:4 }}>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:11 }}> Total Commission</div>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#10B981", fontSize:20, fontWeight:800, marginTop:4 }}>
             {fmt(DRIVERS.reduce(function(a,d) {
               const del = orders.filter(o=>o.driverId===d.id&&o.status==="delivered"&&!isExchange(o.paymentType)&&!isExchange(o.originalPaymentType)).length;
               return a + calcCommission(del).amount;
@@ -4820,8 +4843,8 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
           </div>
         </div>
         <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:14, padding:14, textAlign:"center" }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11 }}> Total Expenses</div>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:20, fontWeight:800, marginTop:4 }}>{fmt(totalExpenses)}</div>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:11 }}> Total Expenses</div>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontSize:20, fontWeight:800, marginTop:4 }}>{fmt(totalExpenses)}</div>
         </div>
       </div>
 
@@ -4849,8 +4872,8 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
               <div style={{ background:daftarExp?"rgba(239,68,68,.12)":"rgba(245,158,11,.1)", borderRadius:10, padding:"8px 12px", marginBottom:12, display:"flex", gap:8, alignItems:"center" }}>
                 <span style={{ fontSize:16 }}>{daftarExp?"🚨":""}</span>
                 <div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:daftarExp?"#EF4444":"#F59E0B", fontSize:12, fontWeight:700 }}>{daftarExp?"Daftar EXPIRED":"Daftar expires in " + (daysToExpiry) + " days"}</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>Due: {daftarDate?.toLocaleDateString("en-KW",{day:"numeric",month:"short",year:"numeric"})}</div>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:daftarExp?"#EF4444":"#F59E0B", fontSize:12, fontWeight:700 }}>{daftarExp?"Daftar EXPIRED":"Daftar expires in " + (daysToExpiry) + " days"}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>Due: {daftarDate?.toLocaleDateString("en-KW",{day:"numeric",month:"short",year:"numeric"})}</div>
                 </div>
               </div>
             )}
@@ -4858,7 +4881,7 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
             {/* Driver header */}
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
               <div style={{ position:"relative", flexShrink:0 }}>
-                <div style={{ width:46, height:46, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>{d.avatar}</div>
+                <div style={{ width:46, height:46, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FF3D71)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>{d.avatar}</div>
                 <div style={{ position:"absolute", bottom:1, right:1, width:12, height:12, borderRadius:"50%",
                 background:onlineDrivers&&onlineDrivers[d.id]?"#10B981":"#374151",
                 border:"2px solid #070C1A",
@@ -4866,35 +4889,35 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
               title={onlineDrivers&&onlineDrivers[d.id]?(activeDrivers&&activeDrivers[d.id]?"Active now":"Online - idle"):"Offline"} />
               </div>
               <div style={{ flex:1 }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}>{d.name}</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>{d.phone}   {d.nationality}</div>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}>{d.name}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>{d.phone}   {d.nationality}</div>
               </div>
-              <span style={{ background:d.status==="active"?"rgba(16,185,129,.15)":"rgba(107,114,128,.15)", color:d.status==="active"?"#10B981":"#9CA3AF", borderRadius:20, padding:"3px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, fontWeight:600 }}>
+              <span style={{ background:d.status==="active"?"rgba(16,185,129,.15)":"rgba(107,114,128,.15)", color:d.status==="active"?"#10B981":"#9CA3AF", borderRadius:20, padding:"3px 10px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, fontWeight:600 }}>
                 {d.status==="active"?"Active":"Inactive"}
               </span>
               <button onClick={function(){ setEditDriver({...d}); }}
-                style={{ background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.35)", borderRadius:8, padding:"4px 12px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:11, fontWeight:700, cursor:"pointer", flexShrink:0 }}>Edit</button>
+                style={{ background:"rgba(0,212,255,.15)", border:"1px solid rgba(0,212,255,.35)", borderRadius:8, padding:"4px 12px", color:"#00D4FF", fontFamily:"'Clash Display',system-ui,sans-serif", fontSize:11, fontWeight:700, cursor:"pointer", flexShrink:0 }}>Edit</button>
             </div>
 
             {/* Vehicle + Daftar row */}
             <div style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"10px 12px", marginBottom:10, display:"flex", flexWrap:"wrap", gap:14 }}>
-              <div><div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>VEHICLE</div><div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:12, fontWeight:600 }}>{vehicleIcon} {d.vehicleType}   {d.vehicleNo}</div></div>
-              <div><div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>LICENSE NO.</div><div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.7)", fontSize:12 }}>{d.licenseNo}</div></div>
-              <div><div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>DAFTAR RENEWAL</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:daftarExp?"#EF4444":daftarWarn?"#F59E0B":"#10B981", fontSize:12, fontWeight:600 }}>
+              <div><div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>VEHICLE</div><div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:12, fontWeight:600 }}>{vehicleIcon} {d.vehicleType}   {d.vehicleNo}</div></div>
+              <div><div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>LICENSE NO.</div><div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.7)", fontSize:12 }}>{d.licenseNo}</div></div>
+              <div><div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>DAFTAR RENEWAL</div>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:daftarExp?"#EF4444":daftarWarn?"#F59E0B":"#10B981", fontSize:12, fontWeight:600 }}>
                   {daftarDate ? daftarDate.toLocaleDateString("en-KW",{day:"numeric",month:"short",year:"numeric"}) : "-"}
-                  {daysToExpiry !== null && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, fontWeight:400 }}> ({daftarExp?"Expired":(daysToExpiry) + "d left"})</span>}
+                  {daysToExpiry !== null && <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, fontWeight:400 }}> ({daftarExp?"Expired":(daysToExpiry) + "d left"})</span>}
                 </div>
               </div>
-              <div><div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>JOINED</div><div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.6)", fontSize:12 }}>{d.joinDate ? new Date(d.joinDate).toLocaleDateString("en-KW",{month:"short",year:"numeric"}) : "-"}</div></div>
+              <div><div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>JOINED</div><div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.6)", fontSize:12 }}>{d.joinDate ? new Date(d.joinDate).toLocaleDateString("en-KW",{month:"short",year:"numeric"}) : "-"}</div></div>
             </div>
 
             {/* Stats grid */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:10 }}>
               {[[dOrders.length,"Assigned","#fff"],[scanned,"Collected","#00D4FF"],[done,"Delivered","#10B981"],[fmt(cash),"Cash COD","#F59E0B"]].map(function(item) { const v=item[0],l=item[1],c=item[2]; return (
                 <div key={l} style={{ textAlign:"center", background:"rgba(255,255,255,.04)", borderRadius:10, padding:"8px 4px" }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:c, fontSize:l==="Cash COD"?10:15, fontWeight:800 }}>{v}</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>{l}</div>
+                  <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:c, fontSize:l==="Cash COD"?10:15, fontWeight:800 }}>{v}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10 }}>{l}</div>
                 </div>
               )})}
             </div>
@@ -4902,24 +4925,24 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
             {/* Commission bar */}
             <div style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"10px 12px", marginBottom:dExp.length?10:0 }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}> Commission {comm.earned?"Earned":"Progress"} <span style={{ color:"rgba(255,255,255,.25)", fontSize:10 }}>(excl. exchange)</span></span>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:comm.earned?"#10B981":"#F59E0B", fontSize:13, fontWeight:700 }}>{comm.earned ? fmt(comm.amount) : (doneNoEx) + "/" + (COMMISSION_THRESHOLD)}</span>
+                <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}> Commission {comm.earned?"Earned":"Progress"} <span style={{ color:"rgba(255,255,255,.25)", fontSize:10 }}>(excl. exchange)</span></span>
+                <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:comm.earned?"#10B981":"#F59E0B", fontSize:13, fontWeight:700 }}>{comm.earned ? fmt(comm.amount) : (doneNoEx) + "/" + (COMMISSION_THRESHOLD)}</span>
               </div>
               <div style={{ background:"rgba(255,255,255,.08)", borderRadius:30, height:5, overflow:"hidden" }}>
                 <div style={{ height:"100%", width:(Math.min(100,Math.round(doneNoEx/(COMMISSION_THRESHOLD+1)*100))) + "%", background:comm.earned?"linear-gradient(90deg,#10B981,#00D4FF)":"linear-gradient(90deg,#F59E0B,#FF6B35)", borderRadius:30 }} />
               </div>
-              {!comm.earned && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:10, marginTop:3 }}>Need {Math.max(0,COMMISSION_THRESHOLD+1-doneNoEx)} more   KD {COMMISSION_PER_ORDER.toFixed(3)}/order from 21st onwards</div>}
+              {!comm.earned && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:10, marginTop:3 }}>Need {Math.max(0,COMMISSION_THRESHOLD+1-doneNoEx)} more   KD {COMMISSION_PER_ORDER.toFixed(3)}/order from 21st onwards</div>}
             </div>
 
             {/* Expenses */}
             {dExp.length > 0 && (
               <div style={{ borderTop:"1px solid rgba(255,255,255,.06)", paddingTop:10 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}> Vehicle Expenses So Far</span>
-                  <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:13, fontWeight:700 }}>- {fmt(dExpAmt)}</span>
+                  <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}> Vehicle Expenses So Far</span>
+                  <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontSize:13, fontWeight:700 }}>- {fmt(dExpAmt)}</span>
                 </div>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                  {EXPENSE_TYPES.map(function(expT) { const amt = dExp.filter(e=>e.type===expT).reduce((a,e)=>a+Number(e.amount),0); if(!amt)return null; return <span key={expT} style={{ background:"rgba(239,68,68,.1)", borderRadius:20, padding:"2px 9px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#FCA5A5", fontSize:11 }}>{expT}: {fmt(amt)}</span>; })}
+                  {EXPENSE_TYPES.map(function(expT) { const amt = dExp.filter(e=>e.type===expT).reduce((a,e)=>a+Number(e.amount),0); if(!amt)return null; return <span key={expT} style={{ background:"rgba(239,68,68,.1)", borderRadius:20, padding:"2px 9px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#FCA5A5", fontSize:11 }}>{expT}: {fmt(amt)}</span>; })}
                 </div>
               </div>
             )}
@@ -4930,21 +4953,21 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
       {/* All expenses log */}
       {expenses.length > 0 && (
         <div style={{ marginTop:8 }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700, marginBottom:10 }}>All Expense Records</div>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700, marginBottom:10 }}>All Expense Records</div>
           {expenses.slice().reverse().map((e,i) => (
             <div key={e.id||i} style={{ background:"rgba(239,68,68,.04)", border:"1px solid rgba(239,68,68,.12)", borderRadius:12, padding:"10px 14px", marginBottom:7, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{e.type} - {DRIVERS.find(d=>d.id===e.driverId)?.name}</div>
-                {e.note && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{e.note}</div>}
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.25)", fontSize:10 }}>{new Date(e.createdAt).toLocaleString("en-KW",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{e.type} - {DRIVERS.find(d=>d.id===e.driverId)?.name}</div>
+                {e.note && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{e.note}</div>}
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.25)", fontSize:10 }}>{new Date(e.createdAt).toLocaleString("en-KW",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
               </div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:14, fontWeight:800 }}>- {fmt(e.amount)}</div>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#EF4444", fontSize:14, fontWeight:800 }}>- {fmt(e.amount)}</div>
             </div>
           ))}
         </div>
       )}
       {expenses.length === 0 && (
-        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:30 }}>No expenses logged yet</div>
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", padding:30 }}>No expenses logged yet</div>
       )}
     </div>
   );
@@ -4988,16 +5011,16 @@ function DateFilterBar({ orders, selectedDate, onSetSelectedDate }) {
   return (
     <div style={{ display:"flex", gap:6, flexWrap:"nowrap", overflowX:"auto", padding:"8px 14px", background:"rgba(255,255,255,.02)", borderBottom:"1px solid rgba(255,255,255,.06)", WebkitOverflowScrolling:"touch" }}>
       <button onClick={function(){ onSetSelectedDate(null); }}
-        style={{ flexShrink:0, background:allSel?"rgba(255,107,53,.2)":"rgba(255,255,255,.06)", border:allSel?"1.5px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", cursor:"pointer" }}>
-        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:allSel?"#FF6B35":"rgba(255,255,255,.5)", fontSize:12, fontWeight:allSel?700:400 }}>All</span>
+        style={{ flexShrink:0, background:allSel?"rgba(255,90,31,.2)":"rgba(255,255,255,.06)", border:allSel?"1.5px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", cursor:"pointer" }}>
+        <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:allSel?"#FF5A1F":"rgba(255,255,255,.5)", fontSize:12, fontWeight:allSel?700:400 }}>All</span>
       </button>
       {dates.map(function(d) {
         var sel = isSelected(d);
         return (
           <button key={d} onClick={function(){ var dt=parseDate(d); if(dt) onSetSelectedDate(dt.toDateString()); }}
             style={{ flexShrink:0, background:sel?"rgba(0,212,255,.2)":"rgba(255,255,255,.06)", border:sel?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:sel?"#00D4FF":"rgba(255,255,255,.6)", fontSize:12, fontWeight:sel?700:400 }}>{dateLabel(d)}</span>
-            <span style={{ background:sel?"rgba(0,212,255,.3)":"rgba(255,255,255,.1)", borderRadius:20, padding:"1px 6px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:sel?"#00D4FF":"rgba(255,255,255,.4)", fontSize:10 }}>{dateCounts[d]}</span>
+            <span style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:sel?"#00D4FF":"rgba(255,255,255,.6)", fontSize:12, fontWeight:sel?700:400 }}>{dateLabel(d)}</span>
+            <span style={{ background:sel?"rgba(0,212,255,.3)":"rgba(255,255,255,.1)", borderRadius:20, padding:"1px 6px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:sel?"#00D4FF":"rgba(255,255,255,.4)", fontSize:10 }}>{dateCounts[d]}</span>
           </button>
         );
       })}
@@ -5038,8 +5061,8 @@ function AdminCivilIdTab() {
 
   return (
     <div style={{ padding:"0 16px 80px" }}>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}>🪪 Civil ID Records</div>
-      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:14 }}>
+      <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}>🪪 Civil ID Records</div>
+      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:14 }}>
         Customer Civil IDs collected at delivery — {records.length} total
       </div>
 
@@ -5048,13 +5071,13 @@ function AdminCivilIdTab() {
         type="text" value={search}
         onChange={function(e){ setSearch(e.target.value); }}
         placeholder="🔍 Search by name, Civil ID, invoice..."
-        style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none", marginBottom:14 }}
+        style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.12)", borderRadius:12, padding:"11px 14px", color:"#fff", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:13, outline:"none", marginBottom:14 }}
       />
 
       {loading ? (
-        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:40 }}>Loading…</div>
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", padding:40 }}>Loading…</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:40 }}>
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", padding:40 }}>
           {search ? "No records match your search" : "No Civil ID records yet"}
         </div>
       ) : filtered.map(function(r) {
@@ -5064,12 +5087,12 @@ function AdminCivilIdTab() {
             {/* Header row */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
               <div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{r.full_name}</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>{r.full_name}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>
                   Driver: {r.driver_name}   ·   {r.delivered_date}
                 </div>
               </div>
-              <div style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"3px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, flexShrink:0, marginLeft:8 }}>
+              <div style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"3px 10px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:11, fontWeight:600, flexShrink:0, marginLeft:8 }}>
                 🪪 Verified
               </div>
             </div>
@@ -5079,24 +5102,24 @@ function AdminCivilIdTab() {
               onClick={function(){ copyText(r.civil_id_number, cardKey + "_cid"); }}
               style={{ background:"rgba(0,0,0,.25)", borderRadius:10, padding:"10px 14px", marginBottom:8, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:2 }}>CIVIL ID NUMBER</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:16, fontWeight:700, letterSpacing:2 }}>{r.civil_id_number}</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:10, marginBottom:2 }}>CIVIL ID NUMBER</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:16, fontWeight:700, letterSpacing:2 }}>{r.civil_id_number}</div>
               </div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color: copied===cardKey+"_cid" ? "#10B981" : "rgba(255,255,255,.3)", fontSize:11 }}>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color: copied===cardKey+"_cid" ? "#10B981" : "rgba(255,255,255,.3)", fontSize:11 }}>
                 {copied===cardKey+"_cid" ? "✓ Copied" : "Tap to copy"}
               </div>
             </div>
 
             {/* Order info */}
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              <div style={{ background:"rgba(255,107,53,.08)", borderRadius:8, padding:"5px 10px" }}>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:9 }}>INVOICE</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#FF6B35", fontSize:12, fontWeight:600 }}>#{r.invoice_no}</div>
+              <div style={{ background:"rgba(255,90,31,.08)", borderRadius:8, padding:"5px 10px" }}>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:9 }}>INVOICE</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#FF5A1F", fontSize:12, fontWeight:600 }}>#{r.invoice_no}</div>
               </div>
               {r.online_order_no && (
                 <div style={{ background:"rgba(0,212,255,.08)", borderRadius:8, padding:"5px 10px" }}>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:9 }}>ONLINE ORDER</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#00D4FF", fontSize:12, fontWeight:600 }}>#{r.online_order_no}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:9 }}>ONLINE ORDER</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"#00D4FF", fontSize:12, fontWeight:600 }}>#{r.online_order_no}</div>
                 </div>
               )}
             </div>
@@ -5150,19 +5173,19 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
   ];
 
   return (
-    <div style={{ maxWidth:430, margin:"0 auto", background:"#0D0D0D", height:"100dvh", display:"flex", flexDirection:"column", position:"relative", width:"100%" }}>
+    <div style={{ maxWidth:430, margin:"0 auto", background:"#090B10", height:"100dvh", display:"flex", flexDirection:"column", position:"relative", width:"100%" }}>
 
       {/* Clear Day Confirm Modal */}
       {clearConfirm && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.92)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
-          <div style={{ background:"#161616", borderRadius:24, padding:28, maxWidth:320, width:"100%", border:"1px solid rgba(239,68,68,.2)" }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:18, fontWeight:800, marginBottom:8 }}>Clear Day?</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.45)", fontSize:14, marginBottom:24, lineHeight:1.6 }}>
+          <div style={{ background:"#161B24", borderRadius:24, padding:28, maxWidth:320, width:"100%", border:"1px solid rgba(239,68,68,.2)" }}>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:18, fontWeight:800, marginBottom:8 }}>Clear Day?</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.45)", fontSize:14, marginBottom:24, lineHeight:1.6 }}>
               This will delete ALL orders, expenses and transfers. Driver profiles will be kept.
             </div>
             <div style={{ display:"flex", gap:12 }}>
-              <button onClick={onCancelClear} style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancel</button>
-              <button onClick={onConfirmClear} style={{ flex:1, background:"linear-gradient(135deg,#EF4444,#DC2626)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Yes, Clear</button>
+              <button onClick={onCancelClear} style={{ flex:1, background:"rgba(255,255,255,.08)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancel</button>
+              <button onClick={onConfirmClear} style={{ flex:1, background:"linear-gradient(135deg,#EF4444,#DC2626)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>Yes, Clear</button>
             </div>
           </div>
         </div>
@@ -5170,11 +5193,11 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
       {toast && <Toast msg={toast.msg} toastKind={toast.ttype} />}
 
       {/* ── Admin Header ── */}
-      <div style={{ padding:"12px 18px 10px", background:"#0D0D0D", borderBottom:"1px solid rgba(255,255,255,.05)", flexShrink:0 }}>
+      <div style={{ padding:"12px 18px 10px", background:"#090B10", borderBottom:"1px solid rgba(255,255,255,.05)", flexShrink:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <svg viewBox="0 0 200 200" width={30} height={30} xmlns="http://www.w3.org/2000/svg">
-              <defs><linearGradient id="ahog" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FF7A45"/><stop offset="100%" stopColor="#FF3D00"/></linearGradient></defs>
+              <defs><linearGradient id="ahog" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FF5A1F"/><stop offset="100%" stopColor="#FF3D00"/></linearGradient></defs>
               <rect width="200" height="200" rx="44" fill="url(#ahog)"/>
               <polygon points="100,42 154,73 100,104 46,73" fill="white"/>
               <polygon points="46,73 100,104 100,162 46,131" fill="rgba(255,255,255,0.55)"/>
@@ -5182,10 +5205,10 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
               <polygon points="100,42 106,46 106,100 100,104 94,100 94,46" fill="rgba(255,255,255,0.22)"/>
             </svg>
             <div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:800, fontSize:15, letterSpacing:"-0.3px", lineHeight:1.1 }}>
-                <span style={{ color:"#FF6B35" }}>DELIVER</span><span style={{ color:"#fff" }}>FLOW</span>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:800, fontSize:15, letterSpacing:"-0.3px", lineHeight:1.1 }}>
+                <span style={{ color:"#FF5A1F", fontFamily:"'Clash Display',system-ui,sans-serif" }}>DELIVER</span><span style={{ color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif" }}>FLOW</span>
               </div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:10, letterSpacing:"1.2px" }}>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:10, letterSpacing:"1.2px" }}>
                 ADMIN · {new Date().toLocaleDateString("en-KW",{day:"numeric",month:"short",year:"numeric"})}
                 {syncing && <span style={{ color:"#F59E0B" }}> · Syncing…</span>}
                 {!syncing && dbConnected && <span style={{ color:"#10B981" }}> · Live</span>}
@@ -5194,11 +5217,11 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
           </div>
           <div style={{ display:"flex", gap:6 }}>
             <button onClick={function(){ if(window.confirm("Clear all COLLECTED orders from driver dashboards?")) onClearCollected(); }}
-              style={{ background:"rgba(245,158,11,.1)", border:"1px solid rgba(245,158,11,.15)", borderRadius:8, padding:"5px 9px", color:"#F59E0B", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, fontWeight:600, cursor:"pointer" }}>
+              style={{ background:"rgba(245,158,11,.1)", border:"1px solid rgba(245,158,11,.15)", borderRadius:8, padding:"5px 9px", color:"#F59E0B", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10, fontWeight:600, cursor:"pointer" }}>
               Clear
             </button>
             <button onClick={onLogout}
-              style={{ background:"rgba(255,107,53,.1)", border:"1px solid rgba(255,107,53,.2)", borderRadius:8, padding:"5px 11px", color:"#FF6B35", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, fontWeight:600, cursor:"pointer" }}>
+              style={{ background:"rgba(255,90,31,.1)", border:"1px solid rgba(255,90,31,.2)", borderRadius:8, padding:"5px 11px", color:"#FF5A1F", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10, fontWeight:600, cursor:"pointer" }}>
               Sign Out
             </button>
           </div>
@@ -5206,7 +5229,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
       </div>
 
       {/* ── Driver presence strip ── */}
-      <div style={{ display:"flex", gap:6, padding:"7px 16px", background:"#111111", borderBottom:"1px solid rgba(255,255,255,.04)", overflowX:"auto", flexShrink:0, alignItems:"center" }}>
+      <div style={{ display:"flex", gap:6, padding:"7px 16px", background:"#0F1218", borderBottom:"1px solid rgba(255,255,255,.04)", overflowX:"auto", flexShrink:0, alignItems:"center" }}>
         {DRIVERS.filter(function(d){ return d.status !== "inactive"; }).map(function(d) {
           var isOnline = onlineDrivers && onlineDrivers[d.id];
           var isActive = activeDrivers && activeDrivers[d.id];
@@ -5215,14 +5238,14 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
               <div style={{ width:6, height:6, borderRadius:"50%", background:isOnline?"#10B981":"#333",
                 boxShadow:isOnline?"0 0 5px #10B981":"none",
                 animation:(isOnline&&isActive)?"pulse 1.2s ease-in-out infinite":"none" }} />
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:isOnline?"#10B981":"rgba(255,255,255,.2)", fontSize:10, fontWeight:600 }}>{d.name}</span>
+              <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:isOnline?"#10B981":"rgba(255,255,255,.2)", fontSize:10, fontWeight:600 }}>{d.name}</span>
             </div>
           );
         })}
       </div>
 
       {/* ── Tab bar ── */}
-      <div style={{ display:"flex", background:"#111111", borderBottom:"1px solid rgba(255,255,255,.05)", flexShrink:0, overflowX:"auto" }}>
+      <div style={{ display:"flex", background:"#0F1218", borderBottom:"1px solid rgba(255,255,255,.05)", flexShrink:0, overflowX:"auto" }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{ flex:1, minWidth:0, background:"none", border:"none", borderBottom: tab===t.id?"2.5px solid #FF6B35":"2.5px solid transparent",
@@ -5230,10 +5253,10 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
             <div style={{ position:"relative" }}>
               <span style={{ fontSize:14, lineHeight:1, opacity:tab===t.id?1:0.4 }}>{t.icon}</span>
               {t.badge > 0 && (
-                <div style={{ position:"absolute", top:-4, right:-7, background:"#FF6B35", borderRadius:10, minWidth:14, height:14, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:8, fontWeight:700, color:"#fff", padding:"0 3px" }}>{t.badge}</div>
+                <div style={{ position:"absolute", top:-4, right:-7, background:"#FF5A1F", borderRadius:10, minWidth:14, height:14, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:8, fontWeight:700, color:"#fff", padding:"0 3px" }}>{t.badge}</div>
               )}
             </div>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:9, fontWeight:tab===t.id?700:400, color:tab===t.id?"#FF6B35":"rgba(255,255,255,.28)", whiteSpace:"nowrap" }}>{t.label}</span>
+            <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:9, fontWeight:tab===t.id?700:400, color:tab===t.id?"#FF5A1F":"rgba(255,255,255,.28)", whiteSpace:"nowrap" }}>{t.label}</span>
           </button>
         ))}
       </div>
@@ -5250,11 +5273,11 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
           <div style={{ padding:"0 16px 80px" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
               <div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}> Order Status Alerts</div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>Real-time updates from drivers</div>
+                <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700 }}> Order Status Alerts</div>
+                <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>Real-time updates from drivers</div>
               </div>
               {adminNotifs.length > 0 && (
-                <button onClick={onClearNotifs} style={{ background:"none", border:"none", color:"#FF6B35", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>
+                <button onClick={onClearNotifs} style={{ background:"none", border:"none", color:"#FF5A1F", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>
                   Mark all read
                 </button>
               )}
@@ -5265,7 +5288,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
                 {["all","Trikart Online","Webstore Online","ReStore Online"].map(function(s){
                   var sel = alertStoreFilter === s;
                   return <button key={s} onClick={function(){ setAlertStoreFilter(s); }}
-                    style={{ background:sel?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:sel?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:sel?"#00D4FF":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
+                    style={{ background:sel?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:sel?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:sel?"#00D4FF":"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>
                     {s==="all"?"All Stores":s.replace(" Online","")}</button>;
                 })}
               </div>
@@ -5287,50 +5310,50 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
                 <div>
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
                     <button onClick={function(){ setFilterDate("all"); }}
-                      style={{ background:filterDate==="all"?"rgba(255,107,53,.2)":"rgba(255,255,255,.06)", border:filterDate==="all"?"1px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:filterDate==="all"?"#FF6B35":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>All</button>
+                      style={{ background:filterDate==="all"?"rgba(255,90,31,.2)":"rgba(255,255,255,.06)", border:filterDate==="all"?"1px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:filterDate==="all"?"#FF5A1F":"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>All</button>
                     {dates.map(function(d){
                       return <button key={d} onClick={function(){ setFilterDate(d); }}
-                        style={{ background:filterDate===d?"rgba(255,107,53,.2)":"rgba(255,255,255,.06)", border:filterDate===d?"1px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:filterDate===d?"#FF6B35":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>{dateLabel(d)}</button>;
+                        style={{ background:filterDate===d?"rgba(255,90,31,.2)":"rgba(255,255,255,.06)", border:filterDate===d?"1px solid #FF6B35":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:filterDate===d?"#FF5A1F":"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>{dateLabel(d)}</button>;
                     })}
                   </div>
                   {filtered.length === 0 ? (
-                    <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:40 }}>No notifications for this day</div>
+                    <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", padding:40 }}>No notifications for this day</div>
                   ) : filtered.map(function(n) {
               const sc = STATUS_CFG[n.notifType] || STATUS_CFG.pending;
               return (
                 <div key={n.id} onClick={() => onMarkNotifRead(n.id)}
                   style={{ background:n.notifType==="help"?(n.read?"rgba(239,68,68,.05)":"rgba(239,68,68,.1)"):(n.read?"rgba(255,255,255,.03)":"rgba(255,255,255,.07)"), border:"1px solid " + (n.notifType==="help"?"rgba(239,68,68,"+(n.read?".2)":".5)"):(n.read?"rgba(255,255,255,.06)":sc.color+"44")), borderRadius:14, padding:14, marginBottom:10, cursor:"pointer" }}>
                   <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
-                    <div style={{ width:36, height:36, borderRadius:10, background:n.notifType==="help"?"rgba(239,68,68,.2)":sc.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:n.notifType==="help"?14:18, flexShrink:0, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:800, color:n.notifType==="help"?"#EF4444":"inherit" }}>{n.notifType==="help"?"SOS":sc.icon}</div>
+                    <div style={{ width:36, height:36, borderRadius:10, background:n.notifType==="help"?"rgba(239,68,68,.2)":sc.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:n.notifType==="help"?14:18, flexShrink:0, fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:800, color:n.notifType==="help"?"#EF4444":"inherit" }}>{n.notifType==="help"?"SOS":sc.icon}</div>
                     <div style={{ flex:1 }}>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:n.notifType==="help"?"#EF4444":(n.read?"rgba(255,255,255,.5)":sc.color), fontSize:13, fontWeight:700 }}>
+                        <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:n.notifType==="help"?"#EF4444":(n.read?"rgba(255,255,255,.5)":sc.color), fontSize:13, fontWeight:700 }}>
                           {n.notifType==="help" ? "SOS - " + (n.driver||"Driver") + " needs help" : ""}
                           {n.notifType!=="help" ? n.notifType.charAt(0).toUpperCase()+n.notifType.slice(1)+" - #"+n.orderId : ""}
                         </div>
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:11 }}>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:11 }}>
                           {smartTime(n.time)}
                         </div>
                       </div>
-                      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.7)", fontSize:13 }}>{n.notifType==="help" ? n.note : n.customer}</div>
+                      <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.7)", fontSize:13 }}>{n.notifType==="help" ? n.note : n.customer}</div>
                       {n.notifType==="help" ? (
-                        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>
-                          #{n.orderId} {n.store ? "- " + n.store : ""}   Driver: <span style={{ color:"#FF6B35", fontWeight:600 }}>{n.driver}</span>
+                        <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>
+                          #{n.orderId} {n.store ? "- " + n.store : ""}   Driver: <span style={{ color:"#FF5A1F", fontWeight:600 }}>{n.driver}</span>
                         </div>
                       ) : (
                         <div>
-                          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>
-                            {n.store}   <span style={{ color:PAYMENT_COLORS[n.payment]||"#fff" }}>{n.payment}</span>   <span style={{ color:"#FF6B35", fontWeight:600 }}>{fmt(n.amount)}</span>
+                          <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>
+                            {n.store}   <span style={{ color:PAYMENT_COLORS[n.payment]||"#fff" }}>{n.payment}</span>   <span style={{ color:"#FF5A1F", fontWeight:600 }}>{fmt(n.amount)}</span>
                           </div>
                           {n.onlineOrderNo && (
-                            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(0,212,255,.7)", fontSize:11, marginTop:2 }}>
+                            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(0,212,255,.7)", fontSize:11, marginTop:2 }}>
                               Online Order No: <span style={{ fontWeight:700, color:"#00D4FF" }}>{n.onlineOrderNo}</span>
                             </div>
                           )}
                         </div>
                       )}
-                      {n.notifType!=="help" && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}> Driver: {n.driver}</div>}
-                      {n.note && n.notifType!=="help" && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:3, fontStyle:"italic" }}> {n.note}</div>}
+                      {n.notifType!=="help" && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}> Driver: {n.driver}</div>}
+                      {n.note && n.notifType!=="help" && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:3, fontStyle:"italic" }}> {n.note}</div>}
                     </div>
                     {!n.read && <div style={{ width:8, height:8, borderRadius:"50%", background:sc.color, flexShrink:0, marginTop:4, boxShadow:"0 0 6px " + (sc.color) }} />}
                   </div>
@@ -5350,48 +5373,48 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
 
         {tab==="transfers" && (
           <div style={{ padding:"0 16px 80px" }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}> Transfer Requests</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>Review and approve driver transfer requests</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:15, fontWeight:700, marginBottom:4 }}> Transfer Requests</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:16 }}>Review and approve driver transfer requests</div>
 
             {transfers.length === 0 ? (
-              <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:40 }}>No transfer requests yet</div>
+              <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", padding:40 }}>No transfer requests yet</div>
             ) : transfers.slice().reverse().map(function(tr) {
               const fromDriver = DRIVERS.find(d => d.id === tr.fromDriverId);
               const toDriver   = DRIVERS.find(d => d.id === tr.toDriverId);
               const isPending  = tr.status === "pending";
               return (
-                <div key={tr.id} style={{ background:isPending?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)", border:"1px solid " + (isPending?"rgba(255,107,53,.3)":tr.status==="approved"?"rgba(16,185,129,.2)":"rgba(239,68,68,.2)"), borderRadius:16, padding:16, marginBottom:12 }}>
+                <div key={tr.id} style={{ background:isPending?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)", border:"1px solid " + (isPending?"rgba(255,90,31,.3)":tr.status==="approved"?"rgba(16,185,129,.2)":"rgba(239,68,68,.2)"), borderRadius:16, padding:16, marginBottom:12 }}>
                   {/* Status banner */}
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{new Date(tr.createdAt).toLocaleTimeString("en-KW", { hour:"2-digit", minute:"2-digit" })}</div>
-                    <span style={{ background:isPending?"rgba(245,158,11,.15)":tr.status==="approved"?"rgba(16,185,129,.15)":"rgba(239,68,68,.15)", color:isPending?"#F59E0B":tr.status==="approved"?"#10B981":"#EF4444", borderRadius:20, padding:"3px 10px", fontSize:11, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontWeight:600 }}>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{new Date(tr.createdAt).toLocaleTimeString("en-KW", { hour:"2-digit", minute:"2-digit" })}</div>
+                    <span style={{ background:isPending?"rgba(245,158,11,.15)":tr.status==="approved"?"rgba(16,185,129,.15)":"rgba(239,68,68,.15)", color:isPending?"#F59E0B":tr.status==="approved"?"#10B981":"#EF4444", borderRadius:20, padding:"3px 10px", fontSize:11, fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontWeight:600 }}>
                       {isPending ? " Pending" : tr.status === "approved" ? " Approved" : "x Rejected"}
                     </span>
                   </div>
 
                   {/* Order info */}
                   <div style={{ background:"rgba(0,0,0,.2)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>{tr.order.customer}</div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>#{tr.order.invoiceNo}   {tr.order.store}   {fmt(tr.order.total)}</div>
+                    <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>{tr.order.customer}</div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginTop:2 }}>#{tr.order.invoiceNo}   {tr.order.store}   {fmt(tr.order.total)}</div>
                   </div>
 
                   {/* Transfer direction */}
                   <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:tr.reason?8:12 }}>
-                    <div style={{ background:"rgba(255,107,53,.15)", borderRadius:8, padding:"5px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF6B35", fontSize:12, fontWeight:700 }}>{fromDriver?.name || tr.fromDriverId}</div>
+                    <div style={{ background:"rgba(255,90,31,.15)", borderRadius:8, padding:"5px 10px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#FF5A1F", fontSize:12, fontWeight:700 }}>{fromDriver?.name || tr.fromDriverId}</div>
                     <span style={{ color:"rgba(255,255,255,.4)", fontSize:14 }}>-></span>
-                    <div style={{ background:"rgba(0,212,255,.15)", borderRadius:8, padding:"5px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:12, fontWeight:700 }}>{toDriver?.name || tr.toDriverId}</div>
+                    <div style={{ background:"rgba(0,212,255,.15)", borderRadius:8, padding:"5px 10px", fontFamily:"'Clash Display',system-ui,sans-serif", color:"#00D4FF", fontSize:12, fontWeight:700 }}>{toDriver?.name || tr.toDriverId}</div>
                   </div>
 
-                  {tr.reason && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:12, fontStyle:"italic" }}> "{tr.reason}"</div>}
+                  {tr.reason && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginBottom:12, fontStyle:"italic" }}> "{tr.reason}"</div>}
 
                   {isPending && (
                     <div style={{ display:"flex", gap:8 }}>
                       <button onClick={() => { onRejectTransfer(tr.id); showToast("Transfer rejected"); }}
-                        style={{ flex:1, background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:10, padding:"10px", color:"#EF4444", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                        style={{ flex:1, background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:10, padding:"10px", color:"#EF4444", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
                         x Reject
                       </button>
                       <button onClick={() => { onApproveTransfer(tr.id); showToast(" Order transferred to " + (toDriver?.name) + "!", "success"); }}
-                        style={{ flex:2, background:"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                        style={{ flex:2, background:"linear-gradient(135deg,#10B981,#00D4FF)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
                          Approve Transfer
                       </button>
                     </div>
@@ -5455,7 +5478,7 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
   ];
 
   return (
-    <div style={{ maxWidth:430, margin:"0 auto", background:"#0D0D0D", height:"100dvh", display:"flex", flexDirection:"column", position:"relative", width:"100%" }}>
+    <div style={{ maxWidth:430, margin:"0 auto", background:"#090B10", height:"100dvh", display:"flex", flexDirection:"column", position:"relative", width:"100%" }}>
       {toast && <Toast msg={toast.msg} toastKind={toast.ttype} />}
 
       {tab==="preview" && reportData && <ReportPreview data={reportData} onClose={() => setTab("report")} />}
@@ -5465,11 +5488,11 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
       )}
 
       {/* ── Driver Header ── */}
-      <div style={{ padding:"12px 18px 10px", background:"#0D0D0D", borderBottom:"1px solid rgba(255,255,255,.05)", flexShrink:0 }}>
+      <div style={{ padding:"12px 18px 10px", background:"#090B10", borderBottom:"1px solid rgba(255,255,255,.05)", flexShrink:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <svg viewBox="0 0 200 200" width={30} height={30} xmlns="http://www.w3.org/2000/svg">
-              <defs><linearGradient id="dhog" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FF7A45"/><stop offset="100%" stopColor="#FF3D00"/></linearGradient></defs>
+              <defs><linearGradient id="dhog" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FF5A1F"/><stop offset="100%" stopColor="#FF3D00"/></linearGradient></defs>
               <rect width="200" height="200" rx="44" fill="url(#dhog)"/>
               <polygon points="100,42 154,73 100,104 46,73" fill="white"/>
               <polygon points="46,73 100,104 100,162 46,131" fill="rgba(255,255,255,0.55)"/>
@@ -5477,23 +5500,23 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
               <polygon points="100,42 106,46 106,100 100,104 94,100 94,46" fill="rgba(255,255,255,0.22)"/>
             </svg>
             <div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:800, fontSize:15, letterSpacing:"-0.3px", lineHeight:1.1 }}>
-                <span style={{ color:"#FF6B35" }}>DELIVER</span><span style={{ color:"#fff" }}>FLOW</span>
+              <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:800, fontSize:15, letterSpacing:"-0.3px", lineHeight:1.1 }}>
+                <span style={{ color:"#FF5A1F", fontFamily:"'Clash Display',system-ui,sans-serif" }}>DELIVER</span><span style={{ color:"#fff", fontFamily:"'Clash Display',system-ui,sans-serif" }}>FLOW</span>
               </div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:10, letterSpacing:"0.5px" }}>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:10, letterSpacing:"0.5px" }}>
                 Hi, <span style={{ color:"rgba(255,255,255,.6)", fontWeight:600 }}>{user.name}</span>
-                {myOrders.length > 0 && <span style={{ color:"rgba(255,107,53,.7)", marginLeft:6 }}>· {myOrders.length} orders today</span>}
+                {myOrders.length > 0 && <span style={{ color:"rgba(255,90,31,.7)", marginLeft:6 }}>· {myOrders.length} orders today</span>}
               </div>
             </div>
           </div>
           <div style={{ display:"flex", gap:6, alignItems:"center" }}>
             {pending > 0 && (
-              <span style={{ background:"rgba(245,158,11,.12)", border:"1px solid rgba(245,158,11,.2)", color:"#F59E0B", borderRadius:20, padding:"4px 10px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, fontWeight:700 }}>
+              <span style={{ background:"rgba(245,158,11,.12)", border:"1px solid rgba(245,158,11,.2)", color:"#F59E0B", borderRadius:20, padding:"4px 10px", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10, fontWeight:700 }}>
                 {pending} to collect
               </span>
             )}
             <button onClick={onLogout}
-              style={{ background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", borderRadius:8, padding:"5px 11px", color:"rgba(255,255,255,.4)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:10, fontWeight:600, cursor:"pointer" }}>
+              style={{ background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", borderRadius:8, padding:"5px 11px", color:"rgba(255,255,255,.4)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:10, fontWeight:600, cursor:"pointer" }}>
               Sign Out
             </button>
           </div>
@@ -5502,9 +5525,9 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
 
       {/* No orders banner */}
       {myOrders.length === 0 && (
-        <div style={{ background:"rgba(255,107,53,.06)", borderBottom:"1px solid rgba(255,107,53,.12)", padding:"10px 18px", display:"flex", gap:10, alignItems:"center" }}>
+        <div style={{ background:"rgba(255,90,31,.06)", borderBottom:"1px solid rgba(255,90,31,.12)", padding:"10px 18px", display:"flex", gap:10, alignItems:"center" }}>
           <span style={{ fontSize:16 }}>⏳</span>
-          <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,107,53,.8)", fontSize:12 }}>Waiting for admin to assign orders…</span>
+          <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,90,31,.8)", fontSize:12 }}>Waiting for admin to assign orders…</span>
         </div>
       )}
 
@@ -5537,15 +5560,15 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
       </div>
 
       {/* ── Bottom Nav ── */}
-      <div style={{ display:"flex", background:"#111111", borderTop:"1px solid rgba(255,255,255,.05)", flexShrink:0, paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
+      <div style={{ display:"flex", background:"#0F1218", borderTop:"1px solid rgba(255,255,255,.05)", flexShrink:0, paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{ flex:1, background:"none", border:"none", borderTop: tab===t.id?"2.5px solid #FF6B35":"2.5px solid transparent",
               padding:"10px 0 7px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, position:"relative" }}>
             <span style={{ fontSize:17, lineHeight:1, opacity:tab===t.id?1:0.38 }}>{t.icon}</span>
-            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:9, fontWeight:tab===t.id?700:400, color:tab===t.id?"#FF6B35":"rgba(255,255,255,.28)" }}>{t.label}</span>
+            <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:9, fontWeight:tab===t.id?700:400, color:tab===t.id?"#FF5A1F":"rgba(255,255,255,.28)" }}>{t.label}</span>
             {t.badge > 0 && (
-              <div style={{ position:"absolute", top:6, right:"50%", transform:"translateX(120%)", background:"#FF6B35", borderRadius:10, minWidth:14, height:14, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:8, fontWeight:700, color:"#fff", padding:"0 3px" }}>{t.badge}</div>
+              <div style={{ position:"absolute", top:6, right:"50%", transform:"translateX(120%)", background:"#FF5A1F", borderRadius:10, minWidth:14, height:14, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:8, fontWeight:700, color:"#fff", padding:"0 3px" }}>{t.badge}</div>
             )}
           </button>
         ))}
@@ -5781,15 +5804,15 @@ function StoreAdminApp({ user, orders, adminNotifs, onMarkNotifRead, onClearNoti
   const unread = myNotifs.filter(function(n){ return !n.read; }).length;
 
   return (
-    <div style={{ height:"100dvh", background:"#0D0D0D", display:"flex", flexDirection:"column", maxWidth:480, margin:"0 auto", width:"100%", position:"relative" }}>
+    <div style={{ height:"100dvh", background:"#090B10", display:"flex", flexDirection:"column", maxWidth:480, margin:"0 auto", width:"100%", position:"relative" }}>
       {/* Header */}
-      <div style={{ padding:"16px 20px 12px", background:"#0D0D0D", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
+      <div style={{ padding:"16px 20px 12px", background:"#090B10", borderBottom:"1px solid rgba(255,255,255,.06)", flexShrink:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:18, fontWeight:800 }}>DeliverFlow</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>{myStore} · Store Admin</div>
+            <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:18, fontWeight:800 }}>DeliverFlow</div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>{myStore} · Store Admin</div>
           </div>
-          <button onClick={onLogout} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:8, padding:"5px 10px", color:"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>Sign Out</button>
+          <button onClick={onLogout} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:8, padding:"5px 10px", color:"rgba(255,255,255,.5)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:11, cursor:"pointer" }}>Sign Out</button>
         </div>
         <div style={{ display:"flex", gap:10, marginTop:10, overflowX:"auto" }}>
           {DRIVERS.filter(function(d){ return d.status !== "inactive"; }).map(function(d) {
@@ -5800,7 +5823,7 @@ function StoreAdminApp({ user, orders, adminNotifs, onMarkNotifRead, onClearNoti
                 <div style={{ width:8, height:8, borderRadius:"50%", background:isOnline?"#10B981":"#374151",
                   boxShadow:isOnline?"0 0 6px #10B981":"none",
                   animation:(isOnline&&isActive)?"pulse 1.2s ease-in-out infinite":"none" }} />
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:isOnline?"#10B981":"rgba(255,255,255,.3)", fontSize:11 }}>{d.name}</span>
+                <span style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:isOnline?"#10B981":"rgba(255,255,255,.3)", fontSize:11 }}>{d.name}</span>
               </div>
             );
           })}
@@ -5810,17 +5833,17 @@ function StoreAdminApp({ user, orders, adminNotifs, onMarkNotifRead, onClearNoti
       {/* Alerts */}
       <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 40px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:16, fontWeight:700 }}>
+          <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:"#fff", fontSize:16, fontWeight:700 }}>
             {myStore} Updates
-            {unread > 0 && <span style={{ background:"#EF4444", color:"#fff", borderRadius:20, padding:"2px 8px", fontSize:11, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", marginLeft:8 }}>{unread}</span>}
+            {unread > 0 && <span style={{ background:"#EF4444", color:"#fff", borderRadius:20, padding:"2px 8px", fontSize:11, fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", marginLeft:8 }}>{unread}</span>}
           </div>
           {myNotifs.length > 0 && (
-            <button onClick={onClearNotifs} style={{ background:"none", border:"none", color:"#FF6B35", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>Mark all read</button>
+            <button onClick={onClearNotifs} style={{ background:"none", border:"none", color:"#FF5A1F", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", fontSize:12, cursor:"pointer" }}>Mark all read</button>
           )}
         </div>
 
         {myNotifs.length === 0 ? (
-          <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:40 }}>No updates yet for {myStore}</div>
+          <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", padding:40 }}>No updates yet for {myStore}</div>
         ) : myNotifs.map(function(n) {
           var sc = STATUS_CFG[n.notifType] || STATUS_CFG.pending;
           var isHelp = n.notifType === "help";
@@ -5832,24 +5855,24 @@ function StoreAdminApp({ user, orders, adminNotifs, onMarkNotifRead, onClearNoti
               <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
                 <div style={{ width:36, height:36, borderRadius:10, background:isHelp?"rgba(239,68,68,.2)":sc.bg,
                   display:"flex", alignItems:"center", justifyContent:"center", fontSize:isHelp?14:18, flexShrink:0,
-                  fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:800, color:isHelp?"#EF4444":"inherit" }}>
+                  fontFamily:"'Clash Display',system-ui,sans-serif", fontWeight:800, color:isHelp?"#EF4444":"inherit" }}>
                   {isHelp ? "SOS" : sc.icon}
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:isHelp?"#EF4444":(n.read?"rgba(255,255,255,.5)":sc.color), fontSize:13, fontWeight:700 }}>
+                    <div style={{ fontFamily:"'Clash Display',system-ui,sans-serif", color:isHelp?"#EF4444":(n.read?"rgba(255,255,255,.5)":sc.color), fontSize:13, fontWeight:700 }}>
                       {isHelp ? "SOS - "+n.driver+" needs help" : n.notifType.charAt(0).toUpperCase()+n.notifType.slice(1)+" - #"+n.orderId}
                     </div>
-                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:11 }}>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.3)", fontSize:11 }}>
                       {smartTime(n.time)}
                     </div>
                   </div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.7)", fontSize:13 }}>{isHelp ? n.note : n.customer}</div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.7)", fontSize:13 }}>{isHelp ? n.note : n.customer}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, marginTop:2 }}>
                     {isHelp ? "Order #"+n.orderId+" · Driver: "+n.driver : n.payment+" · KD "+Number(n.amount).toFixed(3)}
                   </div>
-                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>Driver: {n.driver}</div>
-                  {n.note && !isHelp && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:3, fontStyle:"italic" }}>{n.note}</div>}
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>Driver: {n.driver}</div>
+                  {n.note && !isHelp && <div style={{ fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif", color:"rgba(255,255,255,.35)", fontSize:11, marginTop:3, fontStyle:"italic" }}>{n.note}</div>}
                 </div>
                 {!n.read && <div style={{ width:8, height:8, borderRadius:"50%", background:sc.color, flexShrink:0, marginTop:4, boxShadow:"0 0 6px "+sc.color }} />}
               </div>
