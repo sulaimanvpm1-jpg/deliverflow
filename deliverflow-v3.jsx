@@ -74,39 +74,47 @@ const PDF_SAMPLE_ORDERS = [
 ];
 
 /*  Brand-accurate payment colors  */
+// v4 Payment Badge design (from design PDF page 4)
+// Outlined pill style — colored border + text, dark/transparent background
 const PAYMENT_CFG = {
-  "Cash":           { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"Cash"              },
-  "COD":            { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"COD"               },
-  "KNET":           { color:"#fff",     bg:"#003DA5",  border:"#003DA5",  label:"K NET"             }, // KNET blue
-  "VISA/Mastercard":{ color:"#fff",     bg:"#1A1F71",  border:"#1A1F71",  label:"VISA / MC"         }, // Visa navy
-  "Tabby":          { color:"#1A1A1A",  bg:"#3DEBA0",  border:"#3DEBA0",  label:"Tabby"             }, // Tabby green
-  "Taly":           { color:"#fff",     bg:"#1C1C1E",  border:"#1C1C1E",  label:"r taly"            }, // Taly dark
-  "Deema":          { color:"#fff",     bg:"#C0596A",  border:"#C0596A",  label:"Deema"             }, // Deema pink-red
-  "GoCollect":      { color:"#fff",     bg:"#E8003D",  border:"#E8003D",  label:"GoCollect"         }, // GoCollect red
-  "Trikart Link":   { color:"#fff",     bg:"#6366F1",  border:"#6366F1",  label:"🔗 Trikart"        },
-  "WAMD":           { color:"#fff",     bg:"#1B2B4B",  border:"#F5C518",  label:"WAMD"              }, // WAMD dark + yellow accent
-  "Tap/KNET":       { color:"#fff",     bg:"#003DA5",  border:"#003DA5",  label:"Tap / KNET"        },
-  "Exchange":       { color:"#fff",     bg:"#6B7280",  border:"#6B7280",  label:"🔄 Exchange"       },
-  "Link Payment":   { color:"#fff",     bg:"#7C3AED",  border:"#7C3AED",  label:"🔗 Link"           },
-  "Tabby (Link)":   { color:"#1A1A1A",  bg:"#3DEBA0",  border:"#3DEBA0",  label:"Tabby"             },
+  "Cash":           { color:"#22C55E",  bg:"rgba(34,197,94,.10)",   border:"#22C55E",  label:"Cash"         },
+  "COD":            { color:"#22C55E",  bg:"rgba(34,197,94,.10)",   border:"#22C55E",  label:"Cash"         },
+  "KNET":           { color:"#38BDF8",  bg:"rgba(56,189,248,.10)",  border:"#38BDF8",  label:"K NET"        },
+  "VISA/Mastercard":{ color:"#A78BFA",  bg:"rgba(167,139,250,.10)", border:"#A78BFA",  label:"VISA / MC"    },
+  "Tabby":          { color:"#3DEBA0",  bg:"rgba(61,235,160,.10)",  border:"#3DEBA0",  label:"Tabby"        },
+  "Taly":           { color:"#9CA3AF",  bg:"rgba(156,163,175,.10)", border:"#9CA3AF",  label:"Taly"         },
+  "Deema":          { color:"#F472B6",  bg:"rgba(244,114,182,.10)", border:"#F472B6",  label:"Deema"        },
+  "GoCollect":      { color:"#FF5A1F",  bg:"rgba(255,90,31,.10)",   border:"#FF5A1F",  label:"GoCollect"    },
+  "Trikart Link":   { color:"#A78BFA",  bg:"rgba(167,139,250,.10)", border:"#A78BFA",  label:"🔗 Trikart"   },
+  "WAMD":           { color:"#FBBF24",  bg:"rgba(251,191,36,.10)",  border:"#FBBF24",  label:"WAMD"         },
+  "Tap/KNET":       { color:"#38BDF8",  bg:"rgba(56,189,248,.10)",  border:"#38BDF8",  label:"Tap / KNET"   },
+  "Exchange":       { color:"#9CA3AF",  bg:"rgba(156,163,175,.10)", border:"#9CA3AF",  label:"🔄 Exchange"  },
+  "Link Payment":   { color:"#A78BFA",  bg:"rgba(167,139,250,.10)", border:"#A78BFA",  label:"🔗 Link"      },
+  "Tabby (Link)":   { color:"#3DEBA0",  bg:"rgba(61,235,160,.10)",  border:"#3DEBA0",  label:"Tabby"        },
+  "Tamara":         { color:"#FCA5A5",  bg:"rgba(252,165,165,.10)", border:"#FCA5A5",  label:"Tamara"       },
+  "Pre-Paid":       { color:"#22C55E",  bg:"rgba(34,197,94,.10)",   border:"#22C55E",  label:"Pre-Paid"     },
 };
 // Fallback colour map (used where only a hex colour is needed)
-const PAYMENT_COLORS = Object.fromEntries(Object.entries(PAYMENT_CFG).map(e => [e[0],e[1].bg]));
+const PAYMENT_COLORS = Object.fromEntries(Object.entries(PAYMENT_CFG).map(e => [e[0],e[1].border]));
 
-/*  Payment Badge component  */
+/*  Payment Badge component — v4 outlined pill style  */
 const PaymentBadge = ({ payType, small }) => {
-  const cfg = PAYMENT_CFG[payType] || { color:"#fff", bg:"rgba(255,255,255,.15)", border:"rgba(255,255,255,.2)", label: payType };
+  const cfg = PAYMENT_CFG[payType] || { color:"#9CA3AF", bg:"rgba(156,163,175,.10)", border:"#9CA3AF", label: payType };
   const fs  = small ? 10 : 11;
-  const px  = small ? "3px 8px" : "4px 11px";
+  const px  = small ? "3px 9px" : "4px 12px";
   return (
     <span style={{
-      background: cfg.bg, color: cfg.color,
-      border: "1.5px solid " + (cfg.border),
-      borderRadius: 20, padding: px,
-      fontSize: fs, fontWeight: 700,
-      fontFamily: "DM Sans",
-      whiteSpace:"nowrap", letterSpacing: payType==="KNET"?1:0,
-      display:"inline-block",
+      background: cfg.bg,
+      color: cfg.color,
+      border: "1.5px solid " + cfg.border,
+      borderRadius: 20,
+      padding: px,
+      fontSize: fs,
+      fontWeight: 700,
+      fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif",
+      whiteSpace: "nowrap",
+      letterSpacing: payType === "KNET" ? 0.5 : 0,
+      display: "inline-block",
     }}>
       {cfg.label}
     </span>
