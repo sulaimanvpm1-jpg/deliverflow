@@ -5323,7 +5323,35 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
                 <div key={n.id} onClick={() => onMarkNotifRead(n.id)}
                   style={{ background:n.notifType==="help"?(n.read?"rgba(239,68,68,.05)":"rgba(239,68,68,.1)"):(n.read?"rgba(255,255,255,.03)":"rgba(255,255,255,.07)"), border:"1px solid " + (n.notifType==="help"?"rgba(239,68,68,"+(n.read?".2)":".5)"):(n.read?"rgba(255,255,255,.06)":sc.color+"44")), borderRadius:14, padding:14, marginBottom:10, cursor:"pointer" }}>
                   <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
-                    <div style={{ width:36, height:36, borderRadius:10, background:n.notifType==="help"?"rgba(239,68,68,.2)":sc.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:n.notifType==="help"?14:18, flexShrink:0, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:800, color:n.notifType==="help"?"#EF4444":"inherit" }}>{n.notifType==="help"?"SOS":sc.icon}</div>
+                    {/* 3D letter status icon with outer glow */}
+                    {(function() {
+                      if (n.notifType === "help") {
+                        return (
+                          <div style={{ width:40, height:40, borderRadius:12, background:"rgba(239,68,68,.15)", border:"1.5px solid rgba(239,68,68,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:800, color:"#EF4444", boxShadow:"0 0 12px rgba(239,68,68,.5), 0 0 24px rgba(239,68,68,.2)" }}>SOS</div>
+                        );
+                      }
+                      const statusColors = {
+                        delivered: { face:"#10B981", side:"#059669", base:"#047857", glow:"34,197,94" },
+                        postponed: { face:"#8B5CF6", side:"#7C3AED", base:"#6D28D9", glow:"139,92,246" },
+                        cancelled: { face:"#EF4444", side:"#DC2626", base:"#B91C1C", glow:"239,68,68" },
+                      };
+                      const sc2 = statusColors[n.notifType] || { face:"#6B7280", side:"#4B5563", base:"#374151", glow:"107,114,128" };
+                      const letter = (n.notifType||"?").charAt(0).toUpperCase();
+                      return (
+                        <div style={{ position:"relative", width:44, height:44, flexShrink:0 }}>
+                          {/* glow layer */}
+                          <div style={{ position:"absolute", inset:-4, borderRadius:16, background:"rgba("+sc2.glow+",.25)", filter:"blur(6px)", zIndex:0 }} />
+                          {/* 3D face */}
+                          <div style={{ position:"absolute", top:0, left:0, width:38, height:38, borderRadius:12, background:sc2.face, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"inset 0 1px 0 rgba(255,255,255,.25)" }}>
+                            <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:22, fontWeight:800, color:"#fff", lineHeight:1, textShadow:"0 1px 2px rgba(0,0,0,.3)" }}>{letter}</span>
+                          </div>
+                          {/* right depth */}
+                          <div style={{ position:"absolute", top:4, left:36, width:6, height:34, background:sc2.side, borderRadius:"0 4px 4px 0", zIndex:1, transform:"skewY(0deg)" }} />
+                          {/* bottom depth */}
+                          <div style={{ position:"absolute", top:36, left:4, width:34, height:6, background:sc2.base, borderRadius:"0 0 4px 4px", zIndex:1 }} />
+                        </div>
+                      );
+                    })()}
                     <div style={{ flex:1 }}>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
                         <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:n.notifType==="help"?"#EF4444":(n.read?"rgba(255,255,255,.5)":sc.color), fontSize:13, fontWeight:700 }}>
@@ -5852,11 +5880,28 @@ function StoreAdminApp({ user, orders, adminNotifs, onMarkNotifRead, onClearNoti
                 border:"1px solid "+(isHelp?"rgba(239,68,68,"+(n.read?".2)":".5)"):(n.read?"rgba(255,255,255,.06)":sc.color+"44")),
                 borderRadius:14, padding:14, marginBottom:10, cursor:"pointer" }}>
               <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:isHelp?"rgba(239,68,68,.2)":sc.bg,
-                  display:"flex", alignItems:"center", justifyContent:"center", fontSize:isHelp?14:18, flexShrink:0,
-                  fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:800, color:isHelp?"#EF4444":"inherit" }}>
-                  {isHelp ? "SOS" : sc.icon}
-                </div>
+                {(function() {
+                  if (isHelp) {
+                    return <div style={{ width:40, height:40, borderRadius:12, background:"rgba(239,68,68,.15)", border:"1.5px solid rgba(239,68,68,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:800, color:"#EF4444", boxShadow:"0 0 12px rgba(239,68,68,.5), 0 0 24px rgba(239,68,68,.2)" }}>SOS</div>;
+                  }
+                  const statusColors = {
+                    delivered: { face:"#10B981", side:"#059669", base:"#047857", glow:"34,197,94" },
+                    postponed: { face:"#8B5CF6", side:"#7C3AED", base:"#6D28D9", glow:"139,92,246" },
+                    cancelled: { face:"#EF4444", side:"#DC2626", base:"#B91C1C", glow:"239,68,68" },
+                  };
+                  const sc2 = statusColors[n.notifType] || { face:"#6B7280", side:"#4B5563", base:"#374151", glow:"107,114,128" };
+                  const letter = (n.notifType||"?").charAt(0).toUpperCase();
+                  return (
+                    <div style={{ position:"relative", width:44, height:44, flexShrink:0 }}>
+                      <div style={{ position:"absolute", inset:-4, borderRadius:16, background:"rgba("+sc2.glow+",.25)", filter:"blur(6px)", zIndex:0 }} />
+                      <div style={{ position:"absolute", top:0, left:0, width:38, height:38, borderRadius:12, background:sc2.face, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"inset 0 1px 0 rgba(255,255,255,.25)" }}>
+                        <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:22, fontWeight:800, color:"#fff", lineHeight:1, textShadow:"0 1px 2px rgba(0,0,0,.3)" }}>{letter}</span>
+                      </div>
+                      <div style={{ position:"absolute", top:4, left:36, width:6, height:34, background:sc2.side, borderRadius:"0 4px 4px 0", zIndex:1 }} />
+                      <div style={{ position:"absolute", top:36, left:4, width:34, height:6, background:sc2.base, borderRadius:"0 0 4px 4px", zIndex:1 }} />
+                    </div>
+                  );
+                })()}
                 <div style={{ flex:1 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
                     <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:isHelp?"#EF4444":(n.read?"rgba(255,255,255,.5)":sc.color), fontSize:13, fontWeight:700 }}>
