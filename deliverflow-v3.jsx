@@ -414,7 +414,15 @@ const STATUS_CFG = {
 };
 
 const fmt = n => "KD " + Number(n).toFixed(3);
-function uid() { return Math.random().toString(36).slice(2,9).toUpperCase(); }
+function uid() {
+  try {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID().replace(/-/g,"").slice(0,16).toUpperCase();
+    }
+  } catch(e) {}
+  // Fallback: combine multiple Math.random calls for more entropy
+  return (Math.random().toString(36).slice(2,7) + Math.random().toString(36).slice(2,7)).toUpperCase();
+}
 
 /*  Shared UI  */
 const Badge = ({ status }) => {
@@ -2030,7 +2038,7 @@ function DriverOrderRow({ order, onTransfer, selected, onToggleSelect }) {
   const rawPhone = (order.phone || "").replace(/\D/g, "");
   const waPhone  = rawPhone.startsWith("00") ? rawPhone.slice(2) : rawPhone.startsWith("0") ? "965" + rawPhone.slice(1) : rawPhone.startsWith("965") ? rawPhone : rawPhone.length >= 8 ? "965" + rawPhone : rawPhone;
   const callPhone = (order.phone || "").trim();
-  const callHref = "tel:" + callPhone;
+  const callHref = "tel:+" + rawPhone.replace(/\D/g,"").slice(0,15);
   const isCOD    = order.paymentType === "Cash" || order.paymentType === "COD";
   const codPart  = isCOD ? " Please have *" + fmt(order.total) + "* ready for cash payment." : "";
   const waMsg    = encodeURIComponent("Dear Customer,\n\nYour order from *" + order.store + "* is out for delivery soon." + codPart + "\n\nThank you!");
@@ -2721,7 +2729,14 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
     var stored = null;
     try { stored = sessionStorage.getItem(otpKey); } catch(e){}
     if (stored) return stored;
-    var code = String(Math.floor(1000 + Math.random() * 9000));
+    var code;
+    try {
+      var arr = new Uint16Array(1);
+      crypto.getRandomValues(arr);
+      code = String(1000 + (arr[0] % 9000));
+    } catch(e) {
+      code = String(Math.floor(1000 + Math.random() * 9000));
+    }
     try { sessionStorage.setItem(otpKey, code); } catch(e){}
     return code;
   }
@@ -2739,7 +2754,7 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
   const codPart  = isCOD ? " Please have *" + fmt(order.total) + "* ready for cash payment." : "";
   const waMsg    = encodeURIComponent("Dear Customer,\n\nYour order from *" + order.store + "* is out for delivery soon." + codPart + "\n\nThank you!");
   const waHref   = "https://wa.me/" + waPhone + "?text=" + waMsg;
-  const callHref = "tel:" + callPhone;
+  const callHref = "tel:+" + rawPhone.replace(/\D/g,"").slice(0,15);
   var borderColor = "rgba(255,255,255,.07)";
   if (isActive) borderColor = "rgba(0,212,255,.2)";
   else if (isCancelled) borderColor = "rgba(239,68,68,.2)";
@@ -4418,7 +4433,16 @@ function generateSessionToken(id, role) {
   var secret = (function() {
     try {
       var s = localStorage.getItem("df_device_secret");
-      if (!s) { s = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); localStorage.setItem("df_device_secret", s); }
+      if (!s) {
+            try {
+              var arr2 = new Uint8Array(24);
+              crypto.getRandomValues(arr2);
+              s = Array.from(arr2).map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
+            } catch(e2) {
+              s = Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
+            }
+            localStorage.setItem("df_device_secret", s);
+          }
       return s;
     } catch(e) { return "df_fallback_secret"; }
   })();
@@ -4960,6 +4984,7 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
               <button onClick={function(){
                 var el = document.getElementById("pwd-"+editDriver.id);
                 if (!el || !el.value.trim()) return;
+                if (el.value.trim().length < 6) { alert("Password must be at least 6 characters."); return; }
                 if (onSetPassword) onSetPassword(editDriver.id, el.value.trim());
                 el.value = "";
                 alert("Password updated!");
@@ -5886,13 +5911,14 @@ async function dbUpdateOrder(id, fields) {
   const sb = getSupabase();
   if (!sb) return;
   const row = {};
-  if (fields.status !== undefined)      row.status = fields.status;
+  var DB_VALID_STATUSES = ["delivered","cancelled","postponed","pending"];
+  if (fields.status !== undefined && DB_VALID_STATUSES.includes(fields.status)) row.status = fields.status;
   if (fields.driverId !== undefined)    row.driver_id = fields.driverId;
   if (fields.scanned !== undefined)     row.scanned = fields.scanned;
-  if (fields.note !== undefined)        row.note = fields.note;
+  if (fields.note !== undefined)        row.note = String(fields.note||"").slice(0, 500);
   if (fields.paymentType !== undefined) row.payment_type = fields.paymentType;
   if (fields.originalPaymentType !== undefined) row.original_payment_type = fields.originalPaymentType;
-  if (fields.total !== undefined) row.total = fields.total;
+  if (fields.total !== undefined && typeof fields.total === "number" && fields.total >= 0 && fields.total <= 99999) row.total = fields.total;
   row.updated_at = new Date().toISOString();
   const { error } = await sb.from("orders").update(row).eq("id", id);
   if (error) console.warn("Supabase update order:", error.message);
@@ -6672,8 +6698,15 @@ setOrders(function(prev) {
 
   function markScanned(idOrInvoice) {
     setOrders(function(prev) {
+      var currentSession = lsGet(LS_KEYS.session, null);
+      var validCurrentSession = validateSession(currentSession);
       const updated = prev.map(function(o) {
         if (o.id === idOrInvoice || o.invoiceNo === idOrInvoice) {
+          // Drivers can only update their own assigned orders
+          if (validCurrentSession && validCurrentSession.role === "driver" && o.driverId !== validCurrentSession.id) {
+            console.warn("Driver attempted to update another driver's order — blocked.");
+            return o;
+          }
           const newO = { ...o, scanned:true, scannedAt: new Date().toISOString() };
           dbUpdateOrder(newO.id, { scanned:true });
           return newO;
@@ -6685,6 +6718,12 @@ setOrders(function(prev) {
   }
 
   function updateStatus(idOrInvoice, status, note, newPaymentType, newTotal, extraAmount) {
+    // Whitelist valid statuses — reject anything unexpected
+    var VALID_STATUSES = ["delivered","cancelled","postponed","pending"];
+    if (status && !VALID_STATUSES.includes(status)) {
+      console.warn("Rejected invalid status:", status);
+      return;
+    }
     let updatedOrder = null;
     setOrders(function(prev) {
       const updated = prev.map(function(o) {
