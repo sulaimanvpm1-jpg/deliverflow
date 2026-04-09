@@ -3912,7 +3912,17 @@ const STORE_WA_NUMBERS = {
 };
 
 function DayClosingTab({ orders, driverId, driverName }) {
-  const myOrders = orders.filter(function(o){ return o.driverId === driverId; });
+  const _todayStr = new Date().toDateString();
+  const myOrders = orders.filter(function(o) {
+    if (o.driverId !== driverId) return false;
+    var d = o.assignedDate || o.date || "";
+    var p = d.split("/");
+    if (p.length === 3) {
+      var dt = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+      return dt.toDateString() === _todayStr;
+    }
+    return false;
+  });
   const stores = ["Trikart Online", "Webstore Online", "ReStore Online"].filter(function(s){
     return myOrders.some(function(o){ return o.store === s; });
   });
@@ -4124,7 +4134,11 @@ function DriverReportTab({ orders, driverId, expenses, onOpenReport }) {
 
   function buildReportData() {
     const drvName      = DRIVERS.find(d => d.id === driverId)?.name || driverId;
-    const myExpenses   = expenses || [];
+    const _todayStr    = new Date().toDateString();
+    const myExpenses   = (expenses || []).filter(function(e) {
+      if (!e.createdAt) return true; // keep if no date (legacy)
+      return new Date(e.createdAt).toDateString() === _todayStr;
+    });
     const deliveredOrds = myOrders.filter(o => o.status === "delivered");
     const cancelledOrds = myOrders.filter(o => o.status === "cancelled");
     const postponedOrds = myOrders.filter(o => o.status === "postponed");
@@ -5418,7 +5432,12 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
   });
   const collected  = myOrders.filter(o => o.scanned && o.status === "pending").length;
   const pending    = myOrders.filter(o => !o.scanned && o.status === "pending").length;
-  const myExpenses = (expenses||[]).filter(e => e.driverId === user.id);
+  const _todayStr  = new Date().toDateString();
+  const myExpenses = (expenses||[]).filter(function(e) {
+    if (e.driverId !== user.id) return false;
+    if (!e.createdAt) return false;
+    return new Date(e.createdAt).toDateString() === _todayStr;
+  });
 
   function handleTransferRequest(order, from, to, reason) {
     onRequestTransfer(order, from, to, reason);
