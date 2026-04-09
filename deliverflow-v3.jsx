@@ -3740,7 +3740,7 @@ function ReportPreview({ data, onClose }) {
     var pri = document.getElementById("report-print-area");
     if (!pri) return;
     var today = new Date().toLocaleDateString("en-KW",{day:"2-digit",month:"2-digit",year:"numeric"}).replace(/\//g,"-");
-    var fileName = "DeliverFlow-Report-" + drvName.replace(/\s+/g,"-") + "-" + today;
+    var fileName = "Report - " + drvName + " - " + today;
     var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fileName+'</title><style>'+printCSS+'</style></head><body>' + pri.innerHTML + (autoprint?'<script>window.onload=function(){window.print();}<\/script>':'') + '</body></html>';
     var blob = new Blob([html],{type:"text/html;charset=utf-8"});
     var url = URL.createObjectURL(blob);
@@ -3866,6 +3866,7 @@ function ReportPreview({ data, onClose }) {
           var sExOrds   = allStoreOrds.filter(function(o){ return isExchange(o.paymentType)||isExchange(o.originalPaymentType); });
           var sCancOrds = allStoreOrds.filter(function(o){ return o.status==="cancelled"; });
           var sPostOrds = allStoreOrds.filter(function(o){ return o.status==="postponed"; });
+          var sPendOrds = allStoreOrds.filter(function(o){ return o.status==="pending"; });
           var sCash  = sDelOrds.filter(function(o){ return o.paymentType==="Cash"||o.paymentType==="COD"; }).reduce(function(a,o){ return a+Number(o.total); },0);
           var sKnet  = sDelOrds.filter(function(o){ return o.paymentType==="KNET"||o.paymentType==="Tap/KNET"; }).reduce(function(a,o){ return a+Number(o.total); },0);
           var sDeema = sDelOrds.filter(function(o){ return o.paymentType==="Deema"; }).reduce(function(a,o){ return a+Number(o.total); },0);
@@ -3880,13 +3881,14 @@ function ReportPreview({ data, onClose }) {
               <div style={{ background:"#090B10", padding:"8px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#FF5A1F", fontWeight:700, fontSize:12 }}>{store}</span>
                 <span style={{ color:"rgba(255,255,255,.45)", fontSize:10 }}>
-                  {sDelOrds.length} delivered{sCancOrds.length>0?" · "+sCancOrds.length+" cancelled":""}{sPostOrds.length>0?" · "+sPostOrds.length+" postponed":""}{sExOrds.length>0?" · "+sExOrds.length+" exchange":""}
+                  {sDelOrds.length} delivered{sCancOrds.length>0?" · "+sCancOrds.length+" cancelled":""}{sPostOrds.length>0?" · "+sPostOrds.length+" postponed":""}{sPendOrds.length>0?" · "+sPendOrds.length+" pending":""}{sExOrds.length>0?" · "+sExOrds.length+" exchange":""}
                 </span>
               </div>
               {sDelOrds.length>0 && (<div><div style={{ background:"#DCFCE7", padding:"3px 10px", color:"#059669", fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Delivered</div>{sDelOrds.map(function(o,i){ return <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />; })}</div>)}
               {sExOrds.length>0 && (<div><div style={{ background:"#F1F5F9", padding:"3px 10px", color:"#6B7280", fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Exchange</div>{sExOrds.map(function(o,i){ return <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />; })}</div>)}
               {sCancOrds.length>0 && (<div><div style={{ background:"#FEE2E2", padding:"3px 10px", color:"#DC2626", fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Cancelled</div>{sCancOrds.map(function(o,i){ return <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />; })}</div>)}
               {sPostOrds.length>0 && (<div><div style={{ background:"#EDE9FE", padding:"3px 10px", color:"#7C3AED", fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Postponed</div>{sPostOrds.map(function(o,i){ return <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />; })}</div>)}
+              {sPendOrds.length>0 && (<div><div style={{ background:"#FEF3C7", padding:"3px 10px", color:"#D97706", fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Pending (Not Delivered)</div>{sPendOrds.map(function(o,i){ return <OrderRow key={o.invoiceNo} o={o} i={i} statusBg={statusBg} statusColor={statusColor} />; })}</div>)}
               {/* Store payment breakdown */}
               <div style={{ background:"#F8FAFC", padding:"8px 12px", borderTop:"1px solid #E2E8F0", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 14px" }}>
