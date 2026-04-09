@@ -1391,7 +1391,7 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
 }
 
 /*  Admin: All Orders View  */
-function AdminOrdersTab({ orders, onStatusUpdate, onRemoveOrder }) {
+function AdminOrdersTab({ orders, onStatusUpdate, onRemoveOrder, onEditOrder }) {
   const [driverFilter, setDriverFilter] = useState("all");
   const [storeFilter, setStoreFilter]   = useState("All Stores");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -1480,7 +1480,7 @@ function AdminOrdersTab({ orders, onStatusUpdate, onRemoveOrder }) {
                 {isChk && <span style={{ color:"#fff", fontSize:12, fontWeight:700 }}>✓</span>}
               </div>
             )}
-            <AdminOrderCard order={o} onStatusUpdate={onStatusUpdate} />
+            <AdminOrderCard order={o} onStatusUpdate={onStatusUpdate} onEditOrder={onEditOrder} />
           </div>
         );
       })}
@@ -1488,8 +1488,9 @@ function AdminOrdersTab({ orders, onStatusUpdate, onRemoveOrder }) {
   );
 }
 
-function AdminOrderCard({ order, onStatusUpdate }) {
+function AdminOrderCard({ order, onStatusUpdate, onEditOrder }) {
   const [exp, setExp] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const driver = DRIVERS.find(d => d.id === order.driverId);
   return (
     <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.07)", borderRadius:14, marginBottom:8, overflow:"hidden" }}>
@@ -1513,7 +1514,18 @@ function AdminOrderCard({ order, onStatusUpdate }) {
           <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:4, marginBottom:4  }}>{(function(){ var _a = detectArea(order.address); return _a ? <span style={{ background:"rgba(0,212,255,.12)", border:"1px solid rgba(0,212,255,.25)", borderRadius:20, padding:"1px 9px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#00D4FF", fontSize:10, fontWeight:700, marginRight:6 }}>{_a}</span> : null; })()}<span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.55)", fontSize:12  }}>{order.address}</span></div>
           <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.55)", fontSize:12, marginBottom:4 }}> {order.phone}</div>
           {order.note && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#C4B5FD", fontSize:12 }}> {order.note}</div>}
+          <button onClick={function(e){ e.stopPropagation(); setEditOpen(true); }}
+            style={{ marginTop:10, width:"100%", background:"rgba(255,90,31,.08)", border:"1px solid rgba(255,90,31,.25)", borderRadius:10, padding:"9px", color:"#FF5A1F", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:12, cursor:"pointer" }}>
+            ✏️ Edit Order Details
+          </button>
         </div>
+      )}
+      {editOpen && (
+        <EditOrderModal
+          order={order}
+          onSave={function(id, fields){ if (onEditOrder) onEditOrder(id, fields); }}
+          onClose={function(){ setEditOpen(false); }}
+        />
       )}
     </div>
   );
@@ -2608,18 +2620,25 @@ function TagButton({ invoiceNo, orderTags, onSetTag }) {
 }
 
 function EditOrderModal({ order, onSave, onClose }) {
-  const [oo,    setOo]    = useState(order.onlineOrderNo || "");
-  const [name,  setName]  = useState(order.customer || "");
-  const [addr,  setAddr]  = useState(order.address || "");
-  const [phone, setPhone] = useState(order.phone || "");
+  const [oo,         setOo]         = useState(order.onlineOrderNo || "");
+  const [name,       setName]       = useState(order.customer || "");
+  const [addr,       setAddr]       = useState(order.address || "");
+  const [phone,      setPhone]      = useState(order.phone || "");
+  const [area,       setArea]       = useState("");
+  const [areaSearch, setAreaSearch] = useState("");
+  const [showAreaDrop, setShowAreaDrop] = useState(false);
+
+  const ALL_AREAS = ['Abdali','Abdulla Al-Salem','Abdullah Al-Mubarak','Abu Al Hasaniya','Abu Halifa','Adailiya','Adan','Ahmadi','Airport District','Ali As-Salim','Amghara','Andalus','Ardiya','Ardiya Industrial Area','Ashbelya','Bayan','Bnaid Al-Qar','Dasma','Dhajeej','Doha','Egaila','Fahad Al-Ahmad','Fahaheel','Faiha','Farwaniya','Fintas','Firdous','Granada (Kuwait)','Hadiya','Hawally','Hittin','Jaber Al-Ahmad','Jaber Al-Ali','Jabriya','Jahra','Jleeb Al-Shuyoukh','Kaifan','Khairan','Khaitan','Khaldiya','Kuwait City','Mahbula','Mangaf','Mansriya','Mishref','Mubarak Al-Kabeer','Naeem','Nasseem','North West Sulaibikhat','Nuzha','Qairawan','Qasr','Qurain','Qurtuba','Rabiya','Rawda','Riggae','Rumaithiya','Saad Al Abdullah','Sabah Al Salem','Sabah Al-Ahmad','Sabah Al-Nasser','Sabahiya','Sabhan','Salam','Salmiya','Salwa','Shaab','Shamiya','Sharq','Shuhada','Shuwaikh','Siddiq','Sulaibikhat','Sulaibiya','Surra','Waha','Yarmouk','Zahra'];
+  const filteredAreas = ALL_AREAS.filter(function(a) { return a.toLowerCase().includes(areaSearch.toLowerCase()); });
 
   function save() {
     if (!name.trim()) return;
+    var fullAddress = addr.trim() + (area ? ", " + area : "");
     onSave(order.id || order.invoiceNo, {
       onlineOrderNo: oo.trim(),
-      customer: name.trim(),
-      address:  addr.trim(),
-      phone:    phone.trim(),
+      customer:      name.trim(),
+      address:       fullAddress,
+      phone:         phone.trim(),
     });
     onClose();
   }
@@ -2628,8 +2647,8 @@ function EditOrderModal({ order, onSave, onClose }) {
   const labelStyle = { fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.45)", fontSize:11, marginBottom:5, textTransform:"uppercase", letterSpacing:.5, display:"block" };
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:9100, display:"flex", alignItems:"flex-end" }}>
-      <div style={{ width:"100%", background:"#161B24", borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"85dvh", overflowY:"auto" }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:9100, display:"flex", alignItems:"flex-end" }} onClick={onClose}>
+      <div style={{ width:"100%", background:"#161B24", borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90dvh", overflowY:"auto" }} onClick={function(e){ e.stopPropagation(); }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
           <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:17, fontWeight:700 }}>✏️ Edit Order Details</div>
           <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>✕</button>
@@ -2641,21 +2660,49 @@ function EditOrderModal({ order, onSave, onClose }) {
         {[
           ["Online Order No", oo,    setOo,    "text", "e.g. 75869 or 26941"],
           ["Customer Name",   name,  setName,  "text", "Customer full name"],
-          ["Address",         addr,  setAddr,  "text", "Delivery address"],
+          ["Address",         addr,  setAddr,  "text", "Street / building / block"],
           ["Mobile Number",   phone, setPhone, "tel",  "+965 XXXX XXXX"],
-        ].map(([label, val, setter, type, ph]) => (
-          <div key={label} style={{ marginBottom:14 }}>
-            <label style={labelStyle}>{label}</label>
-            <input type={type} value={val} onChange={e => setter(e.target.value)}
-              placeholder={ph} style={inputStyle} />
-          </div>
-        ))}
+        ].map(function(row) {
+          var label=row[0], val=row[1], setter=row[2], type=row[3], ph=row[4];
+          return (
+            <div key={label} style={{ marginBottom:14 }}>
+              <label style={labelStyle}>{label}</label>
+              <input type={type} value={val} onChange={function(e){ setter(e.target.value); }}
+                placeholder={ph} style={inputStyle} />
+            </div>
+          );
+        })}
+
+        {/* Area picker */}
+        <div style={{ marginBottom:14, position:"relative" }}>
+          <label style={labelStyle}>Area</label>
+          <input
+            type="text"
+            value={area || areaSearch}
+            onChange={function(e){ setAreaSearch(e.target.value); setArea(""); setShowAreaDrop(true); }}
+            onFocus={function(){ setShowAreaDrop(true); }}
+            placeholder="Search area..."
+            style={inputStyle}
+          />
+          {showAreaDrop && areaSearch && filteredAreas.length > 0 && (
+            <div style={{ position:"absolute", top:"100%", left:0, right:0, background:"#1E2530", border:"1px solid rgba(0,212,255,.25)", borderRadius:12, maxHeight:180, overflowY:"auto", zIndex:100, marginTop:4 }}>
+              {filteredAreas.slice(0,10).map(function(a) {
+                return (
+                  <div key={a} onClick={function(){ setArea(a); setAreaSearch(a); setShowAreaDrop(false); }}
+                    style={{ padding:"10px 14px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, cursor:"pointer", borderBottom:"1px solid rgba(255,255,255,.05)" }}>
+                    {a}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div style={{ display:"flex", gap:10, marginTop:8 }}>
           <button onClick={onClose} style={{ flex:1, background:"rgba(255,255,255,.07)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", cursor:"pointer" }}>
             Cancel
           </button>
-          <button onClick={save} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+          <button onClick={save} style={{ flex:2, background:"linear-gradient(135deg,#FF5A1F,#FF3D00)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
             Save Changes
           </button>
         </div>
@@ -5131,7 +5178,7 @@ function AdminCivilIdTab() {
   );
 }
 
-function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onClearNotifs, expenses, onAddExpense, onOrdersAdd, onStatusUpdate, onApproveTransfer, onRejectTransfer, driverProfiles, onUpdateDriver, onAddDriver, onClearData, onClearCollected, onRemoveOrderAdmin, saveStatus, dbConnected, syncing, onlineDrivers, activeDrivers, clearConfirm, onConfirmClear, onCancelClear, history, passwords, onSetPassword, selectedDate, onSetSelectedDate, onLogout }) {
+function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onClearNotifs, expenses, onAddExpense, onOrdersAdd, onStatusUpdate, onApproveTransfer, onRejectTransfer, driverProfiles, onUpdateDriver, onAddDriver, onClearData, onClearCollected, onRemoveOrderAdmin, onEditOrder, saveStatus, dbConnected, syncing, onlineDrivers, activeDrivers, clearConfirm, onConfirmClear, onCancelClear, history, passwords, onSetPassword, selectedDate, onSetSelectedDate, onLogout }) {
   const [tab, setTab] = useState("upload");
   const [toast, setToast] = useState(null);
   const [filterDate, setFilterDate] = useState("all");
@@ -5267,7 +5314,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
 
       <div style={{ flex:1, overflowY:"auto", paddingTop:16, display:"flex", flexDirection:"column", WebkitOverflowScrolling:"touch" }}>
         {tab==="upload" && <AdminUploadTab allOrders={orders} onOrdersParsed={handleOrdersAssign} onAssignDriver={() => {}} onStatusUpdate={onStatusUpdate} />}
-        {tab==="orders" && <AdminOrdersTab orders={filteredOrders} onStatusUpdate={onStatusUpdate} onRemoveOrder={onRemoveOrderAdmin} />}
+        {tab==="orders" && <AdminOrdersTab orders={filteredOrders} onStatusUpdate={onStatusUpdate} onRemoveOrder={onRemoveOrderAdmin} onEditOrder={onEditOrder} />}
 
         {/*  Notifications Tab  */}
         {tab==="notifs" && (
@@ -6656,7 +6703,7 @@ setOrders(function(prev) {
           onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))}
           onlineDrivers={onlineDrivers} activeDrivers={activeDrivers}
           onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
-      {user?.role === "admin"  && <AdminApp  user={user} orders={orders} transfers={transfers} adminNotifs={adminNotifs} onMarkNotifRead={(id)=>setAdminNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n))} onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))} expenses={expenses} onAddExpense={function(exp){ const e={...exp,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }} onOrdersAdd={addOrders} onStatusUpdate={updateStatus} onApproveTransfer={approveTransfer} onRejectTransfer={rejectTransfer} driverProfiles={driverProfiles} onUpdateDriver={updateDriverProfile} onAddDriver={addDriver} onClearData={clearAllData} onClearCollected={clearCollected} onRemoveOrderAdmin={removeOrder} orderTags={orderTags} onSetTag={setTag} saveStatus={saveStatus} dbConnected={dbConnected} syncing={syncing} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} clearConfirm={clearConfirm} onConfirmClear={doClearAllData} onCancelClear={function(){setClearConfirm(false);}} history={history} passwords={passwords} onSetPassword={function(id,pwd){setPasswords(function(prev){var n={...prev};n[id]=pwd;return n;});}} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
+      {user?.role === "admin"  && <AdminApp  user={user} orders={orders} transfers={transfers} adminNotifs={adminNotifs} onMarkNotifRead={(id)=>setAdminNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n))} onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))} expenses={expenses} onAddExpense={function(exp){ const e={...exp,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }} onOrdersAdd={addOrders} onStatusUpdate={updateStatus} onApproveTransfer={approveTransfer} onRejectTransfer={rejectTransfer} driverProfiles={driverProfiles} onUpdateDriver={updateDriverProfile} onAddDriver={addDriver} onClearData={clearAllData} onClearCollected={clearCollected} onRemoveOrderAdmin={removeOrder} onEditOrder={updateOrderDetails} orderTags={orderTags} onSetTag={setTag} saveStatus={saveStatus} dbConnected={dbConnected} syncing={syncing} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} clearConfirm={clearConfirm} onConfirmClear={doClearAllData} onCancelClear={function(){setClearConfirm(false);}} history={history} passwords={passwords} onSetPassword={function(id,pwd){setPasswords(function(prev){var n={...prev};n[id]=pwd;return n;});}} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
       {user?.role === "driver" && <DriverApp user={user} orders={orders} expenses={expenses} onAddExpense={function(exp){ const e={...exp,driverId:user.id,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }}
           onUpdateExpense={function(id,fields){ setExpenses(function(p){ var n=p.map(function(e){ return e.id===id?{...e,...fields}:e; }); lsSet(LS_KEYS.expenses,n); return n; }); dbUpdateExpense(id,fields); }}
           onDeleteExpense={function(id){ setExpenses(function(p){ var n=p.filter(function(e){ return e.id!==id; }); lsSet(LS_KEYS.expenses,n); return n; }); dbDeleteExpense(id); }} onScan={markScanned} onStatusUpdate={updateStatus} onEditOrder={updateOrderDetails} onRequestTransfer={requestTransfer} onRemoveOrder={removeOrder} onRequestHelp={requestHelp} orderTags={orderTags} onSetTag={setTag} onAddOrder={addOrders} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
