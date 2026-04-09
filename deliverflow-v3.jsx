@@ -4345,7 +4345,7 @@ function LoginScreen({ onLogin }) {
   }
 
   return (
-    <div style={{ minHeight:"100vh", background:"#090B10", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px", position:"relative", overflow:"hidden" }}>
+    <div style={{ minHeight:"100dvh", height:"100dvh", background:"#090B10", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px", position:"fixed", inset:0, overflow:"auto", WebkitOverflowScrolling:"touch" }}>
 
       {/* Background glow */}
       <div style={{ position:"absolute", top:"-20%", left:"50%", transform:"translateX(-50%)", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, rgba(255,90,31,.12) 0%, transparent 70%)", pointerEvents:"none" }} />
