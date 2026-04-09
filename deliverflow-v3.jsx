@@ -6135,7 +6135,7 @@ window.App = function App() {
   const [onlineDrivers, setOnlineDrivers] = useState({});
   const [activeDrivers, setActiveDrivers] = useState({}); // drivers actively using browser
   const [history, setHistory] = useState(function() { return lsGet(LS_KEYS.history, []); });
-  const [passwords, setPasswords] = useState(function() { return lsGet(LS_KEYS.passwords, DEFAULT_PASSWORDS); });
+  const [passwords, setPasswords] = useState(function() { return lsGet(LS_KEYS.passwords, {}); });
   useEffect(function() { lsSet(LS_KEYS.passwords, passwords); }, [passwords]);
   const [orderTags, setOrderTags] = useState(function() { return lsGet("df_order_tags", {}); });
   useEffect(function() { lsSet("df_order_tags", orderTags); }, [orderTags]);
