@@ -3933,9 +3933,9 @@ function ReportPreview({ data, onClose }) {
             var cashAfterExp = cashOnly - totalExpAmt;
             if (cashOnly === 0 && totalExpAmt === 0) return null;
             return (
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 14px", background:"#FFF7ED", borderTop:"2px solid #FF5A1F" }}>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, color:"#fff" }}>NET CASH TO RETURN</span>
-                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:14, fontWeight:800, color:cashAfterExp>=0?"#059669":"#DC2626" }}>KD {cashAfterExp.toFixed(3)}</span>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", background:"#FF5A1F", borderTop:"2px solid #FF3D00" }}>
+                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, color:"#fff", letterSpacing:0.5 }}>NET CASH TO RETURN</span>
+                <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:15, fontWeight:800, color:"#fff" }}>KD {cashAfterExp.toFixed(3)}</span>
               </div>
             );
           })()}
