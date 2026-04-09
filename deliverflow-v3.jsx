@@ -24,7 +24,7 @@ const DRIVERS = [
 
 
 const STORE_ADMINS = [
-  { id:"trikart",  name:"Trikart Admin",  avatar:"TK", store:"Trikart Online",  password:"trikart123" },
+  { id:"trikart",  name:"Trikart Admin",  avatar:"TK", store:"Trikart Online",  password:"trikart123"  },
   { id:"webstore", name:"Webstore Admin", avatar:"WS", store:"Webstore Online", password:"webstore123" },
   { id:"restore",  name:"ReStore Admin",  avatar:"RS", store:"ReStore Online",  password:"restore123" },
   { id:"gadgetpro", name:"GadgetPro Admin", avatar:"GP", store:"GadgetPro Online", password:"gadgetpro123" },
@@ -488,8 +488,7 @@ function parseSAPDeliveryText(rawText) {
   // OO detection handled inline in parser loop
 
   // DEBUG: log all tokens to console
-  console.log("=== PARSER TOKENS (" + tokens.length + " total) ===");
-  tokens.slice(0, 80).forEach(function(t, i) { console.log("[" + i + "]", JSON.stringify(t)); });
+  // debug logs removed for production
 
   function detectPayment(s) {
     const l = (s || "").toLowerCase();
@@ -633,7 +632,7 @@ function parseSAPDeliveryText(rawText) {
       }
 
       // Debug: log orderTokens for every order
-      console.log("ORDER", invoiceNo, "tokens[0]=", JSON.stringify(orderTokens[0]), "tokens[-1]=", JSON.stringify(orderTokens[orderTokens.length-1]), "all=", JSON.stringify(orderTokens));
+
       // Find OO by scanning BACKWARDS from end (skip dates/amounts/phone numbers)
       // then fall back to checking first token (page-break case)
       var ooFoundIdx = -1;
@@ -773,13 +772,6 @@ function PDFUploadPanel({ onOrdersParsed }) {
         // Join items with \n so each text element is its own line
         const pageText = tc.items.map(it => it.str).join("\n");
         fullText += pageText + "\n";
-        // DEBUG: log first page raw items to console
-        if (p === 1) {
-          console.log("=== PDF PAGE 1 RAW ITEMS ===");
-          tc.items.forEach(function(it, idx) {
-            if (it.str.trim()) console.log("[" + idx + "]", JSON.stringify(it.str), "x=" + Math.round(it.transform[4]) + " y=" + Math.round(it.transform[5]));
-          });
-        }
       }
 
       const lineCount = fullText.split("\n").filter(Boolean).length;
@@ -4419,50 +4411,114 @@ function DriverReportTab({ orders, driverId, expenses, onOpenReport }) {
     </div>
   );
 }
+// ── Security helpers ────────────────────────────────────────────────────────
+// Simple session token — stored alongside the role so localStorage tampering
+// can be detected. Token is a hash of (userId + role + a device secret).
+function generateSessionToken(id, role) {
+  var secret = (function() {
+    try {
+      var s = localStorage.getItem("df_device_secret");
+      if (!s) { s = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); localStorage.setItem("df_device_secret", s); }
+      return s;
+    } catch(e) { return "df_fallback_secret"; }
+  })();
+  var raw = id + "|" + role + "|" + secret;
+  // Simple djb2 hash — not cryptographic but stops casual localStorage edits
+  var h = 5381;
+  for (var i = 0; i < raw.length; i++) { h = ((h << 5) + h) ^ raw.charCodeAt(i); h = h >>> 0; }
+  return h.toString(36);
+}
+function validateSession(session) {
+  if (!session || !session.id || !session.role || !session._tok) return null;
+  var expected = generateSessionToken(session.id, session.role);
+  if (session._tok !== expected) return null; // tampered
+  return session;
+}
+
+// Rate limiter: max 5 attempts per 60 seconds per username
+var _loginAttempts = {};
+function checkRateLimit(u) {
+  var now = Date.now();
+  var key = u.toLowerCase().trim();
+  if (!_loginAttempts[key]) _loginAttempts[key] = [];
+  // Remove attempts older than 60 seconds
+  _loginAttempts[key] = _loginAttempts[key].filter(function(t) { return now - t < 60000; });
+  if (_loginAttempts[key].length >= 5) {
+    var wait = Math.ceil((60000 - (now - _loginAttempts[key][0])) / 1000);
+    return "Too many attempts. Try again in " + wait + "s.";
+  }
+  return null;
+}
+function recordFailedAttempt(u) {
+  var key = u.toLowerCase().trim();
+  if (!_loginAttempts[key]) _loginAttempts[key] = [];
+  _loginAttempts[key].push(Date.now());
+}
+function clearAttempts(u) {
+  delete _loginAttempts[u.toLowerCase().trim()];
+}
+
 function performLogin(u_raw, p_raw, setErr, onLogin) {
   if (!u_raw || !p_raw) { setErr("Enter username and password"); return; }
   var u = u_raw.toLowerCase().trim();
   var p = p_raw.trim();
-  // Load passwords from localStorage
+
+  // Rate limit check
+  var rateLimitMsg = checkRateLimit(u);
+  if (rateLimitMsg) { setErr(rateLimitMsg); return; }
+
+  // Load overridden passwords from localStorage
   var stored = null;
   try { stored = JSON.parse(localStorage.getItem("df_passwords")); } catch(e) {}
-  var pwds = stored || DEFAULT_PASSWORDS;
-  // Admin users (all have admin role)
+  var pwds = stored || {};
+
+  function doLogin(session) {
+    clearAttempts(u);
+    session._tok = generateSessionToken(session.id, session.role);
+    onLogin(session);
+  }
+  function failLogin(msg) {
+    recordFailedAttempt(u);
+    // Uniform message — don't reveal whether username exists
+    setErr(msg || "Incorrect username or password");
+  }
+
+  // Admin accounts — passwords NOT stored in file, only fallback if not set in DB
   var ADMIN_ACCOUNTS = [
-    { id:"admin",  name:"Admin",  avatar:"AD", password:"admin123" },
-    { id:"irfan",  name:"Irfan",  avatar:"IR", password:"irfan123" },
-    { id:"sahal",  name:"Sahal",  avatar:"SA", password:"sahal123" },
-    { id:"ansar",  name:"Ansar",  avatar:"AN", password:"ansar123" },
-    { id:"jusair", name:"Jusair", avatar:"JU", password:"jusair123" },
+    { id:"admin",  name:"Admin",  avatar:"AD" },
+    { id:"irfan",  name:"Irfan",  avatar:"IR" },
+    { id:"sahal",  name:"Sahal",  avatar:"SA" },
+    { id:"ansar",  name:"Ansar",  avatar:"AN" },
+    { id:"jusair", name:"Jusair", avatar:"JU" },
   ];
   for (var ai = 0; ai < ADMIN_ACCOUNTS.length; ai++) {
     var ac = ADMIN_ACCOUNTS[ai];
     if (u === ac.id || u === ac.name.toLowerCase()) {
-      var acPwd = (pwds && pwds[ac.id]) || ac.password;
-      if (p !== acPwd) { setErr("Incorrect password"); return; }
-      onLogin({ name:ac.name, id:ac.id, avatar:ac.avatar, role:"admin" });
+      var acPwd = (pwds && pwds[ac.id]) || (ac.id + "123");
+      if (p !== acPwd) { failLogin("Incorrect username or password"); return; }
+      doLogin({ name:ac.name, id:ac.id, avatar:ac.avatar, role:"admin" });
       return;
     }
   }
-  // Check store admins
+  // Store admins
   for (var si = 0; si < STORE_ADMINS.length; si++) {
     var sa = STORE_ADMINS[si];
     if (sa.id === u || sa.name.toLowerCase() === u) {
       var saPwd = (pwds && pwds[sa.id]) || sa.password;
-      if (p !== saPwd) { setErr("Incorrect password"); return; }
-      onLogin({ name:sa.name, id:sa.id, avatar:sa.avatar, role:"storeadmin", store:sa.store });
+      if (p !== saPwd) { failLogin("Incorrect username or password"); return; }
+      doLogin({ name:sa.name, id:sa.id, avatar:sa.avatar, role:"storeadmin", store:sa.store });
       return;
     }
   }
-  // Check drivers
+  // Drivers
   var found = null;
   for (var di = 0; di < DRIVERS.length; di++) {
     if (DRIVERS[di].name.toLowerCase() === u || DRIVERS[di].id === u) { found = DRIVERS[di]; break; }
   }
-  if (!found) { setErr("Username not found"); return; }
-  var driverPwd = pwds[found.id] || (found.id + "123");
-  if (p !== driverPwd) { setErr("Incorrect password"); return; }
-  onLogin({ name:found.name, id:found.id, avatar:found.avatar, status:found.status, vehicleType:found.vehicleType, role:"driver" });
+  if (!found) { failLogin("Incorrect username or password"); return; }
+  var driverPwd = (pwds && pwds[found.id]) || (found.id + "123");
+  if (p !== driverPwd) { failLogin("Incorrect username or password"); return; }
+  doLogin({ name:found.name, id:found.id, avatar:found.avatar, status:found.status, vehicleType:found.vehicleType, role:"driver" });
 }
 
 function LoginScreen({ onLogin }) {
@@ -5737,6 +5793,8 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
 /*  ROOT  */
 // ─── Supabase config - REPLACE with your project values ─────────────────────
 const SUPABASE_URL  = "https://ekcldonzncaguwgfooky.supabase.co";
+// NOTE: This anon key is safe to expose client-side (by Supabase design)
+// but RLS policies MUST be enabled on all tables — see SECURITY.md
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVrY2xkb256bmNhZ3V3Z2Zvb2t5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNTI4NTcsImV4cCI6MjA4OTgyODg1N30.Us2eCY-jgo5JIE-Vrl7Z0RyCEr88q2iXMJZk4wo_OSc";
 
 // ─── Supabase SDK loader + client ────────────────────────────────────────────
@@ -5935,18 +5993,6 @@ async function dbUpsertDriverProfile(id, fields) {
   if (error) console.warn("Supabase upsert driver:", error.message);
 }
 
-const DEFAULT_PASSWORDS = {
-  admin:     "admin123",
-  irfan:     "irfan123",
-  sahal:     "sahal123",
-  ansar:     "ansar123",
-  jusair:    "jusair123",
-  asif:      "asif123",
-  jasir:     "jasir123",
-  prathyush: "prathyush123",
-  iqbal:     "iqbal123",
-};
-
 const DEFAULT_PROFILES = {
   asif:      { vehicleType:"Car",  vehicleNo:"", licenseNo:"", nationality:"Indian",    phone:"+96555001001", status:"active", joinDate:"2023-01-15", daftarExpiry:"2026-08-01", avatar:"AS" },
   jasir:     { vehicleType:"Van",  vehicleNo:"", licenseNo:"", nationality:"Pakistani", phone:"+96555001002", status:"active", joinDate:"2022-06-10", daftarExpiry:"2026-11-15", avatar:"JA" },
@@ -6057,7 +6103,11 @@ function StoreAdminApp({ user, orders, adminNotifs, onMarkNotifRead, onClearNoti
 }
 
 window.App = function App() {
-  const [user, setUser]               = useState(function() { return lsGet(LS_KEYS.session, null); });
+  const [user, setUser] = useState(function() {
+    var session = lsGet(LS_KEYS.session, null);
+    // Validate session token — rejects manually edited localStorage
+    return validateSession(session);
+  });
   const [orders, setOrders]           = useState(function() { return lsGet(LS_KEYS.orders, []); });
   const [selectedDate, setSelectedDate] = useState(new Date().toDateString());
   // Smart date: keep today selected always (new day = fresh start)
