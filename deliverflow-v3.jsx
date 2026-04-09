@@ -989,7 +989,7 @@ function ManualOrderForm({ onAdd, driverList }) {
     if (!show) setShow(true);
     setScanMsg("");
     if (fields.store) {
-      var knownStores = ["Trikart Online","Webstore Online","ReStore Online"];
+      var knownStores = ["Trikart Online","Webstore Online","ReStore Online","GadgetPro Online"];
       if (knownStores.includes(fields.store)) { setStore(fields.store); }
       else { setStore("Other"); setCustomStoreName(fields.store); }
     }
@@ -1000,12 +1000,12 @@ function ManualOrderForm({ onAdd, driverList }) {
     if (fields.phone)         setPhone(fields.phone);
     if (fields.total)         setTotal(String(fields.total));
     if (fields.paymentType) {
-      var knownPays = ["Cash","KNET","Deema","Tabby","VISA/Mastercard","Tap/KNET","GoCollect","Exchange"];
+      var knownPays = ["Cash","KNET","Deema","Tabby","Taly","VISA/Mastercard","Tap/KNET","GoCollect","Exchange"];
       if (knownPays.includes(fields.paymentType)) setPay(fields.paymentType);
     }
     setScanMsg("✅ Label scanned — please review and confirm details below.");
   }
-  const MANUAL_PAYS = ["Cash","KNET","Deema","Tabby","VISA/Mastercard","Tap/KNET","GoCollect","Exchange"];
+  const MANUAL_PAYS = ["Cash","KNET","Deema","Tabby","Taly","VISA/Mastercard","Tap/KNET","GoCollect","Exchange"];
   const ALL_AREAS = ['Abdali', 'Abdulla Al-Salem', 'Abdullah Al-Mubarak', 'Abdullah Port', 'Abu Al Hasaniya', 'Abu Futaira', 'Abu Halifa', 'Adailiya', 'Adan', 'Ahmadi', 'Airport District', 'Ali As-Salim', 'Amghara', 'Andalus', 'Ardiya', 'Ardiya Herafiya', 'Ardiya Industrial Area', 'Ashbelya', 'Bayan', 'Bida', 'Bnaid Al-Qar', 'Bneidar', 'Daher', 'Daiya', 'Dasma', 'Dhajeej', 'Doha', 'Doha Port', 'Egaila', 'Fahad Al-Ahmad', 'Fahaheel', 'Faiha', 'Farwaniya', 'Fintas', 'Firdous', 'Funaitis', 'Granada (Kuwait)', 'Hadiya', 'Hawally', 'Hittin', 'Jaber Al-Ahmad', 'Jaber Al-Ali', 'Jabriya', 'Jahra', 'Jahra Industrial Area', 'Jawaher Al Wafra', 'Jibla', 'Jileia', 'Jleeb Al-Shuyoukh', 'Kabad', 'Kaifan', 'Khairan', 'Khaitan', 'Khaldiya', 'Kuwait City', 'Mahbula', 'Maidan Hawalli', 'Mangaf', 'Mansriya', 'Miqwa', 'Mirgab', 'Mishref', 'Misila', 'Mubarak Al-Kabeer', 'Naeem', 'Nahda / East Sulaibikhat', 'Nahdha', 'Nasseem', 'New Khairan City', 'New Wafra', 'North West Sulaibikhat', 'Nuwaiseeb', 'Nuzha', 'Omariya', 'Oyoun', 'Qadsiya', 'Qairawan', 'Qasr', 'Qurain', 'Qurtuba', 'Qusour', 'Rabiya', 'Rai', 'Rawda', 'Rehab', 'Riggae', 'Rihab', 'Riqqa', 'Rumaithiya', 'Saad Al Abdullah', 'Sabah Al Salem', 'Sabah Al-Ahmad', 'Sabah Al-Nasser', 'Sabahiya', 'Sabhan', 'Salam', 'Salmi', 'Salmiya', 'Salwa', 'Shaab', 'Shamiya', 'Sharq', 'Shuaiba (North & South)', 'Shuhada', 'Shuwaikh', 'Shuwaikh Industrial Area', 'Shuwaikh Port', 'Siddiq', 'Sikrab', 'South Doha / Qairawan', 'South Sabahiya', 'South Surra', 'Sulaibikhat', 'Sulaibiya', 'Sulaibiya Agricultural Area', 'Surra', 'Taima', 'Wafra', 'Waha', 'Yarmouk', 'Zahra', 'Zoor'];
 
   function submit() {
@@ -1071,7 +1071,7 @@ function ManualOrderForm({ onAdd, driverList }) {
       {/* Store */}
       <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>STORE</div>
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
-        {["Trikart Online","Webstore Online","ReStore Online","Other"].map(function(s){
+        {["Trikart Online","Webstore Online","ReStore Online","GadgetPro Online","Other"].map(function(s){
           return <button key={s} onClick={function(){ setStore(s); if(s!=="Other") setCustomStoreName(""); }}
             style={{ background:store===s?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:store===s?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 12px", color:store===s?"#00D4FF":"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>{s}</button>;
         })}
@@ -2127,14 +2127,14 @@ function DriverManualOrderForm({ driverId, onAdd }) {
   const [areaSearch, setAreaSearch] = useState("");
   const [showAreaDrop, setShowAreaDrop] = useState(false);
   const [customStoreName, setCustomStoreName] = useState("");
-  const PAYS = ["Cash","KNET","Deema","Tabby","VISA/Mastercard","Tap/KNET","Exchange"];
+  const PAYS = ["Cash","KNET","Deema","Tabby","Taly","VISA/Mastercard","Tap/KNET","Exchange"];
   const ALL_AREAS = ['Abdali', 'Abdulla Al-Salem', 'Abdullah Al-Mubarak', 'Abdullah Port', 'Abu Al Hasaniya', 'Abu Futaira', 'Abu Halifa', 'Adailiya', 'Adan', 'Ahmadi', 'Airport District', 'Ali As-Salim', 'Amghara', 'Andalus', 'Ardiya', 'Ardiya Herafiya', 'Ardiya Industrial Area', 'Ashbelya', 'Bayan', 'Bida', 'Bnaid Al-Qar', 'Bneidar', 'Daher', 'Daiya', 'Dasma', 'Dhajeej', 'Doha', 'Doha Port', 'Egaila', 'Fahad Al-Ahmad', 'Fahaheel', 'Faiha', 'Farwaniya', 'Fintas', 'Firdous', 'Funaitis', 'Granada (Kuwait)', 'Hadiya', 'Hawally', 'Hittin', 'Jaber Al-Ahmad', 'Jaber Al-Ali', 'Jabriya', 'Jahra', 'Jahra Industrial Area', 'Jawaher Al Wafra', 'Jibla', 'Jileia', 'Jleeb Al-Shuyoukh', 'Kabad', 'Kaifan', 'Khairan', 'Khaitan', 'Khaldiya', 'Kuwait City', 'Mahbula', 'Maidan Hawalli', 'Mangaf', 'Mansriya', 'Miqwa', 'Mirgab', 'Mishref', 'Misila', 'Mubarak Al-Kabeer', 'Naeem', 'Nahda / East Sulaibikhat', 'Nahdha', 'Nasseem', 'New Khairan City', 'New Wafra', 'North West Sulaibikhat', 'Nuwaiseeb', 'Nuzha', 'Omariya', 'Oyoun', 'Qadsiya', 'Qairawan', 'Qasr', 'Qurain', 'Qurtuba', 'Qusour', 'Rabiya', 'Rai', 'Rawda', 'Rehab', 'Riggae', 'Rihab', 'Riqqa', 'Rumaithiya', 'Saad Al Abdullah', 'Sabah Al Salem', 'Sabah Al-Ahmad', 'Sabah Al-Nasser', 'Sabahiya', 'Sabhan', 'Salam', 'Salmi', 'Salmiya', 'Salwa', 'Shaab', 'Shamiya', 'Sharq', 'Shuaiba (North & South)', 'Shuhada', 'Shuwaikh', 'Shuwaikh Industrial Area', 'Shuwaikh Port', 'Siddiq', 'Sikrab', 'South Doha / Qairawan', 'South Sabahiya', 'South Surra', 'Sulaibikhat', 'Sulaibiya', 'Sulaibiya Agricultural Area', 'Surra', 'Taima', 'Wafra', 'Waha', 'Yarmouk', 'Zahra', 'Zoor'];
 
   function fillFromScan(fields) {
     if (!show) setShow(true);
     setScanMsg("");
     if (fields.store) {
-      var knownStores = ["Trikart Online","Webstore Online","ReStore Online"];
+      var knownStores = ["Trikart Online","Webstore Online","ReStore Online","GadgetPro Online"];
       if (knownStores.includes(fields.store)) { setStore(fields.store); }
       else { setStore("Other"); setCustomStoreName(fields.store); }
     }
@@ -2145,7 +2145,7 @@ function DriverManualOrderForm({ driverId, onAdd }) {
     if (fields.phone)         setPhone(fields.phone);
     if (fields.total)         setTotal(String(fields.total));
     if (fields.paymentType) {
-      var knownPays = ["Cash","KNET","Deema","Tabby","VISA/Mastercard","Tap/KNET","Exchange"];
+      var knownPays = ["Cash","KNET","Deema","Tabby","Taly","VISA/Mastercard","Tap/KNET","Exchange"];
       if (knownPays.includes(fields.paymentType)) setPay(fields.paymentType);
     }
     setScanMsg("✅ Label scanned — please review and confirm details below.");
@@ -2212,7 +2212,7 @@ function DriverManualOrderForm({ driverId, onAdd }) {
       {/* Store */}
       <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11, marginBottom:6 }}>STORE</div>
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
-        {["Trikart Online","Webstore Online","ReStore Online","Other"].map(function(s){
+        {["Trikart Online","Webstore Online","ReStore Online","GadgetPro Online","Other"].map(function(s){
           return <button key={s} onClick={function(){ setStore(s); if(s!=="Other") setCustomStoreName(""); }}
             style={{ background:store===s?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:store===s?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"5px 10px", color:store===s?"#00D4FF":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>{s}</button>;
         })}
@@ -5284,7 +5284,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
             {/* Store filter for alerts */}
             {adminNotifs.length > 0 && (
               <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
-                {["all","Trikart Online","Webstore Online","ReStore Online"].map(function(s){
+                {["all","Trikart Online","Webstore Online","ReStore Online","GadgetPro Online"].map(function(s){
                   var sel = alertStoreFilter === s;
                   return <button key={s} onClick={function(){ setAlertStoreFilter(s); }}
                     style={{ background:sel?"rgba(0,212,255,.15)":"rgba(255,255,255,.06)", border:sel?"1.5px solid #00D4FF":"1px solid rgba(255,255,255,.1)", borderRadius:20, padding:"4px 12px", color:sel?"#00D4FF":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
