@@ -76,8 +76,8 @@ const PDF_SAMPLE_ORDERS = [
 /*  Brand-accurate payment colors  */
 // Payment Badge config — solid filled style (matching design photo)
 const PAYMENT_CFG = {
-  "Cash":           { color:"#fff",     bg:"#0EA5E9",  border:"#0EA5E9",  label:"Cash"         },
-  "COD":            { color:"#fff",     bg:"#0EA5E9",  border:"#0EA5E9",  label:"Cash"         },
+  "Cash":           { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"Cash"         },
+  "COD":            { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"Cash"         },
   "KNET":           { color:"#fff",     bg:"#1B3A8C",  border:"#1B3A8C",  label:"K NET"        },
   "VISA/Mastercard":{ color:"#fff",     bg:"#1E2D6B",  border:"#1E2D6B",  label:"VISA / MC"    },
   "Tabby":          { color:"#1A1A1A",  bg:"#3DEBA0",  border:"#3DEBA0",  label:"Tabby"        },
@@ -91,7 +91,7 @@ const PAYMENT_CFG = {
   "Link Payment":   { color:"#fff",     bg:"#6366F1",  border:"#6366F1",  label:"🔗 Link"      },
   "Tabby (Link)":   { color:"#1A1A1A",  bg:"#3DEBA0",  border:"#3DEBA0",  label:"Tabby"        },
   "Tamara":         { color:"#fff",     bg:"#9333EA",  border:"#9333EA",  label:"Tamara"       },
-  "Pre-Paid":       { color:"#fff",     bg:"#0EA5E9",  border:"#0EA5E9",  label:"Pre-Paid"     },
+  "Pre-Paid":       { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"Pre-Paid"     },
 };
 // Fallback colour map (used where only a hex colour is needed)
 const PAYMENT_COLORS = Object.fromEntries(Object.entries(PAYMENT_CFG).map(e => [e[0],e[1].bg]));
