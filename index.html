@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build=2026040902 -->
+<!DOCTYPE html><!-- build=2026040903 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -11,32 +11,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="DeliverFlow"/>
-
   <style>
-    /* System fonts — SF Pro on iOS, Google Sans on Android, Segoe UI on Windows */
     *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
-    :root {
-      --bg:      #090B10;
-      --s1:      #0F1218;
-      --s2:      #161B24;
-      --orange:  #FF5A1F;
-      --orange2: #FF3D00;
-      --green:   #22C55E;
-      --blue:    #38BDF8;
-      --warn:    #FBBF24;
-      --danger:  #EF4444;
-    }
-    html,body,#root {
-      height:100%; background:var(--bg); overflow:hidden;
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-    }
-    #root{height:100%;width:100%;display:flex;justify-content:center}
-    #loading{
-      position:fixed;inset:0;background:var(--bg);min-height:100dvh;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      color:#fff;z-index:9999;
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-    }
+    :root{--bg:#090B10;--s1:#0F1218;--s2:#161B24;--orange:#FF5A1F;--orange2:#FF3D00;--green:#22C55E;--blue:#38BDF8;--warn:#FBBF24;--danger:#EF4444;}
+    html,body{height:100%;background:var(--bg);overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;}
+    #root{height:100%;width:100%;display:flex;justify-content:center;}
+    #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:9999;}
     .logo{font-size:26px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px;}
     .logo span{color:var(--orange)}
     .sub{font-size:11px;color:rgba(255,255,255,0.28);margin-bottom:32px;letter-spacing:2px;text-transform:uppercase;font-weight:500;}
@@ -55,30 +35,69 @@
 
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Pin Babel to specific version for cross-browser consistency -->
+  <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
 
   <script>
     var JSX_URL = "https://raw.githubusercontent.com/sulaimanvpm1-jpg/deliverflow/main/deliverflow-v3.jsx";
+
     fetch(JSX_URL + "?t=" + Date.now())
-      .then(function(res){ if(!res.ok) throw new Error("Fetch failed: "+res.status); return res.text(); })
-      .then(function(jsxCode){
+      .then(function(res) {
+        if (!res.ok) throw new Error("Fetch failed: " + res.status);
+        return res.text();
+      })
+      .then(function(jsxCode) {
         try {
+          // Strip all import statements
           var cleaned = jsxCode
-            .replace(/^import\s+React[^\n]*/gm,"")
-            .replace(/^import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/gm,"")
-            .replace(/^import\s+[^\n]+from\s+['"][^'"]+['"]\s*;?/gm,"");
-          var preamble = "var useState=React.useState;var useEffect=React.useEffect;var useRef=React.useRef;var useCallback=React.useCallback;var useMemo=React.useMemo;var useContext=React.useContext;var useReducer=React.useReducer;";
-          var compiled = Babel.transform(preamble+"\n"+cleaned,{presets:["react"]}).code;
-          var s = document.createElement("script"); s.textContent=compiled; document.head.appendChild(s);
-          if(!window.App) throw new Error("App not defined");
-          ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(window.App));
-          document.getElementById("loading").style.display="none";
-        } catch(e){
-          document.getElementById("loading").innerHTML='<div style="padding:24px;color:#EF4444;font-size:13px;max-width:400px"><strong>Error:</strong><br>'+e.message+'</div>';
+            .replace(/^import\s+React[^\n]*/gm, "")
+            .replace(/^import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/gm, "")
+            .replace(/^import\s+[^\n]+from\s+['"][^'"]+['"]\s*;?/gm, "")
+            .replace(/^export\s+default\s+/gm, "");
+
+          // Inject React hooks as globals — placed on its own line before the cleaned code
+          var preamble = [
+            "var useState    = React.useState;",
+            "var useEffect   = React.useEffect;",
+            "var useRef      = React.useRef;",
+            "var useCallback = React.useCallback;",
+            "var useMemo     = React.useMemo;",
+            "var useContext  = React.useContext;",
+            "var useReducer  = React.useReducer;"
+          ].join("\n");
+
+          var source = preamble + "\n" + cleaned;
+
+          var result = Babel.transform(source, {
+            presets: [["react", { runtime: "classic" }]],
+            filename: "deliverflow-v3.jsx"
+          });
+
+          var script = document.createElement("script");
+          script.textContent = result.code;
+          document.head.appendChild(script);
+
+          if (!window.App) throw new Error("App component not found. Check the file compiled correctly.");
+
+          ReactDOM.createRoot(document.getElementById("root")).render(
+            React.createElement(window.App)
+          );
+          document.getElementById("loading").style.display = "none";
+
+        } catch (err) {
+          document.getElementById("loading").innerHTML =
+            '<div style="padding:24px;color:#EF4444;font-size:13px;max-width:420px;word-break:break-word;">' +
+            '<strong style="display:block;margin-bottom:8px;">App Error</strong>' +
+            err.message.replace(/</g,"&lt;").replace(/>/g,"&gt;") +
+            '</div>';
         }
       })
-      .catch(function(e){
-        document.getElementById("loading").innerHTML='<div style="padding:24px;color:#EF4444;font-size:13px;max-width:400px"><strong>Load Error:</strong><br>'+e.message+'</div>';
+      .catch(function(err) {
+        document.getElementById("loading").innerHTML =
+          '<div style="padding:24px;color:#EF4444;font-size:13px;max-width:420px;">' +
+          '<strong style="display:block;margin-bottom:8px;">Load Error</strong>' +
+          err.message +
+          '</div>';
       });
   </script>
 </body>
