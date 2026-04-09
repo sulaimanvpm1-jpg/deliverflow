@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build=2026040901-v4 -->
+<!DOCTYPE html><!-- build=2026040902 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -12,56 +12,37 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="DeliverFlow"/>
 
-  <!-- v4 Typography: Clash Display + Plus Jakarta Sans + Geist Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://api.fontshare.com">
-
-  <!-- Plus Jakarta Sans (body) + Geist Mono (data) from Google -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap">
-  <!-- Clash Display (headings) from Fontshare -->
-  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap">
-
   <style>
+    /* System fonts — SF Pro on iOS, Google Sans on Android, Segoe UI on Windows */
     *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
     :root {
-      --font-display: 'Clash Display', system-ui, sans-serif;
-      --font-body:    'Plus Jakarta Sans', system-ui, sans-serif;
-      --font-mono:    'Geist Mono', 'SF Mono', monospace;
       --bg:      #090B10;
       --s1:      #0F1218;
       --s2:      #161B24;
       --orange:  #FF5A1F;
       --orange2: #FF3D00;
+      --green:   #22C55E;
+      --blue:    #38BDF8;
+      --warn:    #FBBF24;
+      --danger:  #EF4444;
     }
     html,body {
       height:100%; background:var(--bg); overflow:hidden;
-      font-family: var(--font-body);
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
     }
-    #root { height:100%; width:100%; display:flex; justify-content:center; }
-    #loading {
-      position:fixed; inset:0; background:var(--bg);
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      color:#fff; z-index:9999;
-      font-family: var(--font-body);
+    #root{height:100%;width:100%;display:flex;justify-content:center}
+    #loading{
+      position:fixed;inset:0;background:var(--bg);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      color:#fff;z-index:9999;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
     }
-    .logo {
-      font-family: var(--font-display);
-      font-size:28px; font-weight:700; letter-spacing:-0.5px; margin-bottom:6px;
-    }
-    .logo span { color: var(--orange); }
-    .sub {
-      font-size:11px; color:rgba(255,255,255,0.28); margin-bottom:32px;
-      letter-spacing:2px; text-transform:uppercase; font-weight:500;
-    }
-    .spinner {
-      width:32px; height:32px;
-      border:2.5px solid rgba(255,255,255,0.08);
-      border-top-color: var(--orange);
-      border-radius:50%; animation:spin 0.75s linear infinite;
-    }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    ::-webkit-scrollbar { width:0; }
+    .logo{font-size:26px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px;}
+    .logo span{color:var(--orange)}
+    .sub{font-size:11px;color:rgba(255,255,255,0.28);margin-bottom:32px;letter-spacing:2px;text-transform:uppercase;font-weight:500;}
+    .spinner{width:32px;height:32px;border:2.5px solid rgba(255,255,255,0.08);border-top-color:var(--orange);border-radius:50%;animation:spin 0.75s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    ::-webkit-scrollbar{width:0}
   </style>
 </head>
 <body>
@@ -78,54 +59,26 @@
 
   <script>
     var JSX_URL = "https://raw.githubusercontent.com/sulaimanvpm1-jpg/deliverflow/main/deliverflow-v3.jsx";
-
     fetch(JSX_URL + "?t=" + Date.now())
-      .then(function(res) {
-        if (!res.ok) throw new Error("Failed to fetch JSX: " + res.status);
-        return res.text();
-      })
-      .then(function(jsxCode) {
+      .then(function(res){ if(!res.ok) throw new Error("Fetch failed: "+res.status); return res.text(); })
+      .then(function(jsxCode){
         try {
           var cleaned = jsxCode
-            .replace(/^import\s+React[^\n]*/gm, "")
-            .replace(/^import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/gm, "")
-            .replace(/^import\s+[^\n]+from\s+['"][^'"]+['"]\s*;?/gm, "");
-
-          var preamble = [
-            "var useState    = React.useState;",
-            "var useEffect   = React.useEffect;",
-            "var useRef      = React.useRef;",
-            "var useCallback = React.useCallback;",
-            "var useMemo     = React.useMemo;",
-            "var useContext  = React.useContext;",
-            "var useReducer  = React.useReducer;",
-          ].join("\n");
-
-          var compiled = Babel.transform(preamble + "\n" + cleaned, {
-            presets: ["react"],
-          }).code;
-
-          var script = document.createElement("script");
-          script.textContent = compiled;
-          document.head.appendChild(script);
-
-          if (!window.App) throw new Error("App not defined after load");
-
-          ReactDOM.createRoot(document.getElementById("root")).render(
-            React.createElement(window.App)
-          );
-          document.getElementById("loading").style.display = "none";
-
-        } catch(e) {
-          document.getElementById("loading").innerHTML =
-            '<div style="padding:24px;color:#EF4444;font-size:13px;word-break:break-all;max-width:400px">' +
-            '<strong>App Error:</strong><br>' + e.message + '</div>';
+            .replace(/^import\s+React[^\n]*/gm,"")
+            .replace(/^import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/gm,"")
+            .replace(/^import\s+[^\n]+from\s+['"][^'"]+['"]\s*;?/gm,"");
+          var preamble = "var useState=React.useState;var useEffect=React.useEffect;var useRef=React.useRef;var useCallback=React.useCallback;var useMemo=React.useMemo;var useContext=React.useContext;var useReducer=React.useReducer;";
+          var compiled = Babel.transform(preamble+"\n"+cleaned,{presets:["react"]}).code;
+          var s = document.createElement("script"); s.textContent=compiled; document.head.appendChild(s);
+          if(!window.App) throw new Error("App not defined");
+          ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(window.App));
+          document.getElementById("loading").style.display="none";
+        } catch(e){
+          document.getElementById("loading").innerHTML='<div style="padding:24px;color:#EF4444;font-size:13px;max-width:400px"><strong>Error:</strong><br>'+e.message+'</div>';
         }
       })
-      .catch(function(e) {
-        document.getElementById("loading").innerHTML =
-          '<div style="padding:24px;color:#EF4444;font-size:13px;word-break:break-all;max-width:400px">' +
-          '<strong>Load Error:</strong><br>' + e.message + '</div>';
+      .catch(function(e){
+        document.getElementById("loading").innerHTML='<div style="padding:24px;color:#EF4444;font-size:13px;max-width:400px"><strong>Load Error:</strong><br>'+e.message+'</div>';
       });
   </script>
 </body>
