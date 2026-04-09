@@ -98,9 +98,25 @@ const PAYMENT_COLORS = Object.fromEntries(Object.entries(PAYMENT_CFG).map(e => [
 
 /*  Payment Badge component — solid filled pills  */
 const PaymentBadge = ({ payType, small }) => {
-  const cfg = PAYMENT_CFG[payType] || { color:"#fff", bg:"rgba(255,255,255,.15)", border:"rgba(255,255,255,.2)", label: payType };
-  const fs  = small ? 10 : 11;
-  const px  = small ? "3px 9px" : "4px 12px";
+  // Exact match first, then fuzzy fallback for DB variants
+  let cfg = PAYMENT_CFG[payType];
+  if (!cfg && payType) {
+    const l = payType.toLowerCase();
+    if (l.includes("taly"))        cfg = PAYMENT_CFG["Taly"];
+    else if (l.includes("cash") || l.includes("basic") || l.includes("cod")) cfg = PAYMENT_CFG["Cash"];
+    else if (l.includes("knet") || l.includes("k net")) cfg = PAYMENT_CFG["KNET"];
+    else if (l.includes("tabby"))  cfg = PAYMENT_CFG["Tabby"];
+    else if (l.includes("deema"))  cfg = PAYMENT_CFG["Deema"];
+    else if (l.includes("wamd"))   cfg = PAYMENT_CFG["WAMD"];
+    else if (l.includes("visa") || l.includes("mastercard")) cfg = PAYMENT_CFG["VISA/Mastercard"];
+    else if (l.includes("exchange")) cfg = PAYMENT_CFG["Exchange"];
+    else if (l.includes("collect")) cfg = PAYMENT_CFG["GoCollect"];
+    else if (l.includes("trikart")) cfg = PAYMENT_CFG["Trikart Link"];
+    else if (l.includes("tamara")) cfg = PAYMENT_CFG["Tamara"];
+  }
+  if (!cfg) cfg = { color:"#fff", bg:"rgba(255,255,255,.15)", border:"rgba(255,255,255,.2)", label: payType || "—" };
+  const fs = small ? 10 : 11;
+  const px = small ? "3px 9px" : "4px 12px";
   return (
     <span style={{
       background: cfg.bg,
@@ -112,7 +128,7 @@ const PaymentBadge = ({ payType, small }) => {
       fontWeight: 700,
       fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif",
       whiteSpace: "nowrap",
-      letterSpacing: payType === "KNET" ? 0.5 : 0,
+      letterSpacing: (payType||"").includes("KNET") ? 0.5 : 0,
       display: "inline-block",
     }}>
       {cfg.label}
