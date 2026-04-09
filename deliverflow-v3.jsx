@@ -2713,11 +2713,28 @@ function EditOrderModal({ order, onSave, onClose }) {
 
 
 function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onEditOrder }) {
-  const [exp,      setExp]      = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editingOO, setEditingOO] = useState(false);
-  const [ooVal,     setOoVal]     = useState(order.onlineOrderNo || "");
+  const [exp,        setExp]        = useState(false);
+  const [helpOpen,   setHelpOpen]   = useState(false);
+  const [editOpen,   setEditOpen]   = useState(false);
+  const [editingOO,  setEditingOO]  = useState(false);
+  const [ooVal,      setOoVal]      = useState(order.onlineOrderNo || "");
+  const [otpSent,    setOtpSent]    = useState(false);
+  const [otpInput,   setOtpInput]   = useState("");
+  const [otpErr,     setOtpErr]     = useState("");
+  const [otpSkipped, setOtpSkipped] = useState(false);
+
+  // Generate or retrieve OTP for this order (stored in localStorage)
+  const otpKey = "df_otp_" + (order.invoiceNo || order.id);
+  function getOrCreateOTP() {
+    var stored = null;
+    try { stored = localStorage.getItem(otpKey); } catch(e){}
+    if (stored) return stored;
+    var code = String(Math.floor(1000 + Math.random() * 9000));
+    try { localStorage.setItem(otpKey, code); } catch(e){}
+    return code;
+  }
+  function clearOTP() { try { localStorage.removeItem(otpKey); } catch(e){} }
+
   const isActive    = order.scanned && order.status === "pending";
   const isCancelled = order.status === "cancelled";
   const isPostponed = order.status === "postponed";
@@ -2740,6 +2757,35 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
   if (isCancelled) bgColor = "rgba(239,68,68,.03)";
   else if (isPostponed) bgColor = "rgba(139,92,246,.03)";
   else if (isDelivered) bgColor = "rgba(16,185,129,.03)";
+
+  function sendOTP() {
+    var code = getOrCreateOTP();
+    var otpMsg = encodeURIComponent(
+      "Dear Customer,\n\nYour delivery OTP for *" + order.store + "* order #" + order.invoiceNo + " is:\n\n*" + code + "*\n\nPlease share this code with the delivery driver upon receiving your order.\n\nThank you!"
+    );
+    var url = "https://wa.me/" + waPhone + "?text=" + otpMsg;
+    window.open(url, "_blank");
+    setOtpSent(true);
+    setOtpErr("");
+  }
+
+  function verifyOTP() {
+    var code = getOrCreateOTP();
+    if (otpInput.trim() === code) {
+      clearOTP();
+      setOtpErr("");
+      onUpdate();
+    } else {
+      setOtpErr("Incorrect code. Ask the customer for the 4-digit code sent to their WhatsApp.");
+      setOtpInput("");
+    }
+  }
+
+  function skipOTP() {
+    clearOTP();
+    setOtpSkipped(true);
+    onUpdate();
+  }
 
   function renderOOSection() {
     if (editingOO) {
@@ -2827,17 +2873,56 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
             </button>
           </div>
 
-          {/* Out-for-Delivery WhatsApp notification */}
-          <div style={{ background:"rgba(37,211,102,.07)", border:"1px solid rgba(37,211,102,.2)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, textTransform:"uppercase", letterSpacing:.5 }}>Out-for-Delivery Notification</div>
-            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.75)", fontSize:11, lineHeight:1.6, marginBottom:8 }}>
-              Dear Customer, your order from <span style={{ color:"#25D366", fontWeight:600 }}>{order.store}</span> is out for delivery.
-              {isCOD && <span style={{ color:"#F59E0B", fontWeight:600 }}> Please have <span style={{ color:"#fff" }}>{fmt(order.total)}</span> ready for cash payment.</span>}
+          {/* OTP via WhatsApp — only for active orders with a phone number */}
+          {isActive && waPhone && (
+            <div style={{ background:"rgba(37,211,102,.07)", border:"1px solid rgba(37,211,102,.2)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
+              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:6, textTransform:"uppercase", letterSpacing:.5 }}>Delivery OTP Verification</div>
+
+              {!otpSent ? (
+                <div>
+                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.6)", fontSize:11, marginBottom:8, lineHeight:1.5 }}>
+                    Send a 4-digit code to the customer via WhatsApp. Ask them to share it when you arrive.
+                  </div>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={sendOTP} style={{ flex:2, display:"flex", alignItems:"center", justifyContent:"center", gap:7, background:"linear-gradient(135deg,#25D366,#128C7E)", border:"none", borderRadius:10, padding:"11px", cursor:"pointer" }}>
+                      <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>Send OTP via WhatsApp</span>
+                    </button>
+                    <button onClick={skipOTP} style={{ flex:1, background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"11px", color:"rgba(255,255,255,.4)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#25D366", fontSize:11, marginBottom:8 }}>
+                    ✓ OTP sent — ask the customer for the 4-digit code.
+                  </div>
+                  <div style={{ display:"flex", gap:8, marginBottom:6 }}>
+                    <input
+                      type="number"
+                      value={otpInput}
+                      onChange={function(e){ setOtpInput(e.target.value); setOtpErr(""); }}
+                      placeholder="Enter 4-digit code"
+                      maxLength={4}
+                      style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(37,211,102,.4)", borderRadius:10, padding:"10px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:16, fontWeight:700, outline:"none", textAlign:"center", letterSpacing:4 }}
+                    />
+                    <button onClick={verifyOTP} style={{ flex:1, background:"linear-gradient(135deg,#25D366,#128C7E)", border:"none", borderRadius:10, padding:"10px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                      Verify ✓
+                    </button>
+                  </div>
+                  {otpErr && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#EF4444", fontSize:11, marginBottom:6 }}>{otpErr}</div>}
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={sendOTP} style={{ flex:1, background:"rgba(37,211,102,.1)", border:"1px solid rgba(37,211,102,.25)", borderRadius:8, padding:"7px", color:"#25D366", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
+                      Resend OTP
+                    </button>
+                    <button onClick={skipOTP} style={{ flex:1, background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:8, padding:"7px", color:"rgba(255,255,255,.4)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:11, cursor:"pointer" }}>
+                      Skip (No WhatsApp)
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <button onClick={function(){window.open(waHref,"_blank");}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, width:"100%", background:"linear-gradient(135deg,#25D366,#128C7E)", borderRadius:10, padding:"11px", textDecoration:"none" }}>
-              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700 }}>Notify - Out for Delivery</span>
-            </button>
-          </div>
+          )}
 
           {/* Help Request */}
           {helpOpen && (
@@ -2871,9 +2956,14 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
                 Need Help
               </button>
             )}
-            {(isActive || isPostponed) && (
+            {(isActive || isPostponed) && (!waPhone || !isActive) && (
               <button onClick={onUpdate} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
                 {isPostponed ? "Retry ->" : "Update Status ->"}
+              </button>
+            )}
+            {isPostponed && (
+              <button onClick={onUpdate} style={{ flex:2, background:"linear-gradient(135deg,#8B5CF6,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+                Retry ->
               </button>
             )}
           </div>
