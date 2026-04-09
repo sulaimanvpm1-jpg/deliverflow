@@ -76,12 +76,12 @@ const PDF_SAMPLE_ORDERS = [
 /*  Brand-accurate payment colors  */
 // Payment Badge config — solid filled style (matching design photo)
 const PAYMENT_CFG = {
-  "Cash":           { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"Cash"         },
-  "COD":            { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"Cash"         },
+  "Cash":           { color:"#fff",     bg:"#F59E0B",  border:"#F59E0B",  label:"💵 Cash"      },
+  "COD":            { color:"#fff",     bg:"#F59E0B",  border:"#F59E0B",  label:"💵 Cash"      },
   "KNET":           { color:"#fff",     bg:"#1B3A8C",  border:"#1B3A8C",  label:"K NET"        },
   "VISA/Mastercard":{ color:"#fff",     bg:"#1E2D6B",  border:"#1E2D6B",  label:"VISA / MC"    },
   "Tabby":          { color:"#1A1A1A",  bg:"#3DEBA0",  border:"#3DEBA0",  label:"Tabby"        },
-  "Taly":           { color:"#fff",     bg:"#4B5563",  border:"#4B5563",  label:"Taly"         },
+  "Taly":           { color:"#fff",     bg:"#1A1F2E",  border:"#2D6FD4",  label:"r taly"      },
   "Deema":          { color:"#fff",     bg:"#C0596A",  border:"#C0596A",  label:"Deema"        },
   "GoCollect":      { color:"#fff",     bg:"#E8003D",  border:"#E8003D",  label:"GoCollect"    },
   "Trikart Link":   { color:"#fff",     bg:"#6366F1",  border:"#6366F1",  label:"🔗 Trikart"   },
@@ -91,7 +91,7 @@ const PAYMENT_CFG = {
   "Link Payment":   { color:"#fff",     bg:"#6366F1",  border:"#6366F1",  label:"🔗 Link"      },
   "Tabby (Link)":   { color:"#1A1A1A",  bg:"#3DEBA0",  border:"#3DEBA0",  label:"Tabby"        },
   "Tamara":         { color:"#fff",     bg:"#9333EA",  border:"#9333EA",  label:"Tamara"       },
-  "Pre-Paid":       { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"Pre-Paid"     },
+  "Pre-Paid":       { color:"#fff",     bg:"#F59E0B",  border:"#F59E0B",  label:"Pre-Paid"     },
 };
 // Fallback colour map (used where only a hex colour is needed)
 const PAYMENT_COLORS = Object.fromEntries(Object.entries(PAYMENT_CFG).map(e => [e[0],e[1].bg]));
