@@ -3737,15 +3737,22 @@ function ReportPreview({ data, onClose }) {
     var mm = String(now.getMonth()+1).padStart(2,"0");
     var yy = String(now.getFullYear()).slice(2);
     var fileName = "Report " + drvName + " " + dd + "-" + mm + "-" + yy;
-    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fileName+'</title><style>'+printCSS+'</style></head><body style="padding:8px">' + pri.innerHTML + '<script>window.onload=function(){document.title="'+fileName+'";window.print();}<\/script></body></html>';
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fileName+'</title><style>'+printCSS+'</style></head><body style="padding:8px">' + pri.innerHTML + '<script>window.onload=function(){document.title="'+fileName+'";setTimeout(function(){window.print();},200);}<\/script></body></html>';
     var blob = new Blob([html],{type:"text/html;charset=utf-8"});
     var url = URL.createObjectURL(blob);
+    // Also set the parent page title so browser uses it as PDF filename
+    var origTitle = document.title;
+    document.title = fileName;
     var ifr = document.createElement("iframe");
     ifr.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:21cm;height:29.7cm;border:none";
     document.body.appendChild(ifr);
     ifr.onload = function(){
       try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch(e){}
-      setTimeout(function(){ document.body.removeChild(ifr); URL.revokeObjectURL(url); }, 3000);
+      setTimeout(function(){
+        document.body.removeChild(ifr);
+        URL.revokeObjectURL(url);
+        document.title = origTitle;
+      }, 4000);
     };
     ifr.src = url;
   }
