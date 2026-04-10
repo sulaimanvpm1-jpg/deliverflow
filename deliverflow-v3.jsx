@@ -6617,17 +6617,20 @@ setOrders(function(prev) {
       const merged = prev.map(function(o) {
         const match = newOrders.find(function(n) { return n.invoiceNo === o.invoiceNo; });
         if (match) {
-          // For orders that were postponed/cancelled, keep their existing assignedDate
-          // so they don't reappear on today's dashboard as fresh orders.
-          // Only update assignedDate for truly pending (not yet acted on) orders.
-          var keepDate = (o.status === "postponed" || o.status === "cancelled" || o.status === "delivered");
-          var newAssignedDate = keepDate
-            ? (o.assignedDate || match.assignedDate)
-            : (match.assignedDate || (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })());
-          // For postponed orders re-uploaded on a new day: reset to pending + unscanned
-          // so driver must re-collect from warehouse before delivering again.
-          var isReupload = (o.status === "postponed") &&
-            (newAssignedDate !== o.assignedDate);
+          var todayStr = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
+
+          // Postponed orders being re-uploaded via PDF = new day retry
+          // Always reset to pending + today's date + unscanned
+          var isReupload = (o.status === "postponed");
+
+          // Delivered/cancelled keep their original date (historical record)
+          // Pending keeps existing date unless PDF provides a newer one
+          // Postponed always gets today (it's being assigned again)
+          var newAssignedDate = isReupload
+            ? todayStr
+            : (o.status === "delivered" || o.status === "cancelled")
+              ? (o.assignedDate || match.assignedDate)
+              : (match.assignedDate || todayStr);
           var updated = {
             ...o,  // keeps existing id
             onlineOrderNo: match.onlineOrderNo || o.onlineOrderNo || "",
