@@ -6889,10 +6889,34 @@ setOrders(function(prev) {
   function approveTransfer(transferId) {
     const tr = transfers.find(t => t.id === transferId);
     if (!tr) return;
-    // Reassign order to new driver
-    setOrders(prev => prev.map(o =>
-      (o.invoiceNo === tr.order.invoiceNo) ? { ...o, driverId: tr.toDriverId } : o
-    ));
+    var todayStr = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
+    // Reassign order to new driver in React state
+    setOrders(function(prev) {
+      var updated = prev.map(function(o) {
+        if (o.invoiceNo !== tr.order.invoiceNo) return o;
+        var reassigned = {
+          ...o,
+          driverId: tr.toDriverId,
+          assignedDate: todayStr,  // ensure it appears in today's dashboard for new driver
+          scanned: false,           // new driver must re-scan at warehouse
+          status: o.status === "postponed" ? "pending" : o.status,
+        };
+        // Persist to Supabase immediately
+        var sb = getSupabase && getSupabase();
+        if (sb && reassigned.id) {
+          sb.from("orders").update({
+            driver_id:     tr.toDriverId,
+            assigned_date: todayStr,
+            scanned:       false,
+            status:        reassigned.status,
+            updated_at:    new Date().toISOString(),
+          }).eq("id", reassigned.id).then(function(){}, function(e){ console.warn("Transfer DB update err:", e); });
+        }
+        return reassigned;
+      });
+      lsSet(LS_KEYS.orders, updated);
+      return updated;
+    });
     setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status:"approved" } : t));
   }
 
