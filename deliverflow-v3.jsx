@@ -6878,12 +6878,19 @@ setOrders(function(prev) {
   }
 
   function requestTransfer(order, fromDriverId, toDriverId, reason) {
-    setTransfers(prev => [...prev, {
-      id: Math.random().toString(36).slice(2,9),
+    var newTransfer = {
+      id: uid(),
       order, fromDriverId, toDriverId, reason,
-      status: "pending", // pending | approved | rejected
+      status: "pending",
       createdAt: new Date().toISOString(),
-    }]);
+    };
+    setTransfers(function(prev) {
+      var updated = [...prev, newTransfer];
+      lsSet(LS_KEYS.transfers, updated);
+      return updated;
+    });
+    // Save to Supabase so admin sees it immediately on their device
+    dbUpsertTransfer(newTransfer);
   }
 
   function approveTransfer(transferId) {
@@ -6917,11 +6924,25 @@ setOrders(function(prev) {
       lsSet(LS_KEYS.orders, updated);
       return updated;
     });
-    setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status:"approved" } : t));
+    setTransfers(function(prev) {
+      var updated = prev.map(function(t) { return t.id === transferId ? { ...t, status:"approved" } : t; });
+      lsSet(LS_KEYS.transfers, updated);
+      // Persist approved status to Supabase
+      var approvedTr = updated.find(function(t){ return t.id === transferId; });
+      if (approvedTr) dbUpsertTransfer(approvedTr);
+      return updated;
+    });
   }
 
   function rejectTransfer(transferId) {
-    setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status:"rejected" } : t));
+    setTransfers(function(prev) {
+      var updated = prev.map(function(t) { return t.id === transferId ? { ...t, status:"rejected" } : t; });
+      lsSet(LS_KEYS.transfers, updated);
+      // Persist rejected status to Supabase
+      var rejectedTr = updated.find(function(t){ return t.id === transferId; });
+      if (rejectedTr) dbUpsertTransfer(rejectedTr);
+      return updated;
+    });
   }
 
   return (
