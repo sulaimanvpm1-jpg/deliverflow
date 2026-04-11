@@ -6619,27 +6619,37 @@ setOrders(function(prev) {
         if (match) {
           var todayStr = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
 
-          // Postponed orders being re-uploaded via PDF = new day retry
-          // Always reset to pending + today's date + unscanned
-          var isReupload = (o.status === "postponed");
+          // ── SKIP rules: don't touch orders that already have a final/active state ──
+          // delivered  → permanent record, never overwrite
+          // cancelled  → permanent record, never overwrite
+          // collected (scanned=true, pending) → already at warehouse, don't reset
+          // The ONLY case we actively reset is: postponed → new day retry
+          if (o.status === "delivered" || o.status === "cancelled") {
+            // Just silently skip — keep existing record exactly as-is
+            return o;
+          }
+          if (o.scanned === true && o.status === "pending") {
+            // Already collected at warehouse from a previous upload today or yesterday
+            // Don't reset scanned or date — just update OO number if newly available
+            var ooUpdated = {
+              ...o,
+              onlineOrderNo: match.onlineOrderNo || o.onlineOrderNo || "",
+            };
+            return ooUpdated;
+          }
 
-          // Delivered/cancelled keep their original date (historical record)
-          // Pending keeps existing date unless PDF provides a newer one
-          // Postponed always gets today (it's being assigned again)
-          var newAssignedDate = isReupload
-            ? todayStr
-            : (o.status === "delivered" || o.status === "cancelled")
-              ? (o.assignedDate || match.assignedDate)
-              : (match.assignedDate || todayStr);
+          // Postponed = re-upload for retry → reset fully to today
+          var isReupload = (o.status === "postponed");
+          var newAssignedDate = isReupload ? todayStr : (match.assignedDate || todayStr);
+
           var updated = {
-            ...o,  // keeps existing id
+            ...o,
             onlineOrderNo: match.onlineOrderNo || o.onlineOrderNo || "",
             assignedDate: newAssignedDate,
             driverId: match.driverId || o.driverId,
             customer: (match.customer && match.customer !== "Unknown") ? match.customer : o.customer,
             address: match.address || o.address || "",
             phone: match.phone || o.phone || "",
-            // Reset postponed orders so they start fresh on the new day
             status:  isReupload ? "pending" : o.status,
             scanned: isReupload ? false     : o.scanned,
           };
