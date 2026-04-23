@@ -1220,6 +1220,9 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
 
 
       <ManualOrderForm driverList={DRIVERS.filter(function(d){ return d.status==="active"; })} onAdd={function(order){
+        // Manual orders always insert fresh — bypass merge logic by using addOrders directly
+        // with a flag that forces fresh insert even if invoice exists
+        order._forceInsert = true;
         onOrdersParsed([order], order.driverId);
       }} />
 
@@ -6615,7 +6618,7 @@ setOrders(function(prev) {
       prev.forEach(function(o) { existingMap[o.invoiceNo] = o; });
       const fresh = [];
       const merged = prev.map(function(o) {
-        const match = newOrders.find(function(n) { return n.invoiceNo === o.invoiceNo; });
+        const match = newOrders.find(function(n) { return n.invoiceNo === o.invoiceNo && !n._forceInsert; });
         if (match) {
           var todayStr = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
 
@@ -6674,8 +6677,9 @@ setOrders(function(prev) {
         return o;
       });
       newOrders.forEach(function(n) {
-        if (!existingMap[n.invoiceNo]) {
+        if (!existingMap[n.invoiceNo] || n._forceInsert) {
           var newOrder = { ...n, id: n.id || uid() };
+          delete newOrder._forceInsert; // clean flag before storing
           fresh.push(newOrder);
           // Direct insert for new orders into DB
           var sb = getSupabase && getSupabase();
