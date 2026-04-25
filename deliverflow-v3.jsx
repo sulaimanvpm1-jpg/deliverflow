@@ -6312,11 +6312,58 @@ window.App = function App() {
           var localOrders = lsGet(LS_KEYS.orders, []);
           var localMap = {};
           localOrders.forEach(function(o) { if (o.invoiceNo) localMap[o.invoiceNo] = o; });
+
+          // Build a map of DB orders by invoiceNo
+          var dbMap = {};
+          dbOrders.forEach(function(o) { if (o.invoiceNo) dbMap[o.invoiceNo] = o; });
+
+          // Merge strategy:
+          // 1. Start with DB orders (source of truth for existing records)
+          //    but prefer local OO number if DB doesn't have it yet
           var mergedDbOrders = dbOrders.map(function(o) {
             var loc = localMap[o.invoiceNo];
-            if (loc && loc.onlineOrderNo && !o.onlineOrderNo) return Object.assign({}, o, { onlineOrderNo: loc.onlineOrderNo });
+            if (loc && loc.onlineOrderNo && !o.onlineOrderNo) {
+              return Object.assign({}, o, { onlineOrderNo: loc.onlineOrderNo });
+            }
             return o;
           });
+
+          // 2. Add any LOCAL-ONLY orders that aren't in DB yet
+          //    (these are newly assigned orders not yet persisted to Supabase)
+          var localOnlyOrders = localOrders.filter(function(o) {
+            return o.invoiceNo && !dbMap[o.invoiceNo];
+          });
+          if (localOnlyOrders.length > 0) {
+            mergedDbOrders = mergedDbOrders.concat(localOnlyOrders);
+            // Immediately try to save these to Supabase
+            var sb = getSupabase();
+            if (sb) {
+              var rows = localOnlyOrders.map(function(o) {
+                return {
+                  id: o.id || uid(),
+                  invoice_no: o.invoiceNo,
+                  driver_id: o.driverId || null,
+                  store: o.store || "",
+                  customer: o.customer || "",
+                  address: o.address || "",
+                  phone: o.phone || "",
+                  total: o.total || 0,
+                  payment_type: o.paymentType || "Cash",
+                  status: o.status || "pending",
+                  scanned: o.scanned || false,
+                  online_order_no: o.onlineOrderNo || "",
+                  date: o.date || "",
+                  assigned_date: o.assignedDate || "",
+                  note: o.note || "",
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                };
+              });
+              sb.from("orders").upsert(rows, { onConflict: "id" })
+                .then(function(){}, function(e){ console.warn("Re-sync local orders:", e); });
+            }
+          }
+
           setOrders(mergedDbOrders);
           lsSet(LS_KEYS.orders, mergedDbOrders);
 
@@ -6681,15 +6728,15 @@ setOrders(function(prev) {
           var newOrder = { ...n, id: n.id || uid() };
           delete newOrder._forceInsert; // clean flag before storing
           fresh.push(newOrder);
-          // Direct insert for new orders into DB
+          // Insert new order to DB — single upsert with all fields including assigned_date
           var sb = getSupabase && getSupabase();
           if (sb) {
-            sb.from("orders").insert({
+            sb.from("orders").upsert({
               id: newOrder.id,
               invoice_no: newOrder.invoiceNo,
               online_order_no: newOrder.onlineOrderNo || "",
               date: newOrder.date || (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })(),
-              // assigned_date set via separate update below
+              assigned_date: newOrder.assignedDate || "",
               store: newOrder.store || "",
               customer: newOrder.customer || "",
               address: newOrder.address || "",
@@ -6701,15 +6748,9 @@ setOrders(function(prev) {
               driver_id: newOrder.driverId || null,
               scanned: newOrder.scanned || false,
               note: newOrder.note || "",
+              created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-            }).then(function(){
-              // Try to set assigned_date separately (column may not exist yet)
-              var sbx = getSupabase && getSupabase();
-              if (sbx && newOrder.assignedDate) {
-                sbx.from("orders").update({ assigned_date: newOrder.assignedDate, created_at: new Date().toISOString() })
-                  .eq("id", newOrder.id).then(function(){}, function(){});
-              }
-            }, function(e){ console.warn("Insert error:", e); });
+            }, { onConflict: "id" }).then(function(){}, function(e){ console.warn("Insert error:", e); });
           }
         }
       });
