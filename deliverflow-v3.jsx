@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
    Driver: Arrive at Warehouse -> Scan/Confirm Orders -> Deliver
  */
 
-const PULSE_CSS = `@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0.7} }`;
+const PULSE_CSS = `@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0.7} } @keyframes spin { to { transform:rotate(360deg); } }`;
 // System fonts — SF Pro on iOS/Mac, Google Sans on Android, Segoe UI on Windows
 const FONT = `
   :root { font-synthesis: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
@@ -2981,16 +2981,17 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
                 Need Help
               </button>
             )}
-            {(isActive || isPostponed) && (!waPhone || !isActive) && (
-              <button onClick={onUpdate} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-                {isPostponed ? "Retry ->" : "Update Status ->"}
-              </button>
-            )}
             {isPostponed && (
               <button onClick={onUpdate} style={{ flex:2, background:"linear-gradient(135deg,#8B5CF6,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
                 Retry ->
               </button>
             )}
+            {isActive && !waPhone && (
+              <button onClick={onUpdate} style={{ flex:2, background:"linear-gradient(135deg,#00D4FF,#7C3AED)", border:"none", borderRadius:12, padding:13, color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+                Update Status ->
+              </button>
+            )}
+          </div>
           </div>
 
           {order.note && (
