@@ -1936,8 +1936,17 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
       {tab === "list" && (
         <>
           {myOrders.length === 0 ? (
-            <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:40, fontSize:14 }}>
-              No orders assigned yet.<br/>Please wait for admin to upload.
+            <div style={{ textAlign:"center", padding:40 }}>
+              <div style={{ color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:14, marginBottom:16 }}>
+                No orders assigned yet.<br/>Please wait for admin to upload.
+              </div>
+              <button onClick={function(){
+                if (refreshing || !onRefresh) return;
+                setRefreshing(true);
+                onRefresh(function(){ setRefreshing(false); });
+              }} style={{ background:"rgba(0,212,255,.1)", border:"1px solid rgba(0,212,255,.3)", borderRadius:12, padding:"10px 20px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                {refreshing ? "⟳ Syncing..." : "⟳ Sync Now"}
+              </button>
             </div>
           ) : (
             <>
@@ -6439,6 +6448,34 @@ window.App = function App() {
     }
 
     loadSupabaseSDK(runFetch);
+
+    // ── Polling fallback (every 30s) ─────────────────────────────────────────
+    // Realtime may not work on all networks/devices. Poll as a reliable backup.
+    // Only fetch orders (lightweight) — full sync happens on login.
+    var pollInterval = setInterval(function() {
+      if (!user) return;
+      dbLoadOrders().then(function(data) {
+        if (!data || data.length === 0) return;
+        setOrders(function(prev) {
+          // Same merge logic: preserve local-only orders, update existing
+          var dbMap = {};
+          data.forEach(function(o) { if (o.invoiceNo) dbMap[o.invoiceNo] = o; });
+          var localOnly = prev.filter(function(o) { return o.invoiceNo && !dbMap[o.invoiceNo]; });
+          var merged = data.concat(localOnly);
+          // Only update state if something actually changed (avoid re-renders)
+          var prevMap = {};
+          prev.forEach(function(o) { prevMap[o.id] = o.status + "|" + o.driverId + "|" + o.scanned; });
+          var changed = merged.some(function(o) {
+            return !prevMap[o.id] || prevMap[o.id] !== (o.status + "|" + o.driverId + "|" + o.scanned);
+          }) || merged.length !== prev.length;
+          if (!changed) return prev;
+          lsSet(LS_KEYS.orders, merged);
+          return merged;
+        });
+      }).catch(function(){});
+    }, 30000); // every 30 seconds
+
+    return function() { clearInterval(pollInterval); };
   }, [user]);
 
   // ── Driver online presence tracking ───────────────────────────────────────
