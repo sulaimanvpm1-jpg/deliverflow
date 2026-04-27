@@ -2992,7 +2992,6 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
               </button>
             )}
           </div>
-          </div>
 
           {order.note && (
             <div style={{ background:"rgba(255,255,255,.04)", borderRadius:10, padding:"8px 12px", marginBottom:8 }}>
