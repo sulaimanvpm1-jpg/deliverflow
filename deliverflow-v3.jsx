@@ -6393,9 +6393,18 @@ window.App = function App() {
           });
 
           // 2. Add any LOCAL-ONLY orders that aren't in DB yet
-          //    (these are newly assigned orders not yet persisted to Supabase)
+          //    This includes: (a) truly new invoices not in DB
+          //                   (b) same invoice but different assignedDate (new day re-assignment)
           var localOnlyOrders = localOrders.filter(function(o) {
-            return o.invoiceNo && !dbMap[o.invoiceNo];
+            if (!o.invoiceNo) return false;
+            var dbRecord = dbMap[o.invoiceNo];
+            if (!dbRecord) return true; // truly new — not in DB at all
+            // Same invoice exists in DB but local has a NEWER assignedDate
+            // This means it's a new day's assignment that failed to save
+            var dbDate = dbRecord.assignedDate || dbRecord.date || "";
+            var localDate = o.assignedDate || o.date || "";
+            if (localDate && dbDate && localDate !== dbDate && o.status === "pending") return true;
+            return false;
           });
           if (localOnlyOrders.length > 0) {
             mergedDbOrders = mergedDbOrders.concat(localOnlyOrders);
@@ -6819,37 +6828,49 @@ setOrders(function(prev) {
         }
         return o;
       });
+      // Batch insert all fresh orders in ONE upsert call (much more reliable)
+      var freshRows = [];
       newOrders.forEach(function(n) {
         if (!existingMap[n.invoiceNo] || n._forceInsert) {
           var newOrder = { ...n, id: n.id || uid() };
-          delete newOrder._forceInsert; // clean flag before storing
+          delete newOrder._forceInsert;
           fresh.push(newOrder);
-          // Insert new order to DB — single upsert with all fields including assigned_date
-          var sb = getSupabase && getSupabase();
-          if (sb) {
-            sb.from("orders").upsert({
-              id: newOrder.id,
-              invoice_no: newOrder.invoiceNo,
-              online_order_no: newOrder.onlineOrderNo || "",
-              date: newOrder.date || (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })(),
-              assigned_date: newOrder.assignedDate || "",
-              store: newOrder.store || "",
-              customer: newOrder.customer || "",
-              address: newOrder.address || "",
-              phone: newOrder.phone || "",
-              total: newOrder.total || 0,
-              payment_type: newOrder.paymentType || "Cash",
-              original_payment_type: newOrder.originalPaymentType || "",
-              status: newOrder.status || "pending",
-              driver_id: newOrder.driverId || null,
-              scanned: newOrder.scanned || false,
-              note: newOrder.note || "",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }, { onConflict: "id" }).then(function(){}, function(e){ console.warn("Insert error:", e); });
-          }
+          freshRows.push({
+            id: newOrder.id,
+            invoice_no: newOrder.invoiceNo,
+            online_order_no: newOrder.onlineOrderNo || "",
+            date: newOrder.date || (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })(),
+            assigned_date: newOrder.assignedDate || "",
+            store: newOrder.store || "",
+            customer: newOrder.customer || "",
+            address: newOrder.address || "",
+            phone: newOrder.phone || "",
+            total: newOrder.total || 0,
+            payment_type: newOrder.paymentType || "Cash",
+            original_payment_type: newOrder.originalPaymentType || "",
+            status: newOrder.status || "pending",
+            driver_id: newOrder.driverId || null,
+            scanned: newOrder.scanned || false,
+            note: newOrder.note || "",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
         }
       });
+
+      // Single batch upsert — far more reliable than N individual calls
+      if (freshRows.length > 0) {
+        var sb = getSupabase && getSupabase();
+        if (sb) {
+          // Split into chunks of 50 to avoid payload limits
+          var chunkSize = 50;
+          for (var ci = 0; ci < freshRows.length; ci += chunkSize) {
+            var chunk = freshRows.slice(ci, ci + chunkSize);
+            sb.from("orders").upsert(chunk, { onConflict: "id" })
+              .then(function(){}, function(e){ console.warn("Batch insert error:", e); });
+          }
+        }
+      }
       const final = [...merged, ...fresh];
       lsSet(LS_KEYS.orders, final);
       return final;
