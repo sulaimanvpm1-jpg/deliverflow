@@ -5859,6 +5859,7 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
           onRequestTransfer={handleTransferRequest}
           onOpenTransfer={setTransferOrder}
           onRemoveOrder={function(idOrInvoice) { onRemoveOrder && onRemoveOrder(idOrInvoice); }}
+          onRefresh={onRefresh}
         />}
         {/* Date filter for driver */}
         {allMyOrders.length > 0 && (
@@ -7189,7 +7190,25 @@ setOrders(function(prev) {
       {user?.role === "admin"  && <AdminApp  user={user} orders={orders} transfers={transfers} adminNotifs={adminNotifs} onMarkNotifRead={(id)=>setAdminNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n))} onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))} expenses={expenses} onAddExpense={function(exp){ const e={...exp,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }} onOrdersAdd={addOrders} onStatusUpdate={updateStatus} onApproveTransfer={approveTransfer} onRejectTransfer={rejectTransfer} driverProfiles={driverProfiles} onUpdateDriver={updateDriverProfile} onAddDriver={addDriver} onClearData={clearAllData} onClearCollected={clearCollected} onRemoveOrderAdmin={removeOrder} onEditOrder={updateOrderDetails} orderTags={orderTags} onSetTag={setTag} saveStatus={saveStatus} dbConnected={dbConnected} syncing={syncing} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} clearConfirm={clearConfirm} onConfirmClear={doClearAllData} onCancelClear={function(){setClearConfirm(false);}} history={history} passwords={passwords} onSetPassword={function(id,pwd){setPasswords(function(prev){var n={...prev};n[id]=pwd;return n;});}} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
       {user?.role === "driver" && <DriverApp user={user} orders={orders} expenses={expenses} onAddExpense={function(exp){ const e={...exp,driverId:user.id,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }}
           onUpdateExpense={function(id,fields){ setExpenses(function(p){ var n=p.map(function(e){ return e.id===id?{...e,...fields}:e; }); lsSet(LS_KEYS.expenses,n); return n; }); dbUpdateExpense(id,fields); }}
-          onDeleteExpense={function(id){ setExpenses(function(p){ var n=p.filter(function(e){ return e.id!==id; }); lsSet(LS_KEYS.expenses,n); return n; }); dbDeleteExpense(id); }} onScan={markScanned} onStatusUpdate={updateStatus} onEditOrder={updateOrderDetails} onRequestTransfer={requestTransfer} onRemoveOrder={removeOrder} onRequestHelp={requestHelp} orderTags={orderTags} onSetTag={setTag} onAddOrder={addOrders} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
+          onDeleteExpense={function(id){ setExpenses(function(p){ var n=p.filter(function(e){ return e.id!==id; }); lsSet(LS_KEYS.expenses,n); return n; }); dbDeleteExpense(id); }} onScan={markScanned} onStatusUpdate={updateStatus} onEditOrder={updateOrderDetails} onRequestTransfer={requestTransfer} onRemoveOrder={removeOrder} onRequestHelp={requestHelp} orderTags={orderTags} onSetTag={setTag} onAddOrder={addOrders} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate}
+          onRefresh={function(cb) {
+            dbLoadOrders().then(function(data) {
+              if (data && data.length > 0) {
+                setOrders(function(prev) {
+                  var dbById = {};
+                  data.forEach(function(o) { if (o.id) dbById[o.id] = o; });
+                  var localOnly = prev.filter(function(o) { return o.id && !dbById[o.id]; });
+                  var merged = data.concat(localOnly);
+                  var seen = new Set();
+                  merged = merged.filter(function(o) { if (!o.id||seen.has(o.id)) return false; seen.add(o.id); return true; });
+                  lsSet(LS_KEYS.orders, merged);
+                  return merged;
+                });
+              }
+              if (cb) cb();
+            }).catch(function() { if (cb) cb(); });
+          }}
+          onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
     </>
   );
 }
