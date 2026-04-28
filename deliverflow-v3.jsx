@@ -6760,6 +6760,14 @@ window.App = function App() {
 
   function addOrders(newOrders) {
 setOrders(function(prev) {
+      // Track ALL existing records — use a set of invoiceNos for "has any record" check
+      // and a separate map for the specific record to merge with
+      const existingByInvoice = {};  // invoiceNo → array of existing orders
+      prev.forEach(function(o) {
+        if (!existingByInvoice[o.invoiceNo]) existingByInvoice[o.invoiceNo] = [];
+        existingByInvoice[o.invoiceNo].push(o);
+      });
+      // For the fresh check — has a PENDING today's order already been added?
       const existingMap = {};
       prev.forEach(function(o) { existingMap[o.invoiceNo] = o; });
       const fresh = [];
@@ -6775,10 +6783,21 @@ setOrders(function(prev) {
           if (o.status === "delivered" || o.status === "cancelled") {
             var oldDate = o.assignedDate || o.date || "";
             var newDate = match.assignedDate || todayStr;
-            // If the new assignment is for a different date, it's a new order
-            if (oldDate !== newDate) {
-              fresh.push({ ...match, id: match.id || uid(), status:"pending", scanned:false, assignedDate:newDate });
-              return o; // keep old historical record too
+            // Normalize both dates to comparable format
+            // DB may return ISO (2026-04-27) while local uses DD/MM/YYYY (27/4/2026)
+            function normDate(d) {
+              if (!d) return "";
+              var iso = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+              if (iso) return parseInt(iso[3]) + "/" + parseInt(iso[2]) + "/" + iso[1];
+              return d;
+            }
+            var oldNorm = normDate(oldDate);
+            var newNorm = normDate(newDate);
+            // If dates differ → new day re-assignment, create fresh order
+            if (!oldNorm || !newNorm || oldNorm !== newNorm) {
+              var freshId = uid();
+              fresh.push({ ...match, id: freshId, status:"pending", scanned:false, assignedDate:newNorm || newDate });
+              return o; // keep old historical record
             }
             // Same date — truly a duplicate, skip
             return o;
@@ -6831,7 +6850,16 @@ setOrders(function(prev) {
       // Batch insert all fresh orders in ONE upsert call (much more reliable)
       var freshRows = [];
       newOrders.forEach(function(n) {
-        if (!existingMap[n.invoiceNo] || n._forceInsert) {
+        var existingRecords = existingByInvoice[n.invoiceNo] || [];
+        // Already has a today-pending record for this invoice? Skip.
+        var todayStr2 = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
+        var hasTodayPending = existingRecords.some(function(o) {
+          var od = o.assignedDate || o.date || "";
+          return o.status === "pending" && !o.scanned && (od === todayStr2 || od === "");
+        });
+        // Also check fresh[] for duplicate
+        var alreadyInFresh = fresh.some(function(f) { return f.invoiceNo === n.invoiceNo; });
+        if ((!existingMap[n.invoiceNo] || n._forceInsert) && !alreadyInFresh) {
           var newOrder = { ...n, id: n.id || uid() };
           delete newOrder._forceInsert;
           fresh.push(newOrder);
