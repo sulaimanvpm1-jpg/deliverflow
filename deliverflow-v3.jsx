@@ -6514,7 +6514,7 @@ window.App = function App() {
     loadSupabaseSDK(runFetch);
   }, [user]);
 
-  // ── Polling fallback (every 30s) — separate useEffect ──────────────────────
+  // ── Polling fallback (every 30s) — read-only, never writes to DB ──────────
   useEffect(function() {
     if (!user) return;
     var pollInterval = setInterval(function() {
@@ -6522,15 +6522,30 @@ window.App = function App() {
       dbLoadOrders().then(function(data) {
         if (!data || data.length === 0) return;
         setOrders(function(prev) {
-          var dbMap = {};
-          data.forEach(function(o) { if (o.invoiceNo) dbMap[o.invoiceNo] = o; });
-          var localOnly = prev.filter(function(o) { return o.invoiceNo && !dbMap[o.invoiceNo]; });
+          // Build map of DB records by their unique id
+          var dbById = {};
+          data.forEach(function(o) { if (o.id) dbById[o.id] = o; });
+
+          // Keep local-only records (not yet saved to DB — no matching id)
+          var localOnly = prev.filter(function(o) { return o.id && !dbById[o.id]; });
+
+          // Merge: DB is source of truth, append local-only
           var merged = data.concat(localOnly);
+
+          // Deduplicate by id
+          var seenIds = new Set();
+          merged = merged.filter(function(o) {
+            if (!o.id || seenIds.has(o.id)) return false;
+            seenIds.add(o.id);
+            return true;
+          });
+
+          // Only update state if something actually changed
           var prevMap = {};
-          prev.forEach(function(o) { prevMap[o.id] = o.status + "|" + o.driverId + "|" + o.scanned; });
-          var changed = merged.some(function(o) {
+          prev.forEach(function(o) { if (o.id) prevMap[o.id] = o.status + "|" + o.driverId + "|" + o.scanned; });
+          var changed = merged.length !== prev.length || merged.some(function(o) {
             return !prevMap[o.id] || prevMap[o.id] !== (o.status + "|" + o.driverId + "|" + o.scanned);
-          }) || merged.length !== prev.length;
+          });
           if (!changed) return prev;
           lsSet(LS_KEYS.orders, merged);
           return merged;
@@ -6787,7 +6802,8 @@ setOrders(function(prev) {
           var oldN = normD(o.assignedDate||o.date||"");
           var newN = normD(match.assignedDate||todayStr);
           if (oldN !== newN && !todayPendingSet.has(o.invoiceNo)) {
-            fresh.push({ ...match, id: uid(), status:"pending", scanned:false, assignedDate:newN||todayStr });
+            var stableId = (o.invoiceNo + "_" + (newN||todayStr)).replace(/[^a-zA-Z0-9_]/g,"_");
+            fresh.push({ ...match, id: stableId, status:"pending", scanned:false, assignedDate:newN||todayStr });
             todayPendingSet.add(o.invoiceNo);
           }
           return o;
@@ -6825,8 +6841,11 @@ setOrders(function(prev) {
         var existsInPrev = prev.some(function(o){ return o.invoiceNo===n.invoiceNo; });
         var alreadyFresh = todayPendingSet.has(n.invoiceNo);
         if (isForce || (!existsInPrev && !alreadyFresh)) {
-          var fo = { ...n, id: n.id||uid() };
+          var fo = { ...n };
           delete fo._forceInsert;
+          // Use stable ID: hash of invoiceNo+assignedDate so same order always same ID
+          // This prevents duplicate DB rows if addOrders is called twice
+          fo.id = fo.id || (fo.invoiceNo + "_" + (fo.assignedDate||todayStr)).replace(/[^a-zA-Z0-9_]/g,"_");
           fresh.push(fo);
           todayPendingSet.add(fo.invoiceNo);
         }
@@ -6865,9 +6884,31 @@ setOrders(function(prev) {
         }
       }
 
-      const final = [...merged, ...fresh];
-      lsSet(LS_KEYS.orders, final);
-      return final;
+      // Deduplicate final array — keep the most recent record per (invoiceNo + assignedDate)
+      // This prevents doubling if addOrders is called twice accidentally
+      const seen = new Map(); // key: invoiceNo+"|"+assignedDate → index in deduped
+      const deduped = [];
+      [...merged, ...fresh].forEach(function(o) {
+        var nd = (function(d) {
+          if (!d) return "";
+          var m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (m) return parseInt(m[3]) + "/" + parseInt(m[2]) + "/" + m[1];
+          return d;
+        })(o.assignedDate || o.date || "");
+        var key = (o.invoiceNo || "") + "|" + nd + "|" + (o.status || "pending");
+        if (!seen.has(key)) {
+          seen.set(key, deduped.length);
+          deduped.push(o);
+        } else {
+          // Keep the one with more data (prefer pending over delivered for same day)
+          var existing = deduped[seen.get(key)];
+          if (o.status === "pending" && existing.status !== "pending") {
+            deduped[seen.get(key)] = o;
+          }
+        }
+      });
+      lsSet(LS_KEYS.orders, deduped);
+      return deduped;
     });
   }
 
