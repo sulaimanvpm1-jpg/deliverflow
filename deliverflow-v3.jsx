@@ -6890,13 +6890,48 @@ setOrders(function(prev) {
       if (freshRows.length > 0) {
         var sb = getSupabase && getSupabase();
         if (sb) {
-          // Split into chunks of 50 to avoid payload limits
+          setSaveStatus("Saving " + freshRows.length + " orders to database...");
           var chunkSize = 50;
+          var totalChunks = Math.ceil(freshRows.length / chunkSize);
+          var savedChunks = 0;
+          var failedChunks = 0;
           for (var ci = 0; ci < freshRows.length; ci += chunkSize) {
-            var chunk = freshRows.slice(ci, ci + chunkSize);
-            sb.from("orders").upsert(chunk, { onConflict: "id" })
-              .then(function(){}, function(e){ console.warn("Batch insert error:", e); });
+            (function(chunk) {
+              sb.from("orders").upsert(chunk, { onConflict: "id" })
+                .then(function(res) {
+                  savedChunks++;
+                  if (res && res.error) {
+                    failedChunks++;
+                    console.warn("Upsert error:", res.error.message);
+                    // Retry without assigned_date if column doesn't exist
+                    if (res.error.message && res.error.message.includes("assigned_date")) {
+                      var fallback = chunk.map(function(r) {
+                        var c2 = Object.assign({}, r);
+                        delete c2.assigned_date;
+                        return c2;
+                      });
+                      sb.from("orders").upsert(fallback, { onConflict: "id" })
+                        .then(function(){}, function(){});
+                    }
+                  }
+                  if (savedChunks === totalChunks) {
+                    setSaveStatus(failedChunks > 0 ? "⚠️ Some orders may not have saved. Check connection." : "✅ All " + freshRows.length + " orders saved to database!");
+                    setTimeout(function() { setSaveStatus(""); }, 3000);
+                  }
+                }, function(e) {
+                  failedChunks++;
+                  savedChunks++;
+                  console.warn("Batch insert error:", e);
+                  if (savedChunks === totalChunks) {
+                    setSaveStatus("⚠️ Database save failed: " + (e.message||"unknown error"));
+                    setTimeout(function() { setSaveStatus(""); }, 5000);
+                  }
+                });
+            })(freshRows.slice(ci, ci + chunkSize));
           }
+        } else {
+          setSaveStatus("⚠️ No database connection — orders saved locally only");
+          setTimeout(function() { setSaveStatus(""); }, 4000);
         }
       }
       const final = [...merged, ...fresh];
