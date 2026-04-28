@@ -1636,12 +1636,20 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
   const _allMine = orders.filter(o => o.driverId === driverId);
   const myOrders = _allMine.filter(function(o) {
     const d = o.assignedDate || o.date || "";
+    if (!d) return true; // no date = newly assigned, always show
     const p = d.split("/");
     if (p.length === 3) {
       const dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
-      return dt.toDateString() === _today;
+      if (!isNaN(dt.getTime())) return dt.toDateString() === _today;
     }
-    return false;
+    const iso = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      const dt2 = new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3]));
+      if (!isNaN(dt2.getTime())) return dt2.toDateString() === _today;
+    }
+    const dt3 = new Date(d);
+    if (!isNaN(dt3.getTime())) return dt3.toDateString() === _today;
+    return true;
   });
   const allOrders = orders; // to look up other drivers' orders
   const unscanned = myOrders.filter(o => !o.scanned && o.status === "pending");
@@ -2350,21 +2358,33 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
   const myOrders = selectedDate
     ? _allMine.filter(function(o) {
         const _d = o.assignedDate || o.date || "";
+        if (!_d) return true;
         const _p = _d.split("/");
         if (_p.length === 3) {
           const _dt = new Date(parseInt(_p[2]), parseInt(_p[1]) - 1, parseInt(_p[0]));
-          return _dt.toDateString() === selectedDate;
+          if (!isNaN(_dt.getTime())) return _dt.toDateString() === selectedDate;
         }
-        return false;
+        const _iso = _d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (_iso) {
+          const _dt2 = new Date(parseInt(_iso[1]), parseInt(_iso[2])-1, parseInt(_iso[3]));
+          if (!isNaN(_dt2.getTime())) return _dt2.toDateString() === selectedDate;
+        }
+        return true;
       })
     : _allMine.filter(function(o) {
         const _d = o.assignedDate || o.date || "";
+        if (!_d) return true;
         const _p = _d.split("/");
         if (_p.length === 3) {
           const _dt = new Date(parseInt(_p[2]), parseInt(_p[1]) - 1, parseInt(_p[0]));
-          return _dt.toDateString() === new Date().toDateString();
+          if (!isNaN(_dt.getTime())) return _dt.toDateString() === new Date().toDateString();
         }
-        return false;
+        const _iso = _d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (_iso) {
+          const _dt2 = new Date(parseInt(_iso[1]), parseInt(_iso[2])-1, parseInt(_iso[3]));
+          if (!isNaN(_dt2.getTime())) return _dt2.toDateString() === new Date().toDateString();
+        }
+        return true;
       });
   const myStores   = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.store; }).filter(Boolean))));
   const myPayments = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.paymentType; }).filter(function(p) { return p && p !== "Exchange"; }))));
@@ -2573,7 +2593,9 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
           }
           return (
             <div key={oid}>
-              <DeliveryOrderCard order={o} onUpdate={function() { setStatusModal(o); }} onOpenTransfer={onOpenTransfer} onRequestHelp={onRequestHelp} orderTags={orderTags} onSetTag={onSetTag} onEditOrder={onEditOrder} />
+              <OrderCardErrorBoundary>
+                <DeliveryOrderCard order={o} onUpdate={function() { setStatusModal(o); }} onOpenTransfer={onOpenTransfer} onRequestHelp={onRequestHelp} orderTags={orderTags} onSetTag={onSetTag} onEditOrder={onEditOrder} />
+              </OrderCardErrorBoundary>
             </div>
           );
         });
@@ -2729,6 +2751,23 @@ function EditOrderModal({ order, onSave, onClose }) {
   );
 }
 
+
+// Error boundary to catch crashes in order cards
+class OrderCardErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
+          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:12, fontWeight:700, marginBottom:4 }}>Order card error</div>
+          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{String(this.state.error.message||this.state.error)}</div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onEditOrder }) {
   const [exp,        setExp]        = useState(false);
@@ -5700,14 +5739,26 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
   function showToast(msg) { setToast({ msg, ttype:"success" }); setTimeout(function() { setToast(null); }, 3000); }
 
   var allMyOrders = orders.filter(function(o){ return o.driverId === user.id; });
+  const todayStr = selectedDate || new Date().toDateString();
   const myOrders = allMyOrders.filter(function(o) {
     var d = o.assignedDate || o.date || "";
+    if (!d) return true; // no date = newly assigned, always show
+    // Try DD/MM/YYYY format
     var parts = d.split("/");
     if (parts.length === 3) {
       var dt = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
-      return dt.toDateString() === (selectedDate || new Date().toDateString());
+      if (!isNaN(dt.getTime())) return dt.toDateString() === todayStr;
     }
-    return false;
+    // Try ISO format YYYY-MM-DD
+    var isoMatch = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      var dt2 = new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2])-1, parseInt(isoMatch[3]));
+      if (!isNaN(dt2.getTime())) return dt2.toDateString() === todayStr;
+    }
+    // Fallback: try native Date parse
+    var dt3 = new Date(d);
+    if (!isNaN(dt3.getTime())) return dt3.toDateString() === todayStr;
+    return true; // unparseable date = show it anyway
   });
   const collected  = myOrders.filter(o => o.scanned && o.status === "pending").length;
   const pending    = myOrders.filter(o => !o.scanned && o.status === "pending").length;
