@@ -6317,6 +6317,11 @@ window.App = function App() {
               }
             }
             if (exists) return prev.map(function(o) { return o.id === r.id ? Object.assign({}, o, updated) : o; });
+            // Also check by invoiceNo+assignedDate to prevent realtime duplicates
+            var dupByInvoice = prev.find(function(o) {
+              return o.invoiceNo === updated.invoiceNo && (o.assignedDate||"") === (updated.assignedDate||"");
+            });
+            if (dupByInvoice) return prev.map(function(o) { return (o.invoiceNo === updated.invoiceNo && (o.assignedDate||"") === (updated.assignedDate||"")) ? Object.assign({}, o, updated, {id: o.id}) : o; });
             return [...prev, updated];
           });
         }).subscribe();
