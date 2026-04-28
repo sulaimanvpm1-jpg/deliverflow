@@ -6759,181 +6759,112 @@ window.App = function App() {
   }
 
   function addOrders(newOrders) {
+    // Normalize any date format to D/M/YYYY for consistent comparison
+    function normD(d) {
+      if (!d) return "";
+      var m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return parseInt(m[3]) + "/" + parseInt(m[2]) + "/" + m[1];
+      return d;
+    }
+    var todayStr = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
+
 setOrders(function(prev) {
-      // Track ALL existing records — use a set of invoiceNos for "has any record" check
-      // and a separate map for the specific record to merge with
-      const existingByInvoice = {};  // invoiceNo → array of existing orders
-      prev.forEach(function(o) {
-        if (!existingByInvoice[o.invoiceNo]) existingByInvoice[o.invoiceNo] = [];
-        existingByInvoice[o.invoiceNo].push(o);
-      });
-      // For the fresh check — has a PENDING today's order already been added?
-      const existingMap = {};
-      prev.forEach(function(o) { existingMap[o.invoiceNo] = o; });
       const fresh = [];
+      // Track invoiceNos that already have a today-pending record (prev or fresh)
+      const todayPendingSet = new Set();
+      prev.forEach(function(o) {
+        if (o.status === "pending" && !o.scanned && normD(o.assignedDate||o.date||"") === todayStr) {
+          todayPendingSet.add(o.invoiceNo);
+        }
+      });
+
+      // Step 1: update/merge existing records
       const merged = prev.map(function(o) {
         const match = newOrders.find(function(n) { return n.invoiceNo === o.invoiceNo && !n._forceInsert; });
-        if (match) {
-          var todayStr = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
+        if (!match) return o;
 
-          // ── SKIP/RESET rules ──────────────────────────────────────────────
-          // delivered/cancelled from a PREVIOUS day → the same invoice is being
-          // re-assigned today (e.g. customer reordered, or admin re-uploaded).
-          // Treat as a fresh new order for today — push to fresh[], keep old record.
-          if (o.status === "delivered" || o.status === "cancelled") {
-            var oldDate = o.assignedDate || o.date || "";
-            var newDate = match.assignedDate || todayStr;
-            // Normalize both dates to comparable format
-            // DB may return ISO (2026-04-27) while local uses DD/MM/YYYY (27/4/2026)
-            function normDate(d) {
-              if (!d) return "";
-              var iso = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
-              if (iso) return parseInt(iso[3]) + "/" + parseInt(iso[2]) + "/" + iso[1];
-              return d;
-            }
-            var oldNorm = normDate(oldDate);
-            var newNorm = normDate(newDate);
-            // If dates differ → new day re-assignment, create fresh order
-            if (!oldNorm || !newNorm || oldNorm !== newNorm) {
-              var freshId = uid();
-              fresh.push({ ...match, id: freshId, status:"pending", scanned:false, assignedDate:newNorm || newDate });
-              return o; // keep old historical record
-            }
-            // Same date — truly a duplicate, skip
-            return o;
+        if (o.status === "delivered" || o.status === "cancelled") {
+          var oldN = normD(o.assignedDate||o.date||"");
+          var newN = normD(match.assignedDate||todayStr);
+          if (oldN !== newN && !todayPendingSet.has(o.invoiceNo)) {
+            fresh.push({ ...match, id: uid(), status:"pending", scanned:false, assignedDate:newN||todayStr });
+            todayPendingSet.add(o.invoiceNo);
           }
-          if (o.scanned === true && o.status === "pending") {
-            // Already collected at warehouse from a previous upload today or yesterday
-            // Don't reset scanned or date — just update OO number if newly available
-            var ooUpdated = {
-              ...o,
-              onlineOrderNo: match.onlineOrderNo || o.onlineOrderNo || "",
-            };
-            return ooUpdated;
-          }
-
-          // Postponed = re-upload for retry → reset fully to today
-          var isReupload = (o.status === "postponed");
-          var newAssignedDate = isReupload ? todayStr : (match.assignedDate || todayStr);
-
-          var updated = {
-            ...o,
-            onlineOrderNo: match.onlineOrderNo || o.onlineOrderNo || "",
-            assignedDate: newAssignedDate,
-            driverId: match.driverId || o.driverId,
-            customer: (match.customer && match.customer !== "Unknown") ? match.customer : o.customer,
-            address: match.address || o.address || "",
-            phone: match.phone || o.phone || "",
-            status:  isReupload ? "pending" : o.status,
-            scanned: isReupload ? false     : o.scanned,
-          };
-          // Direct DB update - split into core fields and optional fields
-          var sb = getSupabase && getSupabase();
-          if (sb && updated.id) {
-            sb.from("orders").update({
-              online_order_no: updated.onlineOrderNo || "",
-              driver_id: updated.driverId || null,
-              customer: updated.customer || "",
-              address: updated.address || "",
-              phone: updated.phone || "",
-              status: updated.status,
-              scanned: updated.scanned,
-              updated_at: new Date().toISOString(),
-            }).eq("id", updated.id).then(function(){}, function(e){ console.warn("OO update err:", e); });
-            sb.from("orders").update({ assigned_date: newAssignedDate })
-              .eq("id", updated.id).then(function(){}, function(){});
-          }
-          return updated;
+          return o;
         }
-        return o;
+        if (o.scanned === true && o.status === "pending") {
+          return { ...o, onlineOrderNo: match.onlineOrderNo || o.onlineOrderNo || "" };
+        }
+        var isReup = (o.status === "postponed");
+        var newAD = isReup ? todayStr : (normD(match.assignedDate)||todayStr);
+        if (isReup) todayPendingSet.add(o.invoiceNo);
+        var updated = {
+          ...o,
+          onlineOrderNo: match.onlineOrderNo||o.onlineOrderNo||"",
+          assignedDate: newAD,
+          driverId: match.driverId||o.driverId,
+          customer: (match.customer&&match.customer!=="Unknown")?match.customer:o.customer,
+          address: match.address||o.address||"",
+          phone: match.phone||o.phone||"",
+          status: isReup?"pending":o.status,
+          scanned: isReup?false:o.scanned,
+        };
+        var sb0 = getSupabase&&getSupabase();
+        if (sb0&&updated.id) {
+          sb0.from("orders").update({ online_order_no:updated.onlineOrderNo||"", driver_id:updated.driverId||null,
+            customer:updated.customer||"", address:updated.address||"", phone:updated.phone||"",
+            status:updated.status, scanned:updated.scanned, assigned_date:newAD,
+            updated_at:new Date().toISOString() }).eq("id",updated.id).then(function(){},function(){});
+        }
+        return updated;
       });
-      // Batch insert all fresh orders in ONE upsert call (much more reliable)
-      var freshRows = [];
+
+      // Step 2: add brand-new invoices
       newOrders.forEach(function(n) {
-        var existingRecords = existingByInvoice[n.invoiceNo] || [];
-        // Already has a today-pending record for this invoice? Skip.
-        var todayStr2 = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
-        var hasTodayPending = existingRecords.some(function(o) {
-          var od = o.assignedDate || o.date || "";
-          return o.status === "pending" && !o.scanned && (od === todayStr2 || od === "");
-        });
-        // Also check fresh[] for duplicate
-        var alreadyInFresh = fresh.some(function(f) { return f.invoiceNo === n.invoiceNo; });
-        if ((!existingMap[n.invoiceNo] || n._forceInsert) && !alreadyInFresh) {
-          var newOrder = { ...n, id: n.id || uid() };
-          delete newOrder._forceInsert;
-          fresh.push(newOrder);
-          freshRows.push({
-            id: newOrder.id,
-            invoice_no: newOrder.invoiceNo,
-            online_order_no: newOrder.onlineOrderNo || "",
-            date: newOrder.date || (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })(),
-            assigned_date: newOrder.assignedDate || "",
-            store: newOrder.store || "",
-            customer: newOrder.customer || "",
-            address: newOrder.address || "",
-            phone: newOrder.phone || "",
-            total: newOrder.total || 0,
-            payment_type: newOrder.paymentType || "Cash",
-            original_payment_type: newOrder.originalPaymentType || "",
-            status: newOrder.status || "pending",
-            driver_id: newOrder.driverId || null,
-            scanned: newOrder.scanned || false,
-            note: newOrder.note || "",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
+        var isForce = n._forceInsert;
+        var existsInPrev = prev.some(function(o){ return o.invoiceNo===n.invoiceNo; });
+        var alreadyFresh = todayPendingSet.has(n.invoiceNo);
+        if (isForce || (!existsInPrev && !alreadyFresh)) {
+          var fo = { ...n, id: n.id||uid() };
+          delete fo._forceInsert;
+          fresh.push(fo);
+          todayPendingSet.add(fo.invoiceNo);
         }
       });
 
-      // Single batch upsert — far more reliable than N individual calls
-      if (freshRows.length > 0) {
-        var sb = getSupabase && getSupabase();
-        if (sb) {
-          setSaveStatus("Saving " + freshRows.length + " orders to database...");
-          var chunkSize = 50;
-          var totalChunks = Math.ceil(freshRows.length / chunkSize);
-          var savedChunks = 0;
-          var failedChunks = 0;
-          for (var ci = 0; ci < freshRows.length; ci += chunkSize) {
-            (function(chunk) {
-              sb.from("orders").upsert(chunk, { onConflict: "id" })
-                .then(function(res) {
-                  savedChunks++;
-                  if (res && res.error) {
-                    failedChunks++;
-                    console.warn("Upsert error:", res.error.message);
-                    // Retry without assigned_date if column doesn't exist
-                    if (res.error.message && res.error.message.includes("assigned_date")) {
-                      var fallback = chunk.map(function(r) {
-                        var c2 = Object.assign({}, r);
-                        delete c2.assigned_date;
-                        return c2;
-                      });
-                      sb.from("orders").upsert(fallback, { onConflict: "id" })
-                        .then(function(){}, function(){});
-                    }
-                  }
-                  if (savedChunks === totalChunks) {
-                    setSaveStatus(failedChunks > 0 ? "⚠️ Some orders may not have saved. Check connection." : "✅ All " + freshRows.length + " orders saved to database!");
-                    setTimeout(function() { setSaveStatus(""); }, 3000);
-                  }
-                }, function(e) {
-                  failedChunks++;
-                  savedChunks++;
-                  console.warn("Batch insert error:", e);
-                  if (savedChunks === totalChunks) {
-                    setSaveStatus("⚠️ Database save failed: " + (e.message||"unknown error"));
-                    setTimeout(function() { setSaveStatus(""); }, 5000);
-                  }
-                });
-            })(freshRows.slice(ci, ci + chunkSize));
-          }
+      // Step 3: batch upsert fresh to Supabase
+      if (fresh.length > 0) {
+        var rows = fresh.map(function(o){ return {
+          id:o.id, invoice_no:o.invoiceNo, online_order_no:o.onlineOrderNo||"",
+          date:o.date||todayStr, assigned_date:o.assignedDate||todayStr,
+          store:o.store||"", customer:o.customer||"", address:o.address||"", phone:o.phone||"",
+          total:o.total||0, payment_type:o.paymentType||"Cash", original_payment_type:o.originalPaymentType||"",
+          status:o.status||"pending", driver_id:o.driverId||null, scanned:o.scanned||false,
+          note:o.note||"", created_at:new Date().toISOString(), updated_at:new Date().toISOString(),
+        }; });
+        var sbx = getSupabase&&getSupabase();
+        if (sbx) {
+          setSaveStatus("Saving "+rows.length+" orders...");
+          var chunks=[], ci2=0;
+          for(;ci2<rows.length;ci2+=50) chunks.push(rows.slice(ci2,ci2+50));
+          var done2=0,errs2=0;
+          chunks.forEach(function(chunk){
+            sbx.from("orders").upsert(chunk,{onConflict:"id"}).then(function(res){
+              done2++; if(res&&res.error){errs2++;console.warn("Upsert:",res.error.message);}
+              if(done2===chunks.length){
+                setSaveStatus(errs2?"⚠️ Some orders failed to save":"✅ "+rows.length+" orders saved!");
+                setTimeout(function(){setSaveStatus("");},3000);
+              }
+            },function(e){done2++;errs2++;console.warn("Upsert err:",e);
+              if(done2===chunks.length){setSaveStatus("⚠️ Save failed");setTimeout(function(){setSaveStatus("");},5000);}
+            });
+          });
         } else {
-          setSaveStatus("⚠️ No database connection — orders saved locally only");
-          setTimeout(function() { setSaveStatus(""); }, 4000);
+          setSaveStatus("⚠️ No DB connection — saved locally only");
+          setTimeout(function(){setSaveStatus("");},4000);
         }
       }
+
       const final = [...merged, ...fresh];
       lsSet(LS_KEYS.orders, final);
       return final;
