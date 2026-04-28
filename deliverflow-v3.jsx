@@ -5814,6 +5814,9 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
                 Hi, <span style={{ color:"rgba(255,255,255,.6)", fontWeight:600 }}>{user.name}</span>
                 {myOrders.length > 0 && <span style={{ color:"rgba(255,90,31,.7)", marginLeft:6 }}>· {myOrders.length} orders today</span>}
               </div>
+              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.25)", fontSize:10, marginTop:1 }}>
+                {new Date().toLocaleDateString("en-KW", { weekday:"short", day:"numeric", month:"long", year:"numeric" })}
+              </div>
             </div>
           </div>
           <div style={{ display:"flex", gap:6, alignItems:"center" }}>
