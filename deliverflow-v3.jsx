@@ -6448,21 +6448,20 @@ window.App = function App() {
     }
 
     loadSupabaseSDK(runFetch);
+  }, [user]);
 
-    // ── Polling fallback (every 30s) ─────────────────────────────────────────
-    // Realtime may not work on all networks/devices. Poll as a reliable backup.
-    // Only fetch orders (lightweight) — full sync happens on login.
+  // ── Polling fallback (every 30s) — separate useEffect ──────────────────────
+  useEffect(function() {
+    if (!user) return;
     var pollInterval = setInterval(function() {
       if (!user) return;
       dbLoadOrders().then(function(data) {
         if (!data || data.length === 0) return;
         setOrders(function(prev) {
-          // Same merge logic: preserve local-only orders, update existing
           var dbMap = {};
           data.forEach(function(o) { if (o.invoiceNo) dbMap[o.invoiceNo] = o; });
           var localOnly = prev.filter(function(o) { return o.invoiceNo && !dbMap[o.invoiceNo]; });
           var merged = data.concat(localOnly);
-          // Only update state if something actually changed (avoid re-renders)
           var prevMap = {};
           prev.forEach(function(o) { prevMap[o.id] = o.status + "|" + o.driverId + "|" + o.scanned; });
           var changed = merged.some(function(o) {
@@ -6473,8 +6472,7 @@ window.App = function App() {
           return merged;
         });
       }).catch(function(){});
-    }, 30000); // every 30 seconds
-
+    }, 30000);
     return function() { clearInterval(pollInterval); };
   }, [user]);
 
