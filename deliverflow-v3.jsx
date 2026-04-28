@@ -1633,6 +1633,13 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
   const [bulkSelected, setBulkSelected] = useState(new Set());
   const [removeMode, setRemoveMode]     = useState(false);
   const [refreshing, setRefreshing]     = useState(false);
+
+  // Auto-refresh every 10s when no orders assigned yet
+  useEffect(function() {
+    if (myOrders.length > 0 || !onRefresh) return;
+    var t = setInterval(function() { onRefresh(function(){}); }, 10000);
+    return function() { clearInterval(t); };
+  }, [myOrders.length]);
   const _today = new Date().toDateString();
   const _allMine = orders.filter(o => o.driverId === driverId);
   const myOrders = _allMine.filter(function(o) {
@@ -1956,6 +1963,9 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
               }} style={{ background:"rgba(0,212,255,.1)", border:"1px solid rgba(0,212,255,.3)", borderRadius:12, padding:"10px 20px", color:"#00D4FF", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer" }}>
                 {refreshing ? "⟳ Syncing..." : "⟳ Sync Now"}
               </button>
+              <div style={{ color:"rgba(255,255,255,.2)", fontSize:11, marginTop:10, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif" }}>
+                Auto-checking every 10 seconds...
+              </div>
             </div>
           ) : (
             <>
