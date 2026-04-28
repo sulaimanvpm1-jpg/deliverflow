@@ -1623,7 +1623,7 @@ function TransferModal({ order, fromDriverId, onRequestTransfer, onClose }) {
 }
 
 /*  Driver: Warehouse Collection Screen  */
-function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpenTransfer, onRemoveOrder }) {
+function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpenTransfer, onRemoveOrder, onRefresh }) {
   const [scanInput, setScanInput]       = useState("");
   const [scanResult, setScanResult]     = useState(null);
   const [wrongDriver, setWrongDriver]   = useState(null);
@@ -1631,7 +1631,8 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
   const [scanning, setScanning]         = useState(false);
   const [tab, setTab]                   = useState("scan");
   const [bulkSelected, setBulkSelected] = useState(new Set());
-  const [removeMode, setRemoveMode]       = useState(false);
+  const [removeMode, setRemoveMode]     = useState(false);
+  const [refreshing, setRefreshing]     = useState(false);
   const _today = new Date().toDateString();
   const _allMine = orders.filter(o => o.driverId === driverId);
   const myOrders = _allMine.filter(function(o) {
