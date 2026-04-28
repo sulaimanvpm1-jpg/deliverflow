@@ -6840,12 +6840,32 @@ setOrders(function(prev) {
           status: isReup?"pending":o.status,
           scanned: isReup?false:o.scanned,
         };
+        // Always write postponed resets to Supabase — critical for cross-device sync
         var sb0 = getSupabase&&getSupabase();
         if (sb0&&updated.id) {
-          sb0.from("orders").update({ online_order_no:updated.onlineOrderNo||"", driver_id:updated.driverId||null,
-            customer:updated.customer||"", address:updated.address||"", phone:updated.phone||"",
-            status:updated.status, scanned:updated.scanned, assigned_date:newAD,
-            updated_at:new Date().toISOString() }).eq("id",updated.id).then(function(){},function(){});
+          sb0.from("orders").update({
+            online_order_no: updated.onlineOrderNo||"",
+            driver_id: updated.driverId||null,
+            customer: updated.customer||"",
+            address: updated.address||"",
+            phone: updated.phone||"",
+            status: updated.status,
+            scanned: updated.scanned,
+            assigned_date: newAD,
+            updated_at: new Date().toISOString(),
+          }).eq("id", updated.id).then(
+            function(res) {
+              if (res && res.error) {
+                console.warn("Postponed update err:", res.error.message);
+                // Fallback: try upsert by invoice_no
+                sb0.from("orders").update({
+                  status: "pending", scanned: false, assigned_date: newAD,
+                  updated_at: new Date().toISOString(),
+                }).eq("invoice_no", updated.invoiceNo).then(function(){}, function(){});
+              }
+            },
+            function(e) { console.warn("Postponed update failed:", e); }
+          );
         }
         return updated;
       });
