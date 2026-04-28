@@ -6759,13 +6759,19 @@ setOrders(function(prev) {
         if (match) {
           var todayStr = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
 
-          // ── SKIP rules: don't touch orders that already have a final/active state ──
-          // delivered  → permanent record, never overwrite
-          // cancelled  → permanent record, never overwrite
-          // collected (scanned=true, pending) → already at warehouse, don't reset
-          // The ONLY case we actively reset is: postponed → new day retry
+          // ── SKIP/RESET rules ──────────────────────────────────────────────
+          // delivered/cancelled from a PREVIOUS day → the same invoice is being
+          // re-assigned today (e.g. customer reordered, or admin re-uploaded).
+          // Treat as a fresh new order for today — push to fresh[], keep old record.
           if (o.status === "delivered" || o.status === "cancelled") {
-            // Just silently skip — keep existing record exactly as-is
+            var oldDate = o.assignedDate || o.date || "";
+            var newDate = match.assignedDate || todayStr;
+            // If the new assignment is for a different date, it's a new order
+            if (oldDate !== newDate) {
+              fresh.push({ ...match, id: match.id || uid(), status:"pending", scanned:false, assignedDate:newDate });
+              return o; // keep old historical record too
+            }
+            // Same date — truly a duplicate, skip
             return o;
           }
           if (o.scanned === true && o.status === "pending") {
