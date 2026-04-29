@@ -1635,17 +1635,11 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
   const [removeMode, setRemoveMode]     = useState(false);
   const [refreshing, setRefreshing]     = useState(false);
 
-  // Auto-refresh every 10s when no orders assigned yet
-  useEffect(function() {
-    if (myOrders.length > 0 || !onRefresh) return;
-    var t = setInterval(function() { onRefresh(function(){}); }, 10000);
-    return function() { clearInterval(t); };
-  }, [myOrders.length]);
   const _today = new Date().toDateString();
   const _allMine = orders.filter(o => o.driverId === driverId);
   const myOrders = _allMine.filter(function(o) {
     const d = o.assignedDate || o.date || "";
-    if (!d) return true; // no date = newly assigned, always show
+    if (!d) return true;
     const p = d.split("/");
     if (p.length === 3) {
       const dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
@@ -1660,6 +1654,13 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
     if (!isNaN(dt3.getTime())) return dt3.toDateString() === _today;
     return true;
   });
+
+  // Auto-refresh every 10s when no orders assigned yet — AFTER myOrders is defined
+  useEffect(function() {
+    if (myOrders.length > 0 || !onRefresh) return;
+    var t = setInterval(function() { onRefresh(function(){}); }, 10000);
+    return function() { clearInterval(t); };
+  }, [myOrders.length]);
   const allOrders = orders; // to look up other drivers' orders
   const unscanned = myOrders.filter(o => !o.scanned && o.status === "pending");
   const scanned   = myOrders.filter(o => o.scanned);
