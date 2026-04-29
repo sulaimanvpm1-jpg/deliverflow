@@ -5736,7 +5736,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
 }
 
 /*  Driver App  */
-function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDeleteExpense, onScan, onStatusUpdate, onLogout, onRequestTransfer, onRemoveOrder, onRequestHelp, orderTags, onSetTag, onAddOrder, selectedDate, onSetSelectedDate, onEditOrder }) {
+function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDeleteExpense, onScan, onStatusUpdate, onLogout, onRequestTransfer, onRemoveOrder, onRequestHelp, orderTags, onSetTag, onAddOrder, selectedDate, onSetSelectedDate, onEditOrder, onRefresh }) {
   // Wrapper: driver manual orders go through addOrders but also mark as scanned
   const [tab, setTab]               = useState("warehouse");
   // Shim so updateOrderDetails is always in scope
