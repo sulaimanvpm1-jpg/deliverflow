@@ -5996,7 +5996,7 @@ async function dbUpsertOrders(orders) {
   if (error) console.warn("Supabase upsert orders:", error.message);
 }
 
-async function dbUpdateOrder(id, fields) {
+async function dbUpdateOrder(id, fields, invoiceNo) {
   const sb = getSupabase();
   if (!sb) return;
   const row = {};
@@ -6008,9 +6008,19 @@ async function dbUpdateOrder(id, fields) {
   if (fields.paymentType !== undefined) row.payment_type = fields.paymentType;
   if (fields.originalPaymentType !== undefined) row.original_payment_type = fields.originalPaymentType;
   if (fields.total !== undefined && typeof fields.total === "number" && fields.total >= 0 && fields.total <= 99999) row.total = fields.total;
+  if (fields.assignedDate !== undefined) row.assigned_date = fields.assignedDate;
+  if (fields.extraAmount !== undefined)  row.extra_amount = fields.extraAmount;
   row.updated_at = new Date().toISOString();
-  const { error } = await sb.from("orders").update(row).eq("id", id);
-  if (error) console.warn("Supabase update order:", error.message);
+
+  // Try update by id first
+  const { data, error } = await sb.from("orders").update(row).eq("id", id).select("id");
+  if (error) { console.warn("Supabase update order by id:", error.message); }
+
+  // If no rows matched (id not in DB), fallback to invoice_no
+  if (!error && (!data || data.length === 0) && invoiceNo) {
+    const { error: e2 } = await sb.from("orders").update(row).eq("invoice_no", invoiceNo);
+    if (e2) console.warn("Supabase update order by invoice_no:", e2.message);
+  }
 }
 
 async function dbLoadExpenses() {
@@ -6400,11 +6410,55 @@ window.App = function App() {
           var dbById = {};
           dbOrders.forEach(function(o) { if (o.id) dbById[o.id] = o; });
 
+          // Build local map by id for status comparison
+          var localById = {};
+          localOrders.forEach(function(o) {
+            if (o.id) localById[o.id] = o;
+            // Also index by invoiceNo for fallback matching
+          });
+          var localByInvoice = {};
+          localOrders.forEach(function(o) { if (o.invoiceNo) localByInvoice[o.invoiceNo] = o; });
+
           // Prefer DB OO number from local if DB is missing it
           var localOOMap = {};
           localOrders.forEach(function(o) { if (o.invoiceNo && o.onlineOrderNo) localOOMap[o.invoiceNo] = o.onlineOrderNo; });
 
           var mergedDbOrders = dbOrders.map(function(o) {
+            var localMatch = localById[o.id] || localByInvoice[o.invoiceNo];
+
+            // If local has a NEWER status update than DB — use local version
+            // This happens when DB write is delayed or failed
+            if (localMatch) {
+              var dbTime    = new Date(o.updatedAt || o.updated_at || 0).getTime();
+              var localTime = new Date(localMatch.updatedAt || localMatch.updated_at || 0).getTime();
+              if (localTime > dbTime && localMatch.status !== "pending") {
+                // Local is newer AND has a meaningful status — trust local
+                // But re-sync it to DB to fix the lag
+                var sbFix = getSupabase();
+                if (sbFix) {
+                  sbFix.from("orders").update({
+                    status: localMatch.status,
+                    scanned: localMatch.scanned || false,
+                    note: localMatch.note || "",
+                    payment_type: localMatch.paymentType || o.payment_type,
+                    updated_at: new Date().toISOString(),
+                  }).eq("id", o.id).then(function(){}, function(){
+                    // Fallback: update by invoice_no
+                    sbFix.from("orders").update({
+                      status: localMatch.status, scanned: localMatch.scanned||false,
+                      updated_at: new Date().toISOString(),
+                    }).eq("invoice_no", o.invoiceNo).then(function(){}, function(){});
+                  });
+                }
+                return Object.assign({}, o, {
+                  status: localMatch.status,
+                  scanned: localMatch.scanned,
+                  note: localMatch.note || o.note,
+                  onlineOrderNo: localMatch.onlineOrderNo || o.onlineOrderNo || localOOMap[o.invoiceNo] || "",
+                });
+              }
+            }
+
             if (!o.onlineOrderNo && localOOMap[o.invoiceNo]) {
               return Object.assign({}, o, { onlineOrderNo: localOOMap[o.invoiceNo] });
             }
@@ -6949,7 +7003,7 @@ setOrders(function(prev) {
             return o;
           }
           const newO = { ...o, scanned:true, scannedAt: new Date().toISOString() };
-          dbUpdateOrder(newO.id, { scanned:true });
+          dbUpdateOrder(newO.id, { scanned:true }, newO.invoiceNo);
           return newO;
         }
         return o;
@@ -6980,7 +7034,7 @@ setOrders(function(prev) {
             status, note: note||"",
             ...(newPaymentType ? { paymentType: newPaymentType, originalPaymentType: o.paymentType } : {}),
             ...(typeof newTotal === "number" && newTotal > 0 ? { total: newTotal } : {}),
-          });
+          }, updatedOrder.invoiceNo);
           return updatedOrder;
         }
         return o;
