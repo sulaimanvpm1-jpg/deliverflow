@@ -6395,70 +6395,54 @@ window.App = function App() {
 
         if (dbOrders && dbOrders.length > 0) {
           var localOrders = lsGet(LS_KEYS.orders, []);
-          var localMap = {};
-          localOrders.forEach(function(o) { if (o.invoiceNo) localMap[o.invoiceNo] = o; });
 
-          // Build a map of DB orders by invoiceNo
-          var dbMap = {};
-          dbOrders.forEach(function(o) { if (o.invoiceNo) dbMap[o.invoiceNo] = o; });
+          // Build maps keyed by id (most reliable) and invoiceNo+date combo
+          var dbById = {};
+          dbOrders.forEach(function(o) { if (o.id) dbById[o.id] = o; });
 
-          // Merge strategy:
-          // 1. Start with DB orders (source of truth for existing records)
-          //    but prefer local OO number if DB doesn't have it yet
+          // Prefer DB OO number from local if DB is missing it
+          var localOOMap = {};
+          localOrders.forEach(function(o) { if (o.invoiceNo && o.onlineOrderNo) localOOMap[o.invoiceNo] = o.onlineOrderNo; });
+
           var mergedDbOrders = dbOrders.map(function(o) {
-            var loc = localMap[o.invoiceNo];
-            if (loc && loc.onlineOrderNo && !o.onlineOrderNo) {
-              return Object.assign({}, o, { onlineOrderNo: loc.onlineOrderNo });
+            if (!o.onlineOrderNo && localOOMap[o.invoiceNo]) {
+              return Object.assign({}, o, { onlineOrderNo: localOOMap[o.invoiceNo] });
             }
             return o;
           });
 
-          // 2. Add any LOCAL-ONLY orders that aren't in DB yet
-          //    This includes: (a) truly new invoices not in DB
-          //                   (b) same invoice but different assignedDate (new day re-assignment)
-          var localOnlyOrders = localOrders.filter(function(o) {
-            if (!o.invoiceNo) return false;
-            var dbRecord = dbMap[o.invoiceNo];
-            if (!dbRecord) return true; // truly new — not in DB at all
-            // Same invoice exists in DB but local has a NEWER assignedDate
-            // This means it's a new day's assignment that failed to save
-            var dbDate = dbRecord.assignedDate || dbRecord.date || "";
-            var localDate = o.assignedDate || o.date || "";
-            if (localDate && dbDate && localDate !== dbDate && o.status === "pending") return true;
-            return false;
+          // Add local-only orders (those whose id is NOT in DB)
+          // These are orders assigned but not yet saved to Supabase
+          var localOnly = localOrders.filter(function(o) {
+            return o.id && !dbById[o.id];
           });
-          if (localOnlyOrders.length > 0) {
-            mergedDbOrders = mergedDbOrders.concat(localOnlyOrders);
-            // Immediately try to save these to Supabase
-            var sb = getSupabase();
-            if (sb) {
-              var rows = localOnlyOrders.map(function(o) {
-                return {
-                  id: o.id || uid(),
-                  invoice_no: o.invoiceNo,
-                  driver_id: o.driverId || null,
-                  store: o.store || "",
-                  customer: o.customer || "",
-                  address: o.address || "",
-                  phone: o.phone || "",
-                  total: o.total || 0,
-                  payment_type: o.paymentType || "Cash",
-                  status: o.status || "pending",
-                  scanned: o.scanned || false,
-                  online_order_no: o.onlineOrderNo || "",
-                  date: o.date || "",
-                  assigned_date: o.assignedDate || "",
-                  note: o.note || "",
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                };
-              });
-              sb.from("orders").upsert(rows, { onConflict: "id" })
-                .then(function(){}, function(e){ console.warn("Re-sync local orders:", e); });
+
+          if (localOnly.length > 0) {
+            mergedDbOrders = mergedDbOrders.concat(localOnly);
+            // Try to save them to Supabase
+            var sbSync = getSupabase();
+            if (sbSync) {
+              var syncRows = localOnly.map(function(o) { return {
+                id: o.id, invoice_no: o.invoiceNo, online_order_no: o.onlineOrderNo||"",
+                date: o.date||"", assigned_date: o.assignedDate||"",
+                store: o.store||"", customer: o.customer||"", address: o.address||"",
+                phone: o.phone||"", total: o.total||0, payment_type: o.paymentType||"Cash",
+                original_payment_type: o.originalPaymentType||"",
+                status: o.status||"pending", driver_id: o.driverId||null,
+                scanned: o.scanned||false, note: o.note||"",
+                created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+              }; });
+              sbSync.from("orders").upsert(syncRows, { onConflict: "id" })
+                .then(function(){}, function(e){ console.warn("Re-sync err:", e); });
             }
           }
 
-          setOrders(mergedDbOrders);
+          // Final dedup by id — never show the same record twice
+          var seenIds = new Set();
+          mergedDbOrders = mergedDbOrders.filter(function(o) {
+            if (!o.id || seenIds.has(o.id)) return false;
+            seenIds.add(o.id); return true;
+          });          setOrders(mergedDbOrders);
           lsSet(LS_KEYS.orders, mergedDbOrders);
 
           // ── Missed-notification recovery ─────────────────────────────────
