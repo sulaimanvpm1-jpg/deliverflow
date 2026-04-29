@@ -1635,6 +1635,15 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
   const [removeMode, setRemoveMode]     = useState(false);
   const [refreshing, setRefreshing]     = useState(false);
 
+  // Auto-refresh every 10s when no orders assigned yet
+  // Use orders.length (available before myOrders) — hooks must come before non-hook code
+  const _myOrderCount = orders.filter(function(o) { return o.driverId === driverId; }).length;
+  useEffect(function() {
+    if (_myOrderCount > 0 || !onRefresh) return;
+    var t = setInterval(function() { onRefresh(function(){}); }, 10000);
+    return function() { clearInterval(t); };
+  }, [_myOrderCount]);
+
   const _today = new Date().toDateString();
   const _allMine = orders.filter(o => o.driverId === driverId);
   const myOrders = _allMine.filter(function(o) {
@@ -1655,13 +1664,7 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
     return true;
   });
 
-  // Auto-refresh every 10s when no orders assigned yet — AFTER myOrders is defined
-  useEffect(function() {
-    if (myOrders.length > 0 || !onRefresh) return;
-    var t = setInterval(function() { onRefresh(function(){}); }, 10000);
-    return function() { clearInterval(t); };
-  }, [myOrders.length]);
-  const allOrders = orders; // to look up other drivers' orders
+  const allOrders = orders;
   const unscanned = myOrders.filter(o => !o.scanned && o.status === "pending");
   const scanned   = myOrders.filter(o => o.scanned);
 
