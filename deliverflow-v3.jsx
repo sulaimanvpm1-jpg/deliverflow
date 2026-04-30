@@ -6585,6 +6585,21 @@ window.App = function App() {
     }
 
     loadSupabaseSDK(runFetch);
+
+    // Auto-cleanup: delete orders older than 7 days from Supabase
+    // Runs once per session, only for admin users
+    if (user && user.role === "admin") {
+      loadSupabaseSDK(function() {
+        var sbClean = getSupabase && getSupabase();
+        if (!sbClean) return;
+        var cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        sbClean.from("orders").delete().lt("created_at", cutoff)
+          .then(function(res) {
+            if (res && res.error) console.warn("Cleanup err:", res.error.message);
+            else console.log("Auto-cleanup: removed orders older than 7 days");
+          }, function(){});
+      });
+    }
   }, [user]);
 
   // ── Polling fallback (every 30s) — read-only, never writes to DB ──────────
