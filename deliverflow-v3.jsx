@@ -1646,22 +1646,24 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
 
   const _today = new Date().toDateString();
   const _allMine = orders.filter(o => o.driverId === driverId);
+
+  function _normDate(d) {
+    if (!d) return "";
+    if (/^[A-Z][a-z]{2} [A-Z][a-z]{2}/.test(d)) return d;
+    var p = d.split("/");
+    if (p.length === 3) { var dt = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0])); if (!isNaN(dt.getTime())) return dt.toDateString(); }
+    var iso = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) { var dt2 = new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3])); if (!isNaN(dt2.getTime())) return dt2.toDateString(); }
+    var dt3 = new Date(d); if (!isNaN(dt3.getTime())) return dt3.toDateString();
+    return "";
+  }
+
   const myOrders = _allMine.filter(function(o) {
-    const d = o.assignedDate || o.date || "";
-    if (!d) return true;
-    const p = d.split("/");
-    if (p.length === 3) {
-      const dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
-      if (!isNaN(dt.getTime())) return dt.toDateString() === _today;
-    }
-    const iso = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) {
-      const dt2 = new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3]));
-      if (!isNaN(dt2.getTime())) return dt2.toDateString() === _today;
-    }
-    const dt3 = new Date(d);
-    if (!isNaN(dt3.getTime())) return dt3.toDateString() === _today;
-    return true;
+    var d = o.assignedDate || o.date || "";
+    if (!d) return o.status === "pending" || o.scanned;
+    var norm = _normDate(d);
+    if (!norm) return o.status === "pending";
+    return norm === _today;
   });
 
   const allOrders = orders;
@@ -2371,37 +2373,27 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
   function showToast(msg) { setToast({ msg, ttype:"success" }); setTimeout(function() { setToast(null); }, 3000); }
 
   const _allMine = orders.filter(function(o) { return o.driverId === driverId; });
-  const myOrders = selectedDate
-    ? _allMine.filter(function(o) {
-        const _d = o.assignedDate || o.date || "";
-        if (!_d) return true;
-        const _p = _d.split("/");
-        if (_p.length === 3) {
-          const _dt = new Date(parseInt(_p[2]), parseInt(_p[1]) - 1, parseInt(_p[0]));
-          if (!isNaN(_dt.getTime())) return _dt.toDateString() === selectedDate;
-        }
-        const _iso = _d.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (_iso) {
-          const _dt2 = new Date(parseInt(_iso[1]), parseInt(_iso[2])-1, parseInt(_iso[3]));
-          if (!isNaN(_dt2.getTime())) return _dt2.toDateString() === selectedDate;
-        }
-        return true;
-      })
-    : _allMine.filter(function(o) {
-        const _d = o.assignedDate || o.date || "";
-        if (!_d) return true;
-        const _p = _d.split("/");
-        if (_p.length === 3) {
-          const _dt = new Date(parseInt(_p[2]), parseInt(_p[1]) - 1, parseInt(_p[0]));
-          if (!isNaN(_dt.getTime())) return _dt.toDateString() === new Date().toDateString();
-        }
-        const _iso = _d.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (_iso) {
-          const _dt2 = new Date(parseInt(_iso[1]), parseInt(_iso[2])-1, parseInt(_iso[3]));
-          if (!isNaN(_dt2.getTime())) return _dt2.toDateString() === new Date().toDateString();
-        }
-        return true;
-      });
+
+  function _nd(d) {
+    if (!d) return "";
+    if (/^[A-Z][a-z]{2} [A-Z][a-z]{2}/.test(d)) return d;
+    var p = d.split("/");
+    if (p.length===3){var dt=new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));if(!isNaN(dt.getTime()))return dt.toDateString();}
+    var iso=d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(iso){var dt2=new Date(parseInt(iso[1]),parseInt(iso[2])-1,parseInt(iso[3]));if(!isNaN(dt2.getTime()))return dt2.toDateString();}
+    var dt3=new Date(d);if(!isNaN(dt3.getTime()))return dt3.toDateString();
+    return "";
+  }
+
+  const _todayDS = new Date().toDateString();
+  const myOrders = _allMine.filter(function(o) {
+    var d = o.assignedDate || o.date || "";
+    var target = selectedDate || _todayDS;
+    if (!d) return o.status === "pending" || o.scanned;
+    var norm = _nd(d);
+    if (!norm) return o.status === "pending";
+    return norm === target;
+  });
   const myStores   = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.store; }).filter(Boolean))));
   const myPayments = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.paymentType; }).filter(function(p) { return p && p !== "Exchange"; }))));
 
@@ -5756,25 +5748,37 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
 
   var allMyOrders = orders.filter(function(o){ return o.driverId === user.id; });
   const todayStr = selectedDate || new Date().toDateString();
-  const myOrders = allMyOrders.filter(function(o) {
-    var d = o.assignedDate || o.date || "";
-    if (!d) return true; // no date = newly assigned, always show
-    // Try DD/MM/YYYY format
-    var parts = d.split("/");
-    if (parts.length === 3) {
-      var dt = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
-      if (!isNaN(dt.getTime())) return dt.toDateString() === todayStr;
+
+  // Normalize any date to toDateString() format for comparison
+  function normToDateStr(d) {
+    if (!d) return "";
+    // Already in toDateString format e.g. "Thu Apr 30 2026"
+    if (/^[A-Z][a-z]{2} [A-Z][a-z]{2}/.test(d)) return d;
+    // DD/MM/YYYY
+    var p = d.split("/");
+    if (p.length === 3) {
+      var dt = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+      if (!isNaN(dt.getTime())) return dt.toDateString();
     }
-    // Try ISO format YYYY-MM-DD
-    var isoMatch = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) {
-      var dt2 = new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2])-1, parseInt(isoMatch[3]));
-      if (!isNaN(dt2.getTime())) return dt2.toDateString() === todayStr;
+    // ISO YYYY-MM-DD
+    var iso = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      var dt2 = new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3]));
+      if (!isNaN(dt2.getTime())) return dt2.toDateString();
     }
-    // Fallback: try native Date parse
+    // Native parse fallback
     var dt3 = new Date(d);
-    if (!isNaN(dt3.getTime())) return dt3.toDateString() === todayStr;
-    return true; // unparseable date = show it anyway
+    if (!isNaN(dt3.getTime())) return dt3.toDateString();
+    return "";
+  }
+
+  const myOrders = allMyOrders.filter(function(o) {
+    // Always show pending/collected orders with no date (newly assigned)
+    var d = o.assignedDate || o.date || "";
+    if (!d) return o.status === "pending" || o.scanned; // no date = show if active
+    var normalized = normToDateStr(d);
+    if (!normalized) return o.status === "pending"; // unparseable = show if pending
+    return normalized === todayStr;
   });
   const collected  = myOrders.filter(o => o.scanned && o.status === "pending").length;
   const pending    = myOrders.filter(o => !o.scanned && o.status === "pending").length;
