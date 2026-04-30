@@ -1963,6 +1963,9 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
               <div style={{ color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:14, marginBottom:16 }}>
                 No orders assigned yet.<br/>Please wait for admin to upload.
               </div>
+              <div style={{ color:"rgba(255,255,255,.2)", fontSize:11, marginBottom:16, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif" }}>
+                Driver: {driverId} · All orders in system: {orders.length} · My orders: {_allMine.length}
+              </div>
               <button onClick={function(){
                 if (refreshing || !onRefresh) return;
                 setRefreshing(true);
