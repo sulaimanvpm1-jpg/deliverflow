@@ -6305,13 +6305,25 @@ window.App = function App() {
               return prev.filter(function(o) { return o.id !== payload.old.id; });
             }
             var r = payload.new;
+            // Only process if record already exists in state (UPDATE only)
+            // Never add new records from realtime INSERT — that causes duplication
+            // New records are added by addOrders() directly
+            var exists = prev.find(function(o) { return o.id === r.id; });
+            if (!exists) {
+              // For INSERT events, only add if invoice doesn't exist at all
+              if (payload.eventType === "INSERT") {
+                var alreadyHave = prev.some(function(o) { return o.invoiceNo === r.invoice_no; });
+                if (alreadyHave) return prev; // already have this invoice — skip
+              } else {
+                return prev; // UPDATE but id not found — skip
+              }
+            }
             var fixedCustomer = r.customer || "";
             var fixedOO = r.online_order_no || "";
             if (/^\d{4,12}$/.test(fixedCustomer) && !fixedOO) {
               fixedOO = fixedCustomer;
               fixedCustomer = "Unknown";
             }
-            var exists = prev.find(function(o) { return o.id === r.id; });
             var updated = {
               id: r.id, invoiceNo: r.invoice_no, onlineOrderNo: fixedOO || (exists && exists.onlineOrderNo) || "",
               date: r.date, assignedDate: (function(){
@@ -6350,11 +6362,6 @@ window.App = function App() {
               }
             }
             if (exists) return prev.map(function(o) { return o.id === r.id ? Object.assign({}, o, updated) : o; });
-            // Also check by invoiceNo+assignedDate to prevent realtime duplicates
-            var dupByInvoice = prev.find(function(o) {
-              return o.invoiceNo === updated.invoiceNo && (o.assignedDate||"") === (updated.assignedDate||"");
-            });
-            if (dupByInvoice) return prev.map(function(o) { return (o.invoiceNo === updated.invoiceNo && (o.assignedDate||"") === (updated.assignedDate||"")) ? Object.assign({}, o, updated, {id: o.id}) : o; });
             return [...prev, updated];
           });
         }).subscribe();
