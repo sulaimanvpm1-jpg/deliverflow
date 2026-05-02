@@ -6551,7 +6551,6 @@ window.App = function App() {
         sbClean.from("orders").delete().lt("created_at", cutoff)
           .then(function(res) {
             if (res && res.error) console.warn("Cleanup err:", res.error.message);
-            else console.log("Auto-cleanup: removed orders older than 7 days");
           }, function(){});
       });
     }
@@ -6856,6 +6855,30 @@ setOrders(function(prev) {
         }
         var isReup = (o.status === "postponed");
         var newAD = isReup ? todayStr : (normD(match.assignedDate)||todayStr);
+
+        if (isReup && !todayPendingSet.has(o.invoiceNo)) {
+          // Postponed order being re-assigned next day:
+          // Use a new stable ID based on today's date so it's a fresh DB record
+          // This guarantees it appears on the driver's dashboard regardless of old ID
+          var reupStableId = (o.invoiceNo + "_" + todayStr.replace(/[^a-zA-Z0-9]/g,"_")).replace(/[^a-zA-Z0-9_]/g,"_");
+          var reupOrder = {
+            ...match,
+            id: reupStableId,
+            status: "pending",
+            scanned: false,
+            assignedDate: todayStr,
+            driverId: match.driverId || o.driverId,
+            customer: (match.customer && match.customer !== "Unknown") ? match.customer : o.customer,
+            address: match.address || o.address || "",
+            phone: match.phone || o.phone || "",
+            onlineOrderNo: match.onlineOrderNo || o.onlineOrderNo || "",
+          };
+          fresh.push(reupOrder);
+          todayPendingSet.add(o.invoiceNo);
+          // Keep old postponed record as history
+          return o;
+        }
+
         if (isReup) todayPendingSet.add(o.invoiceNo);
         var updated = {
           ...o,
@@ -6868,33 +6891,6 @@ setOrders(function(prev) {
           status: isReup?"pending":o.status,
           scanned: isReup?false:o.scanned,
         };
-        // Always write postponed resets to Supabase — critical for cross-device sync
-        var sb0 = getSupabase&&getSupabase();
-        if (sb0&&updated.id) {
-          sb0.from("orders").update({
-            online_order_no: updated.onlineOrderNo||"",
-            driver_id: updated.driverId||null,
-            customer: updated.customer||"",
-            address: updated.address||"",
-            phone: updated.phone||"",
-            status: updated.status,
-            scanned: updated.scanned,
-            assigned_date: newAD,
-            updated_at: new Date().toISOString(),
-          }).eq("id", updated.id).then(
-            function(res) {
-              if (res && res.error) {
-                console.warn("Postponed update err:", res.error.message);
-                // Fallback: try upsert by invoice_no
-                sb0.from("orders").update({
-                  status: "pending", scanned: false, assigned_date: newAD,
-                  updated_at: new Date().toISOString(),
-                }).eq("invoice_no", updated.invoiceNo).then(function(){}, function(){});
-              }
-            },
-            function(e) { console.warn("Postponed update failed:", e); }
-          );
-        }
         return updated;
       });
 
