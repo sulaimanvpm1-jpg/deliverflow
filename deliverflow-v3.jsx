@@ -6419,99 +6419,44 @@ window.App = function App() {
 
         if (dbOrders && dbOrders.length > 0) {
           var localOrders = lsGet(LS_KEYS.orders, []);
-
-          // Build maps keyed by id (most reliable) and invoiceNo+date combo
           var dbById = {};
           dbOrders.forEach(function(o) { if (o.id) dbById[o.id] = o; });
 
-          // Build local map by id for status comparison
-          var localById = {};
-          localOrders.forEach(function(o) {
-            if (o.id) localById[o.id] = o;
-            // Also index by invoiceNo for fallback matching
-          });
-          var localByInvoice = {};
-          localOrders.forEach(function(o) { if (o.invoiceNo) localByInvoice[o.invoiceNo] = o; });
-
-          // Prefer DB OO number from local if DB is missing it
-          var localOOMap = {};
-          localOrders.forEach(function(o) { if (o.invoiceNo && o.onlineOrderNo) localOOMap[o.invoiceNo] = o.onlineOrderNo; });
-
-          var mergedDbOrders = dbOrders.map(function(o) {
-            var localMatch = localById[o.id] || localByInvoice[o.invoiceNo];
-
-            // If local has a NEWER status update than DB — use local version
-            // This happens when DB write is delayed or failed
-            if (localMatch) {
-              var dbTime    = new Date(o.updatedAt || o.updated_at || 0).getTime();
-              var localTime = new Date(localMatch.updatedAt || localMatch.updated_at || 0).getTime();
-              if (localTime > dbTime && localMatch.status !== "pending") {
-                // Local is newer AND has a meaningful status — trust local
-                // But re-sync it to DB to fix the lag
-                var sbFix = getSupabase();
-                if (sbFix) {
-                  sbFix.from("orders").update({
-                    status: localMatch.status,
-                    scanned: localMatch.scanned || false,
-                    note: localMatch.note || "",
-                    payment_type: localMatch.paymentType || o.payment_type,
-                    updated_at: new Date().toISOString(),
-                  }).eq("id", o.id).then(function(){}, function(){
-                    // Fallback: update by invoice_no
-                    sbFix.from("orders").update({
-                      status: localMatch.status, scanned: localMatch.scanned||false,
-                      updated_at: new Date().toISOString(),
-                    }).eq("invoice_no", o.invoiceNo).then(function(){}, function(){});
-                  });
-                }
-                return Object.assign({}, o, {
-                  status: localMatch.status,
-                  scanned: localMatch.scanned,
-                  note: localMatch.note || o.note,
-                  onlineOrderNo: localMatch.onlineOrderNo || o.onlineOrderNo || localOOMap[o.invoiceNo] || "",
-                });
+          var finalOrders;
+          if (user && user.role === "driver") {
+            // Drivers: DB is single source of truth — no local merge
+            finalOrders = dbOrders;
+          } else {
+            // Admin: add local-only orders not yet in DB
+            var localOOMap = {};
+            localOrders.forEach(function(o) { if (o.invoiceNo && o.onlineOrderNo) localOOMap[o.invoiceNo] = o.onlineOrderNo; });
+            var merged2 = dbOrders.map(function(o) {
+              if (!o.onlineOrderNo && localOOMap[o.invoiceNo]) return Object.assign({}, o, { onlineOrderNo: localOOMap[o.invoiceNo] });
+              return o;
+            });
+            var localOnly = localOrders.filter(function(o) { return o.id && !dbById[o.id]; });
+            if (localOnly.length > 0) {
+              merged2 = merged2.concat(localOnly);
+              var sbSync = getSupabase();
+              if (sbSync) {
+                var syncRows = localOnly.map(function(o) { return {
+                  id: o.id, invoice_no: o.invoiceNo, online_order_no: o.onlineOrderNo||"",
+                  date: o.date||"", assigned_date: o.assignedDate||"", store: o.store||"",
+                  customer: o.customer||"", address: o.address||"", phone: o.phone||"",
+                  total: o.total||0, payment_type: o.paymentType||"Cash",
+                  original_payment_type: o.originalPaymentType||"", status: o.status||"pending",
+                  driver_id: o.driverId||null, scanned: o.scanned||false, note: o.note||"",
+                  created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+                }; });
+                sbSync.from("orders").upsert(syncRows, { onConflict: "id" }).then(function(){}, function(){});
               }
             }
-
-            if (!o.onlineOrderNo && localOOMap[o.invoiceNo]) {
-              return Object.assign({}, o, { onlineOrderNo: localOOMap[o.invoiceNo] });
-            }
-            return o;
-          });
-
-          // Add local-only orders (those whose id is NOT in DB)
-          // These are orders assigned but not yet saved to Supabase
-          var localOnly = localOrders.filter(function(o) {
-            return o.id && !dbById[o.id];
-          });
-
-          if (localOnly.length > 0) {
-            mergedDbOrders = mergedDbOrders.concat(localOnly);
-            // Try to save them to Supabase
-            var sbSync = getSupabase();
-            if (sbSync) {
-              var syncRows = localOnly.map(function(o) { return {
-                id: o.id, invoice_no: o.invoiceNo, online_order_no: o.onlineOrderNo||"",
-                date: o.date||"", assigned_date: o.assignedDate||"",
-                store: o.store||"", customer: o.customer||"", address: o.address||"",
-                phone: o.phone||"", total: o.total||0, payment_type: o.paymentType||"Cash",
-                original_payment_type: o.originalPaymentType||"",
-                status: o.status||"pending", driver_id: o.driverId||null,
-                scanned: o.scanned||false, note: o.note||"",
-                created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-              }; });
-              sbSync.from("orders").upsert(syncRows, { onConflict: "id" })
-                .then(function(){}, function(e){ console.warn("Re-sync err:", e); });
-            }
+            var seen2 = new Set();
+            finalOrders = merged2.filter(function(o) { if (!o.id||seen2.has(o.id)) return false; seen2.add(o.id); return true; });
           }
 
-          // Final dedup by id — never show the same record twice
-          var seenIds = new Set();
-          mergedDbOrders = mergedDbOrders.filter(function(o) {
-            if (!o.id || seenIds.has(o.id)) return false;
-            seenIds.add(o.id); return true;
-          });          setOrders(mergedDbOrders);
-          lsSet(LS_KEYS.orders, mergedDbOrders);
+          setOrders(finalOrders);
+          lsSet(LS_KEYS.orders, finalOrders);
 
           // ── Missed-notification recovery ─────────────────────────────────
           // Compare every DB order against the seen-statuses ledger.
