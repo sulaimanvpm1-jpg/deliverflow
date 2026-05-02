@@ -1658,13 +1658,19 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
     return "";
   }
 
-  const myOrders = _allMine.filter(function(o) {
-    var d = o.assignedDate || o.date || "";
-    if (!d) return o.status === "pending" || o.scanned;
-    var norm = _normDate(d);
-    if (!norm) return o.status === "pending";
-    return norm === _today;
-  });
+  const myOrders = (function() {
+    var todayFiltered = _allMine.filter(function(o) {
+      var d = o.assignedDate || o.date || "";
+      if (!d) return true;
+      var norm = _normDate(d);
+      return !norm || norm === _today;
+    });
+    // Fallback: if no today orders found, show ALL active orders for this driver
+    if (todayFiltered.length === 0) {
+      return _allMine.filter(function(o) { return o.status === "pending" || o.scanned; });
+    }
+    return todayFiltered;
+  })();
 
   const allOrders = orders;
   const unscanned = myOrders.filter(o => !o.scanned && o.status === "pending");
@@ -2389,14 +2395,19 @@ function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpe
   }
 
   const _todayDS = new Date().toDateString();
-  const myOrders = _allMine.filter(function(o) {
-    var d = o.assignedDate || o.date || "";
+  const myOrders = (function() {
     var target = selectedDate || _todayDS;
-    if (!d) return o.status === "pending" || o.scanned;
-    var norm = _nd(d);
-    if (!norm) return o.status === "pending";
-    return norm === target;
-  });
+    var todayFiltered = _allMine.filter(function(o) {
+      var d = o.assignedDate || o.date || "";
+      if (!d) return true;
+      var norm = _nd(d);
+      return !norm || norm === target;
+    });
+    if (todayFiltered.length === 0) {
+      return _allMine.filter(function(o) { return o.status === "pending" || o.scanned; });
+    }
+    return todayFiltered;
+  })();
   const myStores   = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.store; }).filter(Boolean))));
   const myPayments = ["all"].concat(Array.from(new Set(myOrders.map(function(o) { return o.paymentType; }).filter(function(p) { return p && p !== "Exchange"; }))));
 
@@ -5752,36 +5763,28 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
   var allMyOrders = orders.filter(function(o){ return o.driverId === user.id; });
   const todayStr = selectedDate || new Date().toDateString();
 
-  // Normalize any date to toDateString() format for comparison
   function normToDateStr(d) {
     if (!d) return "";
-    // Already in toDateString format e.g. "Thu Apr 30 2026"
     if (/^[A-Z][a-z]{2} [A-Z][a-z]{2}/.test(d)) return d;
-    // DD/MM/YYYY
     var p = d.split("/");
-    if (p.length === 3) {
-      var dt = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
-      if (!isNaN(dt.getTime())) return dt.toDateString();
-    }
-    // ISO YYYY-MM-DD
+    if (p.length === 3) { var dt = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0])); if (!isNaN(dt.getTime())) return dt.toDateString(); }
     var iso = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) {
-      var dt2 = new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3]));
-      if (!isNaN(dt2.getTime())) return dt2.toDateString();
-    }
-    // Native parse fallback
-    var dt3 = new Date(d);
-    if (!isNaN(dt3.getTime())) return dt3.toDateString();
+    if (iso) { var dt2 = new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3])); if (!isNaN(dt2.getTime())) return dt2.toDateString(); }
+    var dt3 = new Date(d); if (!isNaN(dt3.getTime())) return dt3.toDateString();
     return "";
   }
 
-  const myOrders = allMyOrders.filter(function(o) {
-    // Always show pending/collected orders with no date (newly assigned)
+  // First try to get today's orders
+  var todayOrders = allMyOrders.filter(function(o) {
     var d = o.assignedDate || o.date || "";
-    if (!d) return o.status === "pending" || o.scanned; // no date = show if active
-    var normalized = normToDateStr(d);
-    if (!normalized) return o.status === "pending"; // unparseable = show if pending
-    return normalized === todayStr;
+    if (!d) return true; // no date = show
+    var norm = normToDateStr(d);
+    return !norm || norm === todayStr;
+  });
+
+  // If no today orders found, show ALL pending orders (catches date format issues)
+  const myOrders = todayOrders.length > 0 ? todayOrders : allMyOrders.filter(function(o) {
+    return o.status === "pending" || o.scanned;
   });
   const collected  = myOrders.filter(o => o.scanned && o.status === "pending").length;
   const pending    = myOrders.filter(o => !o.scanned && o.status === "pending").length;
@@ -6421,6 +6424,13 @@ window.App = function App() {
           var localOrders = lsGet(LS_KEYS.orders, []);
           var dbById = {};
           dbOrders.forEach(function(o) { if (o.id) dbById[o.id] = o; });
+
+          // Log for debugging driver order issues
+          if (user && user.role === "driver") {
+            var myDbOrders = dbOrders.filter(function(o) { return o.driverId === user.id; });
+            console.log("DB LOAD — Total:", dbOrders.length, "My orders:", myDbOrders.length, "Driver:", user.id);
+            if (myDbOrders.length > 0) console.log("Sample order:", JSON.stringify(myDbOrders[0]).slice(0,150));
+          };
 
           var finalOrders;
           if (user && user.role === "driver") {
