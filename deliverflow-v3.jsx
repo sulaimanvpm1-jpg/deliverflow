@@ -1970,7 +1970,7 @@ function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpe
                 No orders assigned yet.<br/>Please wait for admin to upload.
               </div>
               <div style={{ color:"rgba(255,255,255,.2)", fontSize:11, marginBottom:16, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif" }}>
-                Driver: {driverId} · All orders in system: {orders.length} · My orders: {_allMine.length}
+                v2026-05-02 · Driver: {driverId} · All: {orders.length} · Mine: {_allMine.length} · Today: {(function(){ var t=_allMine.filter(function(o){var d=o.assignedDate||o.date||"";if(!d)return true;var p=d.split("/");if(p.length===3){var dt=new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));return dt.toDateString()===new Date().toDateString();}return false;}).length; return t; })()}
               </div>
               <button onClick={function(){
                 if (refreshing || !onRefresh) return;
