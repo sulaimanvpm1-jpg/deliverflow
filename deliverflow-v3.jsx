@@ -8,6 +8,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
    Driver: Arrive at Warehouse -> Scan/Confirm Orders -> Deliver
  */
 
+// ============================================================
+// SECTION 1: GLOBAL STYLES & CONSTANTS
+// Lines: PULSE_CSS, FONT, color palette CSS variables
+// ============================================================
 const PULSE_CSS = `@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0.7} } @keyframes spin { to { transform:rotate(360deg); } }`;
 // System fonts — SF Pro on iOS/Mac, Google Sans on Android, Segoe UI on Windows
 const FONT = `
@@ -16,6 +20,10 @@ const FONT = `
 `;
 
 /*  Drivers  */
+// ============================================================
+// SECTION 2: CONFIGURATION DATA
+// Lines: DRIVERS, STORE_ADMINS, AMTEL_VEHICLES, STORES, KUWAIT_AREAS
+// ============================================================
 const DRIVERS = [
   { id:"asif",      name:"Asif",      avatar:"AS", phone:"+96555001001", status:"active",   vehicleType:"Car",  vehicleNo:"KWT 12345", licenseNo:"DL-2021-001", nationality:"Indian",    joinDate:"2023-01-15", daftarExpiry:"2026-08-01" },
   { id:"jasir",     name:"Jasir",     avatar:"JA", phone:"+96555001002", status:"active",   vehicleType:"Van",  vehicleNo:"KWT 67890", licenseNo:"DL-2020-042", nationality:"Pakistani", joinDate:"2022-06-10", daftarExpiry:"2026-11-15" },
@@ -76,6 +84,10 @@ const PDF_SAMPLE_ORDERS = [
 
 /*  Brand-accurate payment colors  */
 // Payment Badge config — solid filled style (matching design photo)
+// ============================================================
+// SECTION 3: PAYMENT SYSTEM
+// Lines: PAYMENT_CFG, PAYMENT_COLORS, PaymentBadge component
+// ============================================================
 const PAYMENT_CFG = {
   "Cash":           { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"Cash"         },
   "COD":            { color:"#fff",     bg:"#10B981",  border:"#10B981",  label:"Cash"         },
@@ -137,6 +149,10 @@ const PaymentBadge = ({ payType, small }) => {
   );
 };
 
+// ============================================================
+// SECTION 4: SOUND EFFECTS & SHARED UTILITIES
+// Lines: playSound, uid, detectArea, STATUS_CFG, Badge, Pill, Toast
+// ============================================================
 /*  Sound effects (Web Audio API - no external files)  */
 // Persistent audio context - created on first user gesture
 var _audioCtx = null;
@@ -440,6 +456,11 @@ const Toast = ({ msg, toastKind="info" }) => {
   return <div style={{ position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", background:c2, borderRadius:30, padding:"10px 20px", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, zIndex:400, whiteSpace:"nowrap", boxShadow:"0 8px 32px rgba(0,0,0,.4)", animation:"fadeIn .3s" }}>{msg}</div>;
 };
 
+// ============================================================
+// SECTION 5: PDF PARSER
+// Lines: parseSAPDeliveryText, PDFUploadPanel
+// Fix PDF issues here — tryExtractOO, normDate, tokenizer
+// ============================================================
 /*  PDF Upload & Parse (uses Anthropic API)  */
 /*  Local SAP PDF text parser (no external API calls)  */
 function parseSAPDeliveryText(rawText) {
@@ -862,6 +883,11 @@ setProgress("Found " + result.orders.length + " orders for " + (result.driverNam
   );
 }
 
+// ============================================================
+// SECTION 6: ADMIN — UPLOAD & ASSIGN
+// Lines: LabelScanner, ManualOrderForm, AdminUploadTab
+// Fix order assignment issues here
+// ============================================================
 /*  Admin: Upload & Assign  */
 
 
@@ -1400,6 +1426,11 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
   );
 }
 
+// ============================================================
+// SECTION 7: ADMIN — ORDERS TAB
+// Lines: AdminOrdersTab, AdminOrderCard, EditOrderModal
+// Fix admin order display/edit issues here
+// ============================================================
 /*  Admin: All Orders View  */
 function AdminOrdersTab({ orders, onStatusUpdate, onRemoveOrder, onEditOrder }) {
   const [driverFilter, setDriverFilter] = useState("all");
@@ -1541,6 +1572,11 @@ function AdminOrderCard({ order, onStatusUpdate, onEditOrder }) {
   );
 }
 
+// ============================================================
+// SECTION 8: TRANSFER SYSTEM
+// Lines: TransferModal
+// Fix transfer request/approval issues here
+// ============================================================
 /*  Transfer Request Modal  */
 function TransferModal({ order, fromDriverId, onRequestTransfer, onClose }) {
   const [toDriver, setToDriver] = useState("");
@@ -1623,6 +1659,11 @@ function TransferModal({ order, fromDriverId, onRequestTransfer, onClose }) {
   );
 }
 
+// ============================================================
+// SECTION 9: DRIVER — WAREHOUSE TAB
+// Lines: DriverWarehouseTab, DriverOrderRow
+// Fix warehouse/scan issues here — myOrders date filter at ~line 1647
+// ============================================================
 /*  Driver: Warehouse Collection Screen  */
 function DriverWarehouseTab({ orders, driverId, onScan, onRequestTransfer, onOpenTransfer, onRemoveOrder, onRefresh }) {
   const [scanInput, setScanInput]       = useState("");
@@ -2176,6 +2217,11 @@ function DriverOrderRow({ order, onTransfer, selected, onToggleSelect }) {
 }
 
 
+// ============================================================
+// SECTION 10: DRIVER — MANUAL ORDER ENTRY
+// Lines: DriverManualOrderForm
+// Fix driver manual order issues here
+// ============================================================
 function DriverManualOrderForm({ driverId, onAdd }) {
   const [show, setShow]   = useState(false);
   const [store, setStore] = useState("Webstore Online");
@@ -2362,6 +2408,11 @@ function DriverManualOrderForm({ driverId, onAdd }) {
   );
 }
 
+// ============================================================
+// SECTION 11: DRIVER — DELIVERY TAB
+// Lines: DriverDeliveryTab, DeliveryOrderCard, OTP system
+// Fix delivery/OTP/status issues here — myOrders filter at ~line 2392
+// ============================================================
 function DriverDeliveryTab({ orders, driverId, driverName, onStatusUpdate, onOpenTransfer, onRequestHelp, orderTags, onSetTag, onAddOrder, onEditOrder, selectedDate }) {
   const [statusModal, setStatusModal] = useState(null);
   const [filter,      setFilter]      = useState("collected");
@@ -3088,6 +3139,11 @@ function DeliveryOrderCard({ order, onUpdate, onOpenTransfer, onRequestHelp, ord
   );
 }
 
+// ============================================================
+// SECTION 12: STATUS UPDATE & CIVIL ID
+// Lines: StatusUpdateModal, CivilIdScanner, dbSaveCivilId
+// Fix delivery confirmation issues here
+// ============================================================
 /*  Status Update Modal  */
 const LINK_OPTIONS = [
   { id:"GoCollect", label:"GoCollect",   color:"#A855F7" },
@@ -3508,6 +3564,10 @@ function StatusUpdateModal({ order, onUpdate, onClose, driverName }) {
   );
 }
 
+// ============================================================
+// SECTION 13: COMMISSION & DRIVER PROFILE
+// Lines: calcCommission, CommissionCard, DriverProfileTab
+// ============================================================
 /*  Commission logic  */
 const COMMISSION_THRESHOLD = 20;   // must deliver more than this to earn commission
 const COMMISSION_PER_ORDER = 0.250; // KD per order above threshold (21st, 22nd, etc.)
@@ -3715,6 +3775,10 @@ function DriverProfileTab({ user, orders, expenses }) {
   );
 }
 
+// ============================================================
+// SECTION 14: DRIVER — EXPENSES TAB
+// Lines: DriverExpensesTab
+// ============================================================
 /*  Driver: Expenses Tab  */
 function DriverExpensesTab({ driverId, driverName, expenses, orders, onAddExpense, onUpdateExpense, onDeleteExpense }) {
   const [expType, setExpType] = useState("");
@@ -3839,6 +3903,11 @@ function DriverExpensesTab({ driverId, driverName, expenses, orders, onAddExpens
   );
 }
 
+// ============================================================
+// SECTION 15: REPORT & DAY CLOSING
+// Lines: ReportPreview, SCard, OrderRow, DayClosingTab, DriverReportTab
+// Fix report PDF/download issues here
+// ============================================================
 /*  Report Preview - native React (no iframe, no popup)  */
 function SCard({ label, value, color, bg }) {
   return (
@@ -4505,6 +4574,12 @@ function DriverReportTab({ orders, driverId, expenses, onOpenReport }) {
     </div>
   );
 }
+// ============================================================
+// SECTION 16: SECURITY & AUTH
+// Lines: generateSessionToken, validateSession, checkRateLimit
+// Lines: performLogin, LoginScreen
+// Fix login/auth issues here
+// ============================================================
 // ── Security helpers ────────────────────────────────────────────────────────
 // Simple session token — stored alongside the role so localStorage tampering
 // can be detected. Token is a hash of (userId + role + a device secret).
@@ -4725,6 +4800,173 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+// ============================================================
+// SECTION 17B: LIVE DRIVER MAP
+// Uses OpenStreetMap + Leaflet (free, no API key needed)
+// ============================================================
+function LiveMapTab({ onlineDrivers, activeDrivers, orders }) {
+  const mapRef = React.useRef(null);
+  const mapInstanceRef = React.useRef(null);
+  const markersRef = React.useRef({});
+  const [mapReady, setMapReady] = useState(false);
+  const [noLocation, setNoLocation] = useState(false);
+
+  // Driver colors
+  const DRIVER_COLORS = ["#FF5A1F","#38BDF8","#22C55E","#8B5CF6","#F59E0B","#EF4444"];
+
+  useEffect(function() {
+    // Load Leaflet CSS
+    if (!document.getElementById("leaflet-css")) {
+      var link = document.createElement("link");
+      link.id = "leaflet-css";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+    // Load Leaflet JS
+    if (window.L) { setMapReady(true); return; }
+    var script = document.createElement("script");
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.onload = function() { setMapReady(true); };
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(function() {
+    if (!mapReady || !mapRef.current) return;
+    if (mapInstanceRef.current) return; // already initialized
+    var L = window.L;
+    var map = L.map(mapRef.current, { zoomControl: true }).setView([29.3759, 47.9774], 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '© OpenStreetMap',
+      maxZoom: 18,
+    }).addTo(map);
+    mapInstanceRef.current = map;
+  }, [mapReady]);
+
+  // Update markers when driver locations change
+  useEffect(function() {
+    if (!mapInstanceRef.current || !window.L) return;
+    var L = window.L;
+    var map = mapInstanceRef.current;
+    var driverIds = Object.keys(onlineDrivers || {});
+    var hasAnyLocation = false;
+
+    driverIds.forEach(function(dId, idx) {
+      var info = onlineDrivers[dId];
+      if (!info || !info.latitude || !info.longitude) return;
+      hasAnyLocation = true;
+
+      var color = DRIVER_COLORS[idx % DRIVER_COLORS.length];
+      var isActive = activeDrivers && activeDrivers[dId];
+      var dOrders = (orders||[]).filter(function(o){ return o.driverId === dId; });
+      var delivered = dOrders.filter(function(o){ return o.status === "delivered"; }).length;
+      var total = dOrders.length;
+      var age = info.online_at ? Math.floor((Date.now() - new Date(info.online_at).getTime()) / 1000) : 999;
+      var ageStr = age < 60 ? age + "s ago" : Math.floor(age/60) + "m ago";
+
+      // Custom colored icon
+      var iconHtml = '<div style="width:36px;height:36px;border-radius:50%;background:' + color + ';display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);font-size:11px;font-weight:700;color:#fff;font-family:-apple-system,sans-serif;">' + info.name.slice(0,2).toUpperCase() + '</div>';
+      var icon = L.divIcon({ html: iconHtml, className: "", iconSize: [36,36], iconAnchor: [18,18] });
+
+      var popup = '<div style="font-family:-apple-system,sans-serif;min-width:150px;">' +
+        '<div style="font-weight:700;font-size:13px;color:#111;margin-bottom:4px;">' + info.name + '</div>' +
+        '<div style="font-size:11px;color:#666;margin-bottom:2px;">' + (info.area || "Location known") + '</div>' +
+        '<div style="font-size:11px;color:#888;margin-bottom:6px;">Updated ' + ageStr + '</div>' +
+        '<div style="font-size:11px;background:#f5f5f5;border-radius:6px;padding:6px 8px;">' +
+        delivered + ' / ' + total + ' orders delivered' +
+        '</div>' +
+        '<div style="font-size:10px;color:' + (isActive?"#22C55E":"#F59E0B") + ';margin-top:4px;">' +
+        (isActive ? "● Active" : "○ Idle") +
+        '</div></div>';
+
+      if (markersRef.current[dId]) {
+        markersRef.current[dId].setLatLng([info.latitude, info.longitude]);
+        markersRef.current[dId].setIcon(icon);
+        markersRef.current[dId].setPopupContent(popup);
+      } else {
+        var marker = L.marker([info.latitude, info.longitude], { icon }).addTo(map);
+        marker.bindPopup(popup);
+        markersRef.current[dId] = marker;
+      }
+    });
+
+    // Remove markers for offline drivers
+    Object.keys(markersRef.current).forEach(function(dId) {
+      if (!onlineDrivers || !onlineDrivers[dId] || !onlineDrivers[dId].latitude) {
+        mapInstanceRef.current.removeLayer(markersRef.current[dId]);
+        delete markersRef.current[dId];
+      }
+    });
+
+    setNoLocation(!hasAnyLocation && driverIds.length > 0);
+  }, [onlineDrivers, activeDrivers, orders]);
+
+  var onlineCount = Object.keys(onlineDrivers||{}).length;
+
+  return (
+    <div style={{ padding:"0 0 16px" }}>
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", background:"#0F1218", borderRadius:12, marginBottom:12 }}>
+        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>
+          Live Driver Map
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:8, height:8, borderRadius:"50%", background: onlineCount > 0 ? "#22C55E" : "#6B7280" }}></div>
+          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12 }}>
+            {onlineCount} driver{onlineCount !== 1 ? "s" : ""} online
+          </div>
+        </div>
+      </div>
+
+      {/* Map container */}
+      <div ref={mapRef} style={{ width:"100%", height:420, borderRadius:12, overflow:"hidden", border:"1px solid rgba(255,255,255,.07)" }} />
+
+      {/* No location notice */}
+      {noLocation && (
+        <div style={{ background:"rgba(251,191,36,.1)", border:"1px solid rgba(251,191,36,.25)", borderRadius:10, padding:"10px 14px", marginTop:10, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#FBBF24", fontSize:12 }}>
+          Drivers are online but haven't shared their location yet. Location updates every 30 seconds when driver has the app open.
+        </div>
+      )}
+
+      {/* Driver cards */}
+      <div style={{ display:"flex", gap:8, marginTop:12, flexWrap:"wrap" }}>
+        {DRIVERS.map(function(d, idx) {
+          var info = onlineDrivers && onlineDrivers[d.id];
+          var isActive = activeDrivers && activeDrivers[d.id];
+          var dOrders = (orders||[]).filter(function(o){ return o.driverId === d.id; });
+          var delivered = dOrders.filter(function(o){ return o.status === "delivered"; }).length;
+          var total = dOrders.length;
+          var color = DRIVER_COLORS[idx % DRIVER_COLORS.length];
+          return (
+            <div key={d.id} style={{ flex:"1 1 140px", background:"#161B24", borderRadius:10, padding:"10px 12px", borderLeft:"3px solid " + (info ? color : "#374151") }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:12, fontWeight:700 }}>{d.name}</div>
+                <div style={{ width:8, height:8, borderRadius:"50%", background: info ? (isActive ? "#22C55E" : "#F59E0B") : "#374151" }}></div>
+              </div>
+              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:10, marginBottom:4 }}>
+                {info ? (info.area || "Location shared") : "Offline"}
+              </div>
+              {total > 0 && (
+                <div>
+                  <div style={{ background:"rgba(255,255,255,.05)", borderRadius:4, height:3, marginBottom:3 }}>
+                    <div style={{ background:color, width:(delivered/total*100)+"%", height:3, borderRadius:4 }}></div>
+                  </div>
+                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:10 }}>{delivered}/{total} delivered</div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// SECTION 17: ADMIN APP COMPONENTS
+// Lines: AdminHistoryTab, AdminVehiclesTab, AdminCivilIdTab
+// Lines: DateFilterBar, AdminApp (main admin shell)
+// ============================================================
 /*  Admin App  */
 /*  Admin: Vehicles & Expenses Tab  */
 const EXPENSE_TYPES = ["Fuel","Parking","Toll","Car Wash","Maintenance","Other"];
@@ -5461,6 +5703,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
     { id:"notifs",    icon:"🔔", label:unreadHelp>0?"Alerts (SOS!)":"Alerts", badge: unreadNotifs },
     { id:"civilids",  icon:"🪪", label:"Civil IDs" },
     { id:"vehicles",  icon:"🚗", label:"Vehicles" },
+    { id:"map",       icon:"📍", label:"Live Map" },
     { id:"history",   icon:"📅", label:"History" },
     { id:"transfers", icon:"🔄", label:"Transfers", badge: pendingTransfers.length },
   ];
@@ -5686,6 +5929,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
         {/*  Vehicles / Expenses Tab  */}
         {tab==="vehicles" && <AdminVehiclesTab orders={orders} expenses={expenses} driverProfiles={driverProfiles} onUpdateDriver={onUpdateDriver} onAddDriver={onAddDriver} passwords={passwords} onSetPassword={onSetPassword} onRemoveOrderAdmin={onRemoveOrderAdmin} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} />}
         {tab==="civilids" && <AdminCivilIdTab />}
+        {tab==="map"      && <LiveMapTab onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} orders={orders} />}
         {tab==="history"  && <AdminHistoryTab history={history} />}
 
         {tab==="transfers" && (
@@ -5746,6 +5990,11 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
   );
 }
 
+// ============================================================
+// SECTION 18: DRIVER APP SHELL
+// Lines: DriverApp — receives orders, expenses, callbacks
+// Fix driver dashboard issues here — allMyOrders filter at ~line 5757
+// ============================================================
 /*  Driver App  */
 function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDeleteExpense, onScan, onStatusUpdate, onLogout, onRequestTransfer, onRemoveOrder, onRequestHelp, orderTags, onSetTag, onAddOrder, selectedDate, onSetSelectedDate, onEditOrder, onRefresh }) {
   // Wrapper: driver manual orders go through addOrders but also mark as scanned
@@ -5914,6 +6163,16 @@ function DriverApp({ user, orders, expenses, onAddExpense, onUpdateExpense, onDe
   );
 }
 
+// ============================================================
+// SECTION 19: ROOT APP & SUPABASE
+// Lines: SUPABASE_URL/KEY, loadSupabaseSDK, getSupabase
+// Lines: LS_KEYS, lsGet, lsSet
+// Lines: dbLoadOrders, dbUpdateOrder, dbUpsertOrders
+// Lines: dbLoadExpenses, dbLoadTransfers, dbUpsertTransfer
+// Lines: StoreAdminApp, App (root component)
+// Lines: addOrders, markScanned, updateStatus, approveTransfer
+// Fix Supabase sync/save issues here
+// ============================================================
 /*  ROOT  */
 // ─── Supabase config - REPLACE with your project values ─────────────────────
 const SUPABASE_URL  = "https://ekcldonzncaguwgfooky.supabase.co";
@@ -6635,22 +6894,53 @@ window.App = function App() {
 
       // Driver: mark online immediately on login. No expiry — stays online until sign-out.
       if (user.role === "driver") {
-        function markPresence(isActive) {
-          sb.from("driver_presence").upsert({
+        function markPresence(isActive, lat, lng, area) {
+          var presenceData = {
             driver_id: user.id,
             driver_name: user.name,
             online: true,
             active: isActive,
             updated_at: new Date().toISOString()
-          }, { onConflict: "driver_id" }).then(function(){}, function(){});
+          };
+          if (lat !== undefined && lng !== undefined) {
+            presenceData.latitude = lat;
+            presenceData.longitude = lng;
+            presenceData.area = area || "";
+          }
+          sb.from("driver_presence").upsert(presenceData, { onConflict: "driver_id" })
+            .then(function(){}, function(){});
         }
-        markPresence(!document.hidden);
-        // Update active status immediately on visibility change
+
+        // Get GPS location and update presence
+        function updateWithLocation(isActive) {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+              var lat = pos.coords.latitude;
+              var lng = pos.coords.longitude;
+              // Reverse geocode using free Nominatim API
+              fetch("https://nominatim.openstreetmap.org/reverse?lat=" + lat + "&lon=" + lng + "&format=json&addressdetails=1")
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                  var addr = data.address || {};
+                  var area = addr.suburb || addr.neighbourhood || addr.city_district || addr.town || addr.city || "";
+                  markPresence(isActive, lat, lng, area);
+                })
+                .catch(function() { markPresence(isActive, lat, lng, ""); });
+            }, function() {
+              // Location denied — mark presence without location
+              markPresence(isActive);
+            }, { timeout: 10000, maximumAge: 30000 });
+          } else {
+            markPresence(isActive);
+          }
+        }
+
+        updateWithLocation(!document.hidden);
         document.addEventListener("visibilitychange", function() {
-          markPresence(!document.hidden);
+          updateWithLocation(!document.hidden);
         });
-        // Ping every 20s for active/idle detection
-        var iv = setInterval(function(){ markPresence(!document.hidden); }, 20000);
+        // Ping every 30s with fresh location
+        var iv = setInterval(function(){ updateWithLocation(!document.hidden); }, 30000);
         window._presenceInterval = iv;
       }
 
@@ -6662,9 +6952,15 @@ window.App = function App() {
             var online = {};
             var active = {};
             res.data.forEach(function(row) {
-              if (row.driver_id === "__upcoming__") return; // ignore legacy rows
+              if (row.driver_id === "__upcoming__") return;
               if (row.online) {
-                online[row.driver_id] = { name: row.driver_name, online_at: row.updated_at };
+                online[row.driver_id] = {
+                  name: row.driver_name,
+                  online_at: row.updated_at,
+                  latitude: row.latitude || null,
+                  longitude: row.longitude || null,
+                  area: row.area || "",
+                };
                 var age = row.updated_at ? (Date.now() - new Date(row.updated_at).getTime()) : 999999;
                 if (row.active && age < 45000) active[row.driver_id] = true;
               }
