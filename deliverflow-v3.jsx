@@ -6728,23 +6728,21 @@ window.App = function App() {
           lsSet(LS_KEYS.orders, finalOrders);
 
           // ── Missed-notification recovery ─────────────────────────────────
-          // Compare every DB order against the seen-statuses ledger.
-          // Any delivered/cancelled/postponed order not yet notified gets a notification now.
+          // Only run for admin — drivers don't need notifications
+          if (user && user.role === "admin") {
           var ALERT_STATUSES = ["delivered","cancelled","postponed"];
           var seenStatuses = lsGet(LS_KEYS.seenStatuses, {});
           var existingNotifs = lsGet(LS_KEYS.notifs, []);
           var missedNotifs = [];
 
-          mergedDbOrders.forEach(function(o) {
+          finalOrders.forEach(function(o) {
             if (ALERT_STATUSES.indexOf(o.status) === -1) return;
             var key = o.invoiceNo + ":" + o.status;
-            if (seenStatuses[key]) return; // already notified
-            // Also skip if it's already in the persisted notifs list
+            if (seenStatuses[key]) return;
             var alreadySaved = existingNotifs.some(function(n) {
               return n.orderId === o.invoiceNo && n.notifType === o.status;
             });
             if (alreadySaved) { seenStatuses[key] = true; return; }
-            // This is a missed notification — generate it
             var drvName = (DRIVERS.find(function(d){ return d.id === o.driverId; })||{}).name || o.driverId || "Driver";
             missedNotifs.push({
               id: uid(),
@@ -6775,6 +6773,7 @@ window.App = function App() {
             });
             playSound("notify");
           }
+          } // end admin-only
           // ─────────────────────────────────────────────────────────────────
         }
 
