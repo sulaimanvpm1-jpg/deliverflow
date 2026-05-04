@@ -6111,7 +6111,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
 
       {/* Simple date filter — only for Orders and History tabs */}
       {(tab === "orders" || tab === "history") && (
-        <div style={{ padding:"0 0 10px", display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{ padding:"10px 0 10px", display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>Date</div>
           <input type="date"
             value={selectedDate && selectedDate !== "all7" ? (function(){
