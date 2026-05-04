@@ -7199,11 +7199,16 @@ setOrders(function(prev) {
         if (isForce || (!existsInPrev && !alreadyFresh)) {
           var fo = { ...n };
           delete fo._forceInsert;
-          // Use stable ID: hash of invoiceNo+assignedDate so same order always same ID
-          // This prevents duplicate DB rows if addOrders is called twice
-          fo.id = fo.id || (fo.invoiceNo + "_" + (fo.assignedDate||todayStr)).replace(/[^a-zA-Z0-9_]/g,"_");
+          if (isForce) {
+            // Manual entry: always use unique ID so multiple manual orders
+            // with the same invoice number don't overwrite each other
+            fo.id = fo.id || uid();
+          } else {
+            // PDF orders: stable ID prevents duplicate DB rows on re-upload
+            fo.id = fo.id || (fo.invoiceNo + "_" + (fo.assignedDate||todayStr)).replace(/[^a-zA-Z0-9_]/g,"_");
+          }
           fresh.push(fo);
-          todayPendingSet.add(fo.invoiceNo);
+          if (!isForce) todayPendingSet.add(fo.invoiceNo); // only block dupes for PDF orders
         }
       });
 
