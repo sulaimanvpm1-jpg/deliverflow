@@ -5989,8 +5989,7 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
         // Last 7 days
         return oDate.getTime() >= Date.now() - 7*24*60*60*1000;
       }
-      return oDate.toDateString() === (selectedDate || new Date().toDateString());
-    }
+      return oDate.toDateString() === (selectedDate || new Date().toDateString());    }
     return false;
   });
 
@@ -6110,23 +6109,27 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
         ))}
       </div>
 
-      {/* Date filter — persistent across tabs */}
-      {/* Admin date filter — Today / Yesterday / Last 7 Days */}
-      <div style={{ display:"flex", gap:6, marginBottom:14 }}>
-        {[
-          { label:"Today",     val: new Date().toDateString() },
-          { label:"Yesterday", val: new Date(Date.now()-86400000).toDateString() },
-          { label:"7 Days",    val: "all7" },
-        ].map(function(opt) {
-          var isActive = opt.val === "all7" ? selectedDate === "all7" : selectedDate === opt.val;
-          return (
-            <button key={opt.val} onClick={function(){ onSetSelectedDate(opt.val); }}
-              style={{ flex:1, background:isActive?"rgba(255,90,31,.18)":"rgba(255,255,255,.05)", border:"1px solid "+(isActive?"#FF5A1F":"rgba(255,255,255,.1)"), borderRadius:10, padding:"8px 4px", color:isActive?"#FF5A1F":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:isActive?700:500, cursor:"pointer" }}>
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Simple date filter — only for Orders and History tabs */}
+      {(tab === "orders" || tab === "history") && (
+        <div style={{ padding:"0 0 10px", display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12 }}>Date</div>
+          <input type="date"
+            value={selectedDate && selectedDate !== "all7" ? (function(){
+              var d = new Date(selectedDate);
+              return isNaN(d) ? "" : d.toISOString().slice(0,10);
+            })() : new Date().toISOString().slice(0,10)}
+            onChange={function(e){
+              if (!e.target.value) return;
+              onSetSelectedDate(new Date(e.target.value + "T12:00:00").toDateString());
+            }}
+            style={{ flex:1, background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"7px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none", colorScheme:"dark" }}
+          />
+          <button onClick={function(){ onSetSelectedDate(new Date().toDateString()); }}
+            style={{ background:"rgba(255,90,31,.12)", border:"1px solid rgba(255,90,31,.25)", borderRadius:10, padding:"7px 12px", color:"#FF5A1F", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
+            Today
+          </button>
+        </div>
+      )}
 
       <div style={{ flex:1, overflowY:"auto", paddingTop:16, display:"flex", flexDirection:"column", WebkitOverflowScrolling:"touch" }}>
         {tab==="upload" && <AdminUploadTab allOrders={orders} onOrdersParsed={handleOrdersAssign} onAssignDriver={() => {}} onStatusUpdate={onStatusUpdate} />}
