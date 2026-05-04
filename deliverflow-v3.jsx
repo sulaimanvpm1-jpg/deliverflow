@@ -1198,6 +1198,271 @@ function ManualOrderForm({ onAdd, driverList }) {
   );
 }
 
+// ============================================================
+// SECTION 6B: SUPABASE DB MANAGER
+// Count panel + Search/Delete + Clear/Wipe controls
+// Admin only — appears at bottom of Upload tab
+// ============================================================
+function SupabaseDBManager() {
+  const [counts, setCounts]         = useState(null);
+  const [loading, setLoading]       = useState(false);
+  const [searchQ, setSearchQ]       = useState("");
+  const [searching, setSearching]   = useState(false);
+  const [results, setResults]       = useState(null);
+  const [confirm, setConfirm]       = useState(null); // { type, label, action }
+  const [msg, setMsg]               = useState("");
+  const [open, setOpen]             = useState(false);
+
+  var todayStr = (function(){ var d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); })();
+
+  function showMsg(m, isErr) {
+    setMsg((isErr ? "⚠️ " : "✅ ") + m);
+    setTimeout(function(){ setMsg(""); }, 3000);
+  }
+
+  function fetchCounts() {
+    setLoading(true);
+    var sb = getSupabase && getSupabase();
+    if (!sb) { setLoading(false); return; }
+    sb.from("orders").select("driver_id, assigned_date, status").then(function(res) {
+      setLoading(false);
+      if (!res || res.error || !res.data) return;
+      var data = res.data;
+      var byDriver = {};
+      DRIVERS.forEach(function(d) { byDriver[d.id] = { today: 0, total: 0 }; });
+      data.forEach(function(r) {
+        if (!byDriver[r.driver_id]) byDriver[r.driver_id] = { today: 0, total: 0 };
+        byDriver[r.driver_id].total++;
+        if ((r.assigned_date||"").indexOf(todayStr) !== -1 || r.assigned_date === todayStr) byDriver[r.driver_id].today++;
+      });
+      setCounts({ byDriver, grandTotal: data.length, todayTotal: data.filter(function(r){ return (r.assigned_date||"") === todayStr; }).length });
+    }, function(){ setLoading(false); });
+  }
+
+  function doSearch() {
+    if (!searchQ.trim()) return;
+    setSearching(true);
+    setResults(null);
+    var sb = getSupabase && getSupabase();
+    if (!sb) { setSearching(false); return; }
+    var q = searchQ.trim().toLowerCase();
+    sb.from("orders").select("id, invoice_no, driver_id, customer, phone, assigned_date, status, total, store").then(function(res) {
+      setSearching(false);
+      if (!res || res.error || !res.data) return;
+      var filtered = res.data.filter(function(r) {
+        return (r.invoice_no||"").toLowerCase().includes(q) ||
+               (r.customer||"").toLowerCase().includes(q) ||
+               (r.phone||"").toLowerCase().includes(q) ||
+               (r.driver_id||"").toLowerCase().includes(q) ||
+               (r.store||"").toLowerCase().includes(q);
+      });
+      setResults(filtered.slice(0, 50));
+    }, function(){ setSearching(false); });
+  }
+
+  function deleteOrder(id, label) {
+    var sb = getSupabase && getSupabase();
+    if (!sb) return;
+    sb.from("orders").delete().eq("id", id).then(function(res) {
+      if (res && res.error) { showMsg("Delete failed: " + res.error.message, true); return; }
+      showMsg("Deleted: " + label);
+      setResults(function(prev) { return prev ? prev.filter(function(r){ return r.id !== id; }) : prev; });
+      fetchCounts();
+    }, function(){ showMsg("Delete failed", true); });
+  }
+
+  function clearDriver(driverId, driverName) {
+    var sb = getSupabase && getSupabase();
+    if (!sb) return;
+    sb.from("orders").delete().eq("driver_id", driverId).eq("assigned_date", todayStr).eq("status", "pending")
+      .then(function(res) {
+        if (res && res.error) { showMsg("Clear failed: " + res.error.message, true); return; }
+        showMsg("Cleared today's pending orders for " + driverName);
+        fetchCounts();
+      }, function(){ showMsg("Clear failed", true); });
+  }
+
+  function wipeDriver(driverId, driverName) {
+    var sb = getSupabase && getSupabase();
+    if (!sb) return;
+    sb.from("orders").delete().eq("driver_id", driverId).then(function(res) {
+      if (res && res.error) { showMsg("Wipe failed: " + res.error.message, true); return; }
+      showMsg("Wiped ALL orders for " + driverName);
+      fetchCounts();
+    }, function(){ showMsg("Wipe failed", true); });
+  }
+
+  function clearAllToday() {
+    var sb = getSupabase && getSupabase();
+    if (!sb) return;
+    sb.from("orders").delete().eq("assigned_date", todayStr).eq("status", "pending")
+      .then(function(res) {
+        if (res && res.error) { showMsg("Clear failed: " + res.error.message, true); return; }
+        showMsg("Cleared all today's pending orders");
+        fetchCounts();
+      }, function(){ showMsg("Clear failed", true); });
+  }
+
+  function wipeAll() {
+    var sb = getSupabase && getSupabase();
+    if (!sb) return;
+    sb.from("orders").delete().neq("id", "__never__").then(function(res) {
+      if (res && res.error) { showMsg("Wipe failed: " + res.error.message, true); return; }
+      showMsg("Wiped ALL orders from database");
+      setCounts(null);
+      fetchCounts();
+    }, function(){ showMsg("Wipe failed", true); });
+  }
+
+  var BTN = function(props) {
+    return (
+      <button onClick={props.onClick} style={{
+        background: props.danger ? "rgba(239,68,68,.12)" : "rgba(255,255,255,.06)",
+        border: "1px solid " + (props.danger ? "rgba(239,68,68,.3)" : "rgba(255,255,255,.1)"),
+        borderRadius: 8, padding: props.small ? "4px 10px" : "6px 12px",
+        color: props.danger ? "#EF4444" : "rgba(255,255,255,.7)",
+        fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif",
+        fontSize: props.small ? 11 : 12, fontWeight: 600, cursor: "pointer", whiteSpace:"nowrap",
+      }}>{props.children}</button>
+    );
+  };
+
+  return (
+    <div style={{ marginTop:20, borderRadius:14, border:"1px solid rgba(255,255,255,.08)", overflow:"hidden" }}>
+      {/* Header */}
+      <button onClick={function(){ setOpen(function(p){return !p;}); if (!open) fetchCounts(); }}
+        style={{ width:"100%", background:"#161B24", border:"none", padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer" }}>
+        <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700 }}>
+          🗄️ Supabase DB Manager
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          {counts && <div style={{ background:"rgba(255,90,31,.15)", color:"#FF5A1F", fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:20 }}>{counts.grandTotal} orders</div>}
+          <div style={{ color:"rgba(255,255,255,.4)", fontSize:14 }}>{open ? "▲" : "▼"}</div>
+        </div>
+      </button>
+
+      {open && (
+        <div style={{ background:"#0F1218", padding:"14px 16px" }}>
+
+          {/* Status message */}
+          {msg && <div style={{ background: msg.startsWith("✅") ? "rgba(34,197,94,.1)" : "rgba(239,68,68,.1)", border:"1px solid " + (msg.startsWith("✅") ? "rgba(34,197,94,.3)" : "rgba(239,68,68,.3)"), borderRadius:8, padding:"8px 12px", marginBottom:12, fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color: msg.startsWith("✅") ? "#22C55E" : "#EF4444", fontSize:12 }}>{msg}</div>}
+
+          {/* Confirm dialog */}
+          {confirm && (
+            <div style={{ background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.3)", borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
+              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, marginBottom:10 }}>{confirm.label}</div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={function(){ confirm.action(); setConfirm(null); }}
+                  style={{ background:"#EF4444", border:"none", borderRadius:8, padding:"7px 16px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                  Yes, Delete
+                </button>
+                <button onClick={function(){ setConfirm(null); }}
+                  style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:8, padding:"7px 16px", color:"rgba(255,255,255,.6)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, cursor:"pointer" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Count panel */}
+          <div style={{ marginBottom:16 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.6)", fontSize:12, fontWeight:600 }}>ORDER COUNTS</div>
+              <button onClick={fetchCounts} style={{ background:"none", border:"none", color:"#38BDF8", fontSize:12, cursor:"pointer", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif" }}>
+                {loading ? "Loading..." : "↻ Refresh"}
+              </button>
+            </div>
+
+            {counts ? (
+              <div>
+                {/* Per-driver rows */}
+                {DRIVERS.map(function(d) {
+                  var c = counts.byDriver[d.id] || { today:0, total:0 };
+                  return (
+                    <div key={d.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 0", borderBottom:"1px solid rgba(255,255,255,.05)" }}>
+                      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:600, width:90 }}>{d.name}</div>
+                      <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, flex:1 }}>
+                        Today: <span style={{ color:"#38BDF8", fontWeight:700 }}>{c.today}</span>
+                        {"  "}Total: <span style={{ color:"#FF5A1F", fontWeight:700 }}>{c.total}</span>
+                      </div>
+                      <BTN small onClick={function(){ setConfirm({ label:"Clear today's pending orders for " + d.name + "? (" + c.today + " orders)", action:function(){ clearDriver(d.id, d.name); } }); }}>Clear</BTN>
+                      <BTN small danger onClick={function(){ setConfirm({ label:"⚠️ WIPE ALL " + c.total + " orders for " + d.name + "? This cannot be undone.", action:function(){ wipeDriver(d.id, d.name); } }); }}>Wipe</BTN>
+                    </div>
+                  );
+                })}
+
+                {/* Totals row */}
+                <div style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 0" }}>
+                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:12, fontWeight:700, width:90 }}>ALL</div>
+                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:12, flex:1 }}>
+                    Today: <span style={{ color:"#38BDF8", fontWeight:700 }}>{counts.todayTotal}</span>
+                    {"  "}Total: <span style={{ color:"#FF5A1F", fontWeight:700 }}>{counts.grandTotal}</span>
+                  </div>
+                  <BTN small onClick={function(){ setConfirm({ label:"Clear ALL today's pending orders for all drivers? (" + counts.todayTotal + " orders)", action:clearAllToday }); }}>Clear All</BTN>
+                  <BTN small danger onClick={function(){ setConfirm({ label:"⚠️ WIPE ALL " + counts.grandTotal + " orders from database? Civil ID records are safe. This cannot be undone.", action:wipeAll }); }}>Wipe All</BTN>
+                </div>
+              </div>
+            ) : (
+              <button onClick={fetchCounts} style={{ width:"100%", background:"rgba(255,255,255,.04)", border:"1px dashed rgba(255,255,255,.12)", borderRadius:10, padding:"12px", color:"rgba(255,255,255,.4)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:13, cursor:"pointer" }}>
+                Tap to load order counts from Supabase
+              </button>
+            )}
+          </div>
+
+          {/* Search & Delete */}
+          <div>
+            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"rgba(255,255,255,.6)", fontSize:12, fontWeight:600, marginBottom:10 }}>SEARCH & DELETE SPECIFIC ORDER</div>
+            <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+              <input
+                value={searchQ} onChange={function(e){ setSearchQ(e.target.value); }}
+                onKeyDown={function(e){ if(e.key==="Enter") doSearch(); }}
+                placeholder="Invoice no / customer / phone / driver..."
+                style={{ flex:1, background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:10, padding:"9px 12px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13, outline:"none" }}
+              />
+              <button onClick={doSearch} style={{ background:"#FF5A1F", border:"none", borderRadius:10, padding:"9px 16px", color:"#fff", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                {searching ? "..." : "Search"}
+              </button>
+            </div>
+
+            {results !== null && (
+              <div>
+                {results.length === 0 ? (
+                  <div style={{ textAlign:"center", padding:"16px 0", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", fontSize:13 }}>No results found</div>
+                ) : (
+                  <div>
+                    <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:11, marginBottom:8 }}>{results.length} result{results.length!==1?"s":""} (max 50)</div>
+                    {results.map(function(r) {
+                      var drvName = (DRIVERS.find(function(d){ return d.id===r.driver_id; })||{}).name || r.driver_id;
+                      var statusColor = { pending:"#F59E0B", delivered:"#22C55E", cancelled:"#EF4444", postponed:"#8B5CF6", collected:"#38BDF8" }[r.status] || "#fff";
+                      return (
+                        <div key={r.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 10px", background:"rgba(255,255,255,.03)", borderRadius:8, marginBottom:6, border:"1px solid rgba(255,255,255,.06)" }}>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:12, fontWeight:700 }}>{r.invoice_no}</span>
+                              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11 }}>{drvName}</span>
+                              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{r.assigned_date||"—"}</span>
+                              <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:statusColor, fontSize:11, fontWeight:600 }}>{r.status}</span>
+                            </div>
+                            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.3)", fontSize:11, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.customer||"—"}  {r.store||""}</div>
+                          </div>
+                          <button onClick={function(){ setConfirm({ label:"Delete " + r.invoice_no + " (" + drvName + ", " + r.status + ")?", action:function(){ deleteOrder(r.id, r.invoice_no); } }); }}
+                            style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.25)", borderRadius:8, padding:"6px 10px", color:"#EF4444", fontSize:13, cursor:"pointer", flexShrink:0 }}>
+                            🗑
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpdate }) {
   const [parsed, setParsed] = useState(null);
   const [assignTo, setAssignTo] = useState("");
@@ -1422,6 +1687,9 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
           </div>
         </div>
       )}
+
+      {/* Supabase DB Manager */}
+      <SupabaseDBManager />
     </div>
   );
 }
