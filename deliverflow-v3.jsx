@@ -6572,10 +6572,10 @@ window.App = function App() {
             // New records are added by addOrders() directly
             var exists = prev.find(function(o) { return o.id === r.id; });
             if (!exists) {
-              // For INSERT events, only add if invoice doesn't exist at all
               if (payload.eventType === "INSERT") {
-                var alreadyHave = prev.some(function(o) { return o.invoiceNo === r.invoice_no; });
-                if (alreadyHave) return prev; // already have this invoice — skip
+                // Check if we already have this EXACT record (same id)
+                // Don't block by invoiceNo — same invoice can appear on different days
+                // Allow through so drivers receive new manual orders immediately
               } else {
                 return prev; // UPDATE but id not found — skip
               }
@@ -6624,6 +6624,8 @@ window.App = function App() {
               }
             }
             if (exists) return prev.map(function(o) { return o.id === r.id ? Object.assign({}, o, updated) : o; });
+            // For INSERT: deduplicate by id before adding
+            if (prev.some(function(o) { return o.id === updated.id; })) return prev;
             return [...prev, updated];
           });
         }).subscribe();
