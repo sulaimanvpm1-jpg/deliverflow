@@ -1203,7 +1203,7 @@ function ManualOrderForm({ onAdd, driverList }) {
 // Count panel + Search/Delete + Clear/Wipe controls
 // Admin only — appears at bottom of Upload tab
 // ============================================================
-function SupabaseDBManager() {
+function SupabaseDBManager({ onOrdersRefresh }) {
   const [counts, setCounts]         = useState(null);
   const [loading, setLoading]       = useState(false);
   const [searchQ, setSearchQ]       = useState("");
@@ -1278,7 +1278,8 @@ function SupabaseDBManager() {
       .then(function(res) {
         if (res && res.error) { showMsg("Clear failed: " + res.error.message, true); return; }
         showMsg("Cleared today's pending orders for " + driverName);
-        fetchCounts();
+            if (onOrdersRefresh) onOrdersRefresh();
+    fetchCounts();
       }, function(){ showMsg("Clear failed", true); });
   }
 
@@ -1299,7 +1300,8 @@ function SupabaseDBManager() {
       .then(function(res) {
         if (res && res.error) { showMsg("Clear failed: " + res.error.message, true); return; }
         showMsg("Cleared all today's pending orders");
-        fetchCounts();
+            if (onOrdersRefresh) onOrdersRefresh();
+    fetchCounts();
       }, function(){ showMsg("Clear failed", true); });
   }
 
@@ -1463,7 +1465,7 @@ function SupabaseDBManager() {
   );
 }
 
-function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpdate }) {
+function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpdate, onOrdersRefresh }) {
   const [parsed, setParsed] = useState(null);
   const [assignTo, setAssignTo] = useState("");
   const [toast, setToast] = useState(null);
@@ -1689,7 +1691,7 @@ function AdminUploadTab({ allOrders, onOrdersParsed, onAssignDriver, onStatusUpd
       )}
 
       {/* Supabase DB Manager */}
-      <SupabaseDBManager />
+      <SupabaseDBManager onOrdersRefresh={onOrdersRefresh} />
     </div>
   );
 }
@@ -5446,6 +5448,46 @@ function DriverOrderManager({ driverId, driverName, orders, onRemoveOrder }) {
   );
 }
 
+// Collapsible expense group per driver
+function DriverExpGroup({ driver, expenses, total }) {
+  const [open, setOpen] = useState(false);
+  var ICONS = { Fuel:"⛽", Parking:"🅿️", Toll:"🛣️", "Car Wash":"🚿", Maintenance:"🔧" };
+  return (
+    <div style={{ marginBottom:10, borderRadius:12, border:"1px solid rgba(255,255,255,.07)", overflow:"hidden" }}>
+      <button onClick={function(){ setOpen(function(p){ return !p; }); }}
+        style={{ width:"100%", background:"#161B24", border:"none", padding:"11px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(239,68,68,.15)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:11, fontWeight:700 }}>{driver.avatar||driver.name.slice(0,2).toUpperCase()}</div>
+          <div>
+            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:700, textAlign:"left" }}>{driver.name}</div>
+            <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{expenses.length} expense{expenses.length!==1?"s":""}</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:14, fontWeight:800 }}>- {fmt(total)}</div>
+          <div style={{ color:"rgba(255,255,255,.3)", fontSize:12 }}>{open?"▲":"▼"}</div>
+        </div>
+      </button>
+      {open && (
+        <div style={{ background:"#0F1218", padding:"8px 14px 10px" }}>
+          {expenses.map(function(e, i) {
+            return (
+              <div key={e.id||i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom: i<expenses.length-1?"1px solid rgba(255,255,255,.05)":"none" }}>
+                <div>
+                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:12, fontWeight:600 }}>{ICONS[e.type]||"📋"} {e.type}</div>
+                  {e.note && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{e.note}</div>}
+                  <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.25)", fontSize:10 }}>{new Date(e.createdAt).toLocaleString("en-KW",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
+                </div>
+                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:13, fontWeight:800 }}>- {fmt(e.amount)}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, onAddDriver, passwords, onSetPassword, onRemoveOrderAdmin, onlineDrivers, activeDrivers }) {
   const totalExpenses = expenses.reduce((a,e) => a + Number(e.amount), 0);
 
@@ -5753,23 +5795,22 @@ function AdminVehiclesTab({ orders, expenses, driverProfiles, onUpdateDriver, on
         );
       })}
 
-      {/* All expenses log */}
-      {expenses.length > 0 && (
+      {/* All expenses — grouped by driver, collapsible */}
+      {expenses.length > 0 ? (
         <div style={{ marginTop:8 }}>
-          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700, marginBottom:10 }}>All Expense Records</div>
-          {expenses.slice().reverse().map((e,i) => (
-            <div key={e.id||i} style={{ background:"rgba(239,68,68,.04)", border:"1px solid rgba(239,68,68,.12)", borderRadius:12, padding:"10px 14px", marginBottom:7, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <div>
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#fff", fontSize:13, fontWeight:600 }}>{e.type} - {DRIVERS.find(d=>d.id===e.driverId)?.name}</div>
-                {e.note && <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{e.note}</div>}
-                <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.25)", fontSize:10 }}>{new Date(e.createdAt).toLocaleString("en-KW",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
-              </div>
-              <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#EF4444", fontSize:14, fontWeight:800 }}>- {fmt(e.amount)}</div>
-            </div>
-          ))}
+          <div style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:14, fontWeight:700, marginBottom:10 }}>
+            All Expense Records
+          </div>
+          {DRIVERS.map(function(d) {
+            var dExp = expenses.filter(function(e){ return e.driverId === d.id; }).slice().reverse();
+            if (dExp.length === 0) return null;
+            var dTotal = dExp.reduce(function(a,e){ return a+Number(e.amount); }, 0);
+            return (
+              <DriverExpGroup key={d.id} driver={d} expenses={dExp} total={dTotal} />
+            );
+          })}
         </div>
-      )}
-      {expenses.length === 0 && (
+      ) : (
         <div style={{ textAlign:"center", color:"rgba(255,255,255,.3)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", padding:30 }}>No expenses logged yet</div>
       )}
     </div>
@@ -5933,7 +5974,7 @@ function AdminCivilIdTab() {
   );
 }
 
-function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onClearNotifs, expenses, onAddExpense, onOrdersAdd, onStatusUpdate, onApproveTransfer, onRejectTransfer, driverProfiles, onUpdateDriver, onAddDriver, onClearData, onClearCollected, onRemoveOrderAdmin, onEditOrder, saveStatus, dbConnected, syncing, onlineDrivers, activeDrivers, clearConfirm, onConfirmClear, onCancelClear, history, passwords, onSetPassword, selectedDate, onSetSelectedDate, onLogout }) {
+function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onClearNotifs, expenses, onAddExpense, onOrdersAdd, onStatusUpdate, onApproveTransfer, onRejectTransfer, driverProfiles, onUpdateDriver, onAddDriver, onClearData, onClearCollected, onRemoveOrderAdmin, onEditOrder, saveStatus, dbConnected, syncing, onlineDrivers, activeDrivers, clearConfirm, onConfirmClear, onCancelClear, history, passwords, onSetPassword, selectedDate, onSetSelectedDate, onLogout, onOrdersRefresh }) {
   const [tab, setTab] = useState("upload");
   const [toast, setToast] = useState(null);
   const [filterDate, setFilterDate] = useState("all");
@@ -5944,6 +5985,10 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
     var parts = od.split("/");
     if (parts.length === 3) {
       var oDate = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+      if (selectedDate === "all7") {
+        // Last 7 days
+        return oDate.getTime() >= Date.now() - 7*24*60*60*1000;
+      }
       return oDate.toDateString() === (selectedDate || new Date().toDateString());
     }
     return false;
@@ -6066,7 +6111,22 @@ function AdminApp({ user, orders, transfers, adminNotifs, onMarkNotifRead, onCle
       </div>
 
       {/* Date filter — persistent across tabs */}
-      {orders.length > 0 && <DateFilterBar orders={orders} selectedDate={selectedDate} onSetSelectedDate={onSetSelectedDate} />}
+      {/* Admin date filter — Today / Yesterday / Last 7 Days */}
+      <div style={{ display:"flex", gap:6, marginBottom:14 }}>
+        {[
+          { label:"Today",     val: new Date().toDateString() },
+          { label:"Yesterday", val: new Date(Date.now()-86400000).toDateString() },
+          { label:"7 Days",    val: "all7" },
+        ].map(function(opt) {
+          var isActive = opt.val === "all7" ? selectedDate === "all7" : selectedDate === opt.val;
+          return (
+            <button key={opt.val} onClick={function(){ onSetSelectedDate(opt.val); }}
+              style={{ flex:1, background:isActive?"rgba(255,90,31,.18)":"rgba(255,255,255,.05)", border:"1px solid "+(isActive?"#FF5A1F":"rgba(255,255,255,.1)"), borderRadius:10, padding:"8px 4px", color:isActive?"#FF5A1F":"rgba(255,255,255,.5)", fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", fontSize:12, fontWeight:isActive?700:500, cursor:"pointer" }}>
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
 
       <div style={{ flex:1, overflowY:"auto", paddingTop:16, display:"flex", flexDirection:"column", WebkitOverflowScrolling:"touch" }}>
         {tab==="upload" && <AdminUploadTab allOrders={orders} onOrdersParsed={handleOrdersAssign} onAssignDriver={() => {}} onStatusUpdate={onStatusUpdate} />}
@@ -7780,7 +7840,23 @@ setOrders(function(prev) {
           onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))}
           onlineDrivers={onlineDrivers} activeDrivers={activeDrivers}
           onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
-      {user?.role === "admin"  && <AdminApp  user={user} orders={orders} transfers={transfers} adminNotifs={adminNotifs} onMarkNotifRead={(id)=>setAdminNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n))} onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))} expenses={expenses} onAddExpense={function(exp){ const e={...exp,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }} onOrdersAdd={addOrders} onStatusUpdate={updateStatus} onApproveTransfer={approveTransfer} onRejectTransfer={rejectTransfer} driverProfiles={driverProfiles} onUpdateDriver={updateDriverProfile} onAddDriver={addDriver} onClearData={clearAllData} onClearCollected={clearCollected} onRemoveOrderAdmin={removeOrder} onEditOrder={updateOrderDetails} orderTags={orderTags} onSetTag={setTag} saveStatus={saveStatus} dbConnected={dbConnected} syncing={syncing} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} clearConfirm={clearConfirm} onConfirmClear={doClearAllData} onCancelClear={function(){setClearConfirm(false);}} history={history} passwords={passwords} onSetPassword={function(id,pwd){setPasswords(function(prev){var n={...prev};n[id]=pwd;return n;});}} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }} />}
+      {user?.role === "admin"  && <AdminApp  user={user} orders={orders} transfers={transfers} adminNotifs={adminNotifs} onMarkNotifRead={(id)=>setAdminNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n))} onClearNotifs={()=>setAdminNotifs(p=>p.map(n=>({...n,read:true})))} expenses={expenses} onAddExpense={function(exp){ const e={...exp,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }} onOrdersAdd={addOrders} onStatusUpdate={updateStatus} onApproveTransfer={approveTransfer} onRejectTransfer={rejectTransfer} driverProfiles={driverProfiles} onUpdateDriver={updateDriverProfile} onAddDriver={addDriver} onClearData={clearAllData} onClearCollected={clearCollected} onRemoveOrderAdmin={removeOrder} onEditOrder={updateOrderDetails} orderTags={orderTags} onSetTag={setTag} saveStatus={saveStatus} dbConnected={dbConnected} syncing={syncing} onlineDrivers={onlineDrivers} activeDrivers={activeDrivers} clearConfirm={clearConfirm} onConfirmClear={doClearAllData} onCancelClear={function(){setClearConfirm(false);}} history={history} passwords={passwords} onSetPassword={function(id,pwd){setPasswords(function(prev){var n={...prev};n[id]=pwd;return n;});}} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate} onLogout={function(){ lsSet(LS_KEYS.session, null); setUser(null); }}
+          onOrdersRefresh={function() {
+            dbLoadOrders().then(function(data) {
+              if (data && data.length > 0) {
+                setOrders(function(prev) {
+                  var seen = new Set();
+                  var deduped = data.filter(function(o){ if(!o.id||seen.has(o.id)) return false; seen.add(o.id); return true; });
+                  lsSet(LS_KEYS.orders, deduped);
+                  return deduped;
+                });
+              } else {
+                setOrders([]);
+                lsSet(LS_KEYS.orders, []);
+              }
+            }).catch(function(){});
+          }}
+          />}
       {user?.role === "driver" && <DriverApp user={user} orders={orders} expenses={expenses} onAddExpense={function(exp){ const e={...exp,driverId:user.id,id:uid(),createdAt:new Date().toISOString()}; setExpenses(function(p){const n=[...p,e]; lsSet(LS_KEYS.expenses,n); return n;}); dbInsertExpense(e); }}
           onUpdateExpense={function(id,fields){ setExpenses(function(p){ var n=p.map(function(e){ return e.id===id?{...e,...fields}:e; }); lsSet(LS_KEYS.expenses,n); return n; }); dbUpdateExpense(id,fields); }}
           onDeleteExpense={function(id){ setExpenses(function(p){ var n=p.filter(function(e){ return e.id!==id; }); lsSet(LS_KEYS.expenses,n); return n; }); dbDeleteExpense(id); }} onScan={markScanned} onStatusUpdate={updateStatus} onEditOrder={updateOrderDetails} onRequestTransfer={requestTransfer} onRemoveOrder={removeOrder} onRequestHelp={requestHelp} orderTags={orderTags} onSetTag={setTag} onAddOrder={addOrders} selectedDate={selectedDate} onSetSelectedDate={setSelectedDate}
