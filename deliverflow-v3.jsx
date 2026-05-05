@@ -7662,6 +7662,35 @@ setOrders(function(prev) {
             ...(newPaymentType ? { paymentType: newPaymentType, originalPaymentType: o.paymentType } : {}),
             ...(typeof newTotal === "number" && newTotal > 0 ? { total: newTotal } : {}),
           }, updatedOrder.invoiceNo);
+
+          // ── Shopify sync — only for Webstore Online delivered orders ──────
+          if (status === "delivered" && (updatedOrder.store||"").toLowerCase().includes("webstore") && updatedOrder.onlineOrderNo) {
+            var shopifyPayload = {
+              onlineOrderNo: updatedOrder.onlineOrderNo,
+              paymentType: newPaymentType || updatedOrder.paymentType || "Cash",
+              invoiceNo: updatedOrder.invoiceNo,
+              driverName: (DRIVERS.find(function(d){ return d.id === updatedOrder.driverId; })||{}).name || updatedOrder.driverId || "",
+            };
+            var supabaseUrl = SUPABASE_URL.replace(/\/$/, "");
+            fetch(supabaseUrl + "/functions/v1/shopify-fulfill", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+              },
+              body: JSON.stringify(shopifyPayload),
+            }).then(function(r) { return r.json(); }).then(function(data) {
+              if (data.success) {
+                console.log("✅ Shopify fulfilled:", data.onlineOrderNo, "Paid:", data.paymentMarkedPaid);
+              } else {
+                console.warn("⚠️ Shopify sync issue:", data.error || JSON.stringify(data));
+              }
+            }).catch(function(err) {
+              console.warn("⚠️ Shopify sync failed (non-critical):", err.message || err);
+            });
+          }
+          // ─────────────────────────────────────────────────────────────────
+
           return updatedOrder;
         }
         return o;
