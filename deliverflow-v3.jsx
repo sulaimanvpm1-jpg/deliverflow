@@ -1245,19 +1245,32 @@ function SupabaseDBManager({ onOrdersRefresh }) {
     setResults(null);
     var sb = getSupabase && getSupabase();
     if (!sb) { setSearching(false); return; }
-    var q = searchQ.trim().toLowerCase();
-    sb.from("orders").select("id, invoice_no, driver_id, customer, phone, assigned_date, status, total, store").then(function(res) {
-      setSearching(false);
-      if (!res || res.error || !res.data) return;
-      var filtered = res.data.filter(function(r) {
-        return (r.invoice_no||"").toLowerCase().includes(q) ||
-               (r.customer||"").toLowerCase().includes(q) ||
-               (r.phone||"").toLowerCase().includes(q) ||
-               (r.driver_id||"").toLowerCase().includes(q) ||
-               (r.store||"").toLowerCase().includes(q);
-      });
-      setResults(filtered.slice(0, 50));
-    }, function(){ setSearching(false); });
+    var q = searchQ.trim();
+
+    // Search directly in Supabase using server-side ilike filter
+    // This avoids the 1000-row client limit
+    var cols = ["invoice_no", "online_order_no", "customer", "phone", "driver_id", "store"];
+    var orFilter = cols.map(function(col) { return col + ".ilike.%" + q + "%"; }).join(",");
+
+    sb.from("orders")
+      .select("id, invoice_no, online_order_no, driver_id, customer, phone, assigned_date, status, total, store")
+      .or(orFilter)
+      .limit(50)
+      .then(function(res) {
+        setSearching(false);
+        if (!res || res.error) {
+          // Fallback: if or() fails, try exact match on invoice_no
+          sb.from("orders")
+            .select("id, invoice_no, online_order_no, driver_id, customer, phone, assigned_date, status, total, store")
+            .ilike("invoice_no", "%" + q + "%")
+            .limit(50)
+            .then(function(res2) {
+              setResults(res2 && res2.data ? res2.data : []);
+            }, function() { setResults([]); });
+          return;
+        }
+        setResults(res.data || []);
+      }, function() { setSearching(false); setResults([]); });
   }
 
   function deleteOrder(id, label) {
@@ -1441,6 +1454,7 @@ function SupabaseDBManager({ onOrdersRefresh }) {
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
                               <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif", color:"#fff", fontSize:12, fontWeight:700 }}>{r.invoice_no}</span>
+                              {r.online_order_no && <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"#38BDF8", fontSize:11 }}>OO#{r.online_order_no}</span>}
                               <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.5)", fontSize:11 }}>{drvName}</span>
                               <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:"rgba(255,255,255,.4)", fontSize:11 }}>{r.assigned_date||"—"}</span>
                               <span style={{ fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif", color:statusColor, fontSize:11, fontWeight:600 }}>{r.status}</span>
