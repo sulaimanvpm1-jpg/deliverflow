@@ -7676,7 +7676,7 @@ setOrders(function(prev) {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+                "Authorization": "Bearer " + SUPABASE_ANON,
               },
               body: JSON.stringify(shopifyPayload),
             }).then(function(r) { return r.json(); }).then(function(data) {
